@@ -1,10 +1,9 @@
 [gd_scene format=3 uid="uid://daj3okb8q64jh"]
 
-[ext_resource type="Texture2D" uid="uid://jnmdopia2t2a" path="res://assets/art/characters/player_chef_idle.png" id="1_echbf"]
+[ext_resource type="Script" uid="uid://hhlbu2ex5qvv" path="res://scripts/entities/player_character.gd" id="2_c6dvc"]
+[ext_resource type="PackedScene" uid="uid://db624ccgigcb3" path="res://scenes/entities/PlayerCharacter.tscn" id="2_ibiss"]
 
-[node name="TestScene" type="Node2D" unique_id=432433148]
+[node name="MainScene" type="Node2D" unique_id=432433148]
 
-[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1566202403]
-scale = Vector2(0.2, 0.2)
-texture = ExtResource("1_echbf")
-centered = false
+[node name="PlayerCharacter" parent="." unique_id=1418374193 instance=ExtResource("2_ibiss")]
+script = ExtResource("2_c6dvc")

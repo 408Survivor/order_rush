@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://db624ccgigcb3"]
+
+[ext_resource type="Texture2D" uid="uid://jnmdopia2t2a" path="res://assets/art/characters/player_chef_idle.png" id="1_p7fax"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_5tcya"]
+radius = 180.3
+
+[node name="PlayerCharacter" type="CharacterBody2D" unique_id=1418374193]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1573503862]
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("1_p7fax")
+centered = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=488060088]
+position = Vector2(103, 107)
+shape = SubResource("CircleShape2D_5tcya")
