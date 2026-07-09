@@ -1,0 +1,52 @@
+# 生成批次记录：003
+# 主题：顾客上班族 - 俯视角游戏内 sprite
+# 日期：2026-07-08
+
+## 平台
+工具：即梦（jimeng.jianying.com）
+模型：图片 5.0 Lite
+
+## 参数
+比例：1:1
+尺寸：2048 x 2048
+风格化：75%
+生成数量：4张
+
+## 提示词
+Overhead view, bird eye view from directly above, looking straight down from ceiling, 
+a chibi office worker character seen from above, big round head shape from top, 
+wearing blue shirt and black pants, holding a smartphone in right hand, 
+no face visible, only top of head, casual hairstyle, 
+flat vector illustration, warm saturated colors, clean bold outlines, 
+2D game asset, transparent background, single object centered, filling the frame, 
+no text, no watermark, crisp edges, game-ready sprite, soft shadows, 
+cozy atmosphere, consistent lighting from top-left
+
+## 排除词（融入正面提示词中）
+without 3d render, without realistic style, without photograph, without text, 
+without watermark, without signature, without gradient background, without white background, 
+without cluttered background, without multiple objects, without side view, without front view, 
+without blurry edges
+
+## 生成结果
+| 序号 | 文件名 | 透视 | 背景 | 风格 | 评估 |
+|------|--------|------|------|------|------|
+| 1 | customer_overhead_v1(selected).png | ✅ 俯视（能看到后脑勺） | 白色背景 | 扁平Q版，暖色棕发 | **选中为最终素材** |
+| 2 | customer_overhead_v2.png | ✅ 俯视（能看到后脑勺） | 白色背景 | 扁平Q版，深棕发 | 备选 |
+| 3 | customer_overhead_v3.png | ✅ 俯视（能看到后脑勺） | 白色背景 | 扁平Q版，黑发 | 备选 |
+| 4 | customer_overhead_v4.png | ✅ 俯视（能看到后脑勺） | 白色背景 | 扁平Q版，黑发 | 备选 |
+
+## 选中素材
+- 最终文件：`customer_overhead_v1(selected).png`
+- 入选原因：暖色棕发与厨师风格统一；手机黑色对比鲜明；扁平Q版风格一致
+- 复制到：`assets/art/characters/customer_office_waiting.png`（重命名，不含版本号）
+
+## 经验记录
+- 使用与 002 批次相同的 prompt 结构，仅替换主体描述
+- 4张图都是"从斜上方约45°俯视"（能看到后脑勺），非纯90°垂直向下，但对游戏完全可用
+- 暖色棕发（v1）与厨师风格最统一，选为最终素材
+- 风格一致性验证通过：扁平插画+Q版+清晰描边
+
+## 后续行动
+- 开始生成 004 批次：微波炉俯视角
+- 提示词结构：Overhead view, bird eye view from directly above, [设备描述], [统一风格后缀]

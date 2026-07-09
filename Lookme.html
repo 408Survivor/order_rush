@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>爆单时刻 | 项目看板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans SC', sans-serif; }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+        .progress-bar {
+            transition: width 0.6s ease;
+        }
+        .timeline-dot {
+            transition: all 0.3s ease;
+        }
+        .timeline-item:hover .timeline-dot {
+            transform: scale(1.2);
+        }
+        .asset-frame {
+            background: linear-gradient(135deg, #fef3c7 0%, #fee2e2 100%);
+            border: 2px dashed #fbbf24;
+        }
+        .dark .asset-frame {
+            background: linear-gradient(135deg, #451a03 0%, #7f1d1d 100%);
+            border: 2px dashed #fbbf24;
+        }
+        .tag {
+            @apply px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#f59e0b',
+                        secondary: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
+
+    <!-- 导航 -->
+    <nav class="fixed top-0 w-full z-50 glass border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-gradient-to-br from-amber-400 to-red-500 rounded-lg">
+                    <i data-lucide="chef-hat" class="w-5 h-5 text-white"></i>
+                </div>
+                <a href="#" class="text-xl font-bold tracking-tight gradient-text">爆单时刻</a>
+            </div>
+            <div class="hidden md:flex gap-8 text-sm font-medium">
+                <a href="#overview" class="hover:text-primary transition-colors">总览</a>
+                <a href="#assets" class="hover:text-primary transition-colors">素材</a>
+                <a href="#timeline" class="hover:text-primary transition-colors">时间线</a>
+                <a href="#docs" class="hover:text-primary transition-colors">文档</a>
+            </div>
+            <button onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <i data-lucide="sun" class="hidden dark:block w-5 h-5"></i>
+                <i data-lucide="moon" class="block dark:hidden w-5 h-5"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-16 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center gap-12">
+                <div class="flex-1">
+                    <p class="text-primary font-semibold mb-4 tracking-wide text-sm uppercase">Order Rush | 独立游戏开发</p>
+                    <h1 class="text-4xl md:text-5xl font-bold mb-6 leading-tight">
+                        预制菜小餐馆<br>
+                        <span class="gradient-text">经营模拟</span>
+                    </h1>
+                    <p class="text-lg text-slate-600 dark:text-slate-400 mb-8 leading-relaxed max-w-xl">
+                        融合《飞机大厨》的高频操作爽感与《杯杯倒满》的 PC 键盘经营深度。
+                        2D 俯视角，堂食+外卖双线程，Godot 4.x 开发。
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                        <span class="tag bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Phase 0: 美术风格锁定</span>
+                        <span class="tag bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">30% 完成</span>
+                        <span class="tag bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">2/6 素材</span>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center">
+                    <div class="relative w-72 h-72 md:w-96 md:h-96">
+                        <div class="absolute inset-0 bg-gradient-to-br from-amber-400 to-red-500 rounded-full opacity-20 blur-3xl animate-pulse"></div>
+                        <div class="relative w-full h-full bg-white dark:bg-slate-800 rounded-3xl shadow-2xl flex items-center justify-center border border-slate-200 dark:border-slate-700 overflow-hidden">
+                            <img src="assets/art/characters/player_chef_idle.png" alt="Player Chef" class="w-48 h-48 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                            <div class="hidden w-full h-full flex items-center justify-center">
+                                <i data-lucide="chef-hat" class="w-24 h-24 text-slate-300 dark:text-slate-600"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 进度总览 -->
+    <section id="overview" class="py-16 px-6 bg-white dark:bg-slate-800/50">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                    <i data-lucide="bar-chart-3" class="w-6 h-6 text-amber-600 dark:text-amber-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">开发进度</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">10 个 Phase 的实时追踪</p>
+                </div>
+            </div>
+
+            <!-- Phase 0 详细进度 -->
+            <div class="bg-gradient-to-br from-amber-500 to-red-600 rounded-3xl p-1 mb-8">
+                <div class="bg-white dark:bg-slate-900 rounded-[22px] p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-2xl font-bold mb-1">Phase 0: 美术风格锁定</h3>
+                            <p class="text-slate-500">生成 6 张核心素材 → 导入 Godot → 测试显示 → Git commit</p>
+                        </div>
+                        <span class="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">
+                            🔄 进行中
+                        </span>
+                    </div>
+
+                    <!-- 6 张素材进度 -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-green-400">
+                            <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-green-500"></i>
+                            <p class="font-semibold text-sm">玩家厨师</p>
+                            <p class="text-xs text-slate-500 mt-1">002批次</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-green-400">
+                            <i data-lucide="check-circle" class="w-8 h-8 mx-auto mb-2 text-green-500"></i>
+                            <p class="font-semibold text-sm">顾客</p>
+                            <p class="text-xs text-slate-500 mt-1">003批次</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-slate-200 dark:border-slate-700 border-dashed">
+                            <i data-lucide="circle" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            <p class="font-semibold text-sm">微波炉</p>
+                            <p class="text-xs text-slate-500 mt-1">004批次</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-slate-200 dark:border-slate-700 border-dashed">
+                            <i data-lucide="circle" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            <p class="font-semibold text-sm">料理包</p>
+                            <p class="text-xs text-slate-500 mt-1">005批次</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-slate-200 dark:border-slate-700 border-dashed">
+                            <i data-lucide="circle" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            <p class="font-semibold text-sm">成品菜</p>
+                            <p class="text-xs text-slate-500 mt-1">006批次</p>
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 text-center border-2 border-slate-200 dark:border-slate-700 border-dashed">
+                            <i data-lucide="circle" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            <p class="font-semibold text-sm">地板 Tile</p>
+                            <p class="text-xs text-slate-500 mt-1">007批次</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="flex-1 h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-amber-400 to-red-500 rounded-full progress-bar" style="width: 33%"></div>
+                        </div>
+                        <span class="text-sm font-medium text-amber-600">2/6</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 后续 Phase 预览 -->
+            <div class="grid md:grid-cols-5 gap-3">
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 opacity-50">
+                    <p class="text-xs text-slate-500 mb-1">P1</p>
+                    <p class="font-semibold text-sm">核心循环</p>
+                    <p class="text-xs text-slate-400 mt-1">🔒 锁定</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 opacity-50">
+                    <p class="text-xs text-slate-500 mb-1">P2</p>
+                    <p class="font-semibold text-sm">订单系统</p>
+                    <p class="text-xs text-slate-400 mt-1">🔒 锁定</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 opacity-50">
+                    <p class="text-xs text-slate-500 mb-1">P3</p>
+                    <p class="font-semibold text-sm">经济系统</p>
+                    <p class="text-xs text-slate-400 mt-1">🔒 锁定</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 opacity-50">
+                    <p class="text-xs text-slate-500 mb-1">P4</p>
+                    <p class="font-semibold text-sm">外卖系统</p>
+                    <p class="text-xs text-slate-400 mt-1">🔒 锁定</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 opacity-50">
+                    <p class="text-xs text-slate-500 mb-1">P5+</p>
+                    <p class="font-semibold text-sm">设备/卡牌...</p>
+                    <p class="text-xs text-slate-400 mt-1">🔒 锁定</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 素材展示区 -->
+    <section id="assets" class="py-16 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-xl">
+                    <i data-lucide="image" class="w-6 h-6 text-rose-600 dark:text-rose-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">已选素材</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">AI 生成并锁定的最终素材</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- 玩家厨师 -->
+                <div class="card-hover bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="aspect-square bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">
+                        <img src="assets/art/characters/player_chef_idle.png" alt="Player Chef" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                        <div class="hidden text-center">
+                            <div class="asset-frame w-48 h-48 rounded-xl flex items-center justify-center mx-auto">
+                                <i data-lucide="chef-hat" class="w-12 h-12 text-amber-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">player_chef_idle.png</p>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-bold text-lg">玩家厨师</h3>
+                            <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs font-medium">已锁定</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                            俯视角，白色围裙+红色围巾，Q版比例，扁平插画风。
+                            来自 002 批次 v1(selected)。
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="tag">2048x2048</span>
+                            <span class="tag">透明背景</span>
+                            <span class="tag">002批次</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 顾客 -->
+                <div class="card-hover bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="aspect-square bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">
+                        <img src="assets/art/characters/customer_office_waiting.png" alt="Customer" class="max-w-full max-h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
+                        <div class="hidden text-center">
+                            <div class="asset-frame w-48 h-48 rounded-xl flex items-center justify-center mx-auto">
+                                <i data-lucide="user" class="w-12 h-12 text-amber-500"></i>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-2">customer_office_waiting.png</p>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-bold text-lg">顾客（上班族）</h3>
+                            <span class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs font-medium">已锁定</span>
+                        </div>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+                            俯视角，蓝衬衫+黑裤，手持手机，Q版比例。
+                            来自 003 批次 v1(selected)。
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="tag">2048x2048</span>
+                            <span class="tag">透明背景</span>
+                            <span class="tag">003批次</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 待生成占位 -->
+            <div class="mt-8 grid md:grid-cols-4 gap-4">
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <div class="asset-frame w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="microwave" class="w-6 h-6 text-amber-500"></i>
+                    </div>
+                    <p class="font-medium text-sm">微波炉</p>
+                    <p class="text-xs text-slate-400 mt-1">004批次 · 待生成</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <div class="asset-frame w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="package" class="w-6 h-6 text-amber-500"></i>
+                    </div>
+                    <p class="font-medium text-sm">料理包</p>
+                    <p class="text-xs text-slate-400 mt-1">005批次 · 待生成</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <div class="asset-frame w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="utensils" class="w-6 h-6 text-amber-500"></i>
+                    </div>
+                    <p class="font-medium text-sm">成品菜</p>
+                    <p class="text-xs text-slate-400 mt-1">006批次 · 待生成</p>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <div class="asset-frame w-16 h-16 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="grid-3x3" class="w-6 h-6 text-amber-500"></i>
+                    </div>
+                    <p class="font-medium text-sm">地板 Tile</p>
+                    <p class="text-xs text-slate-400 mt-1">007批次 · 待生成</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 时间线 -->
+    <section id="timeline" class="py-16 px-6 bg-white dark:bg-slate-800/50">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                    <i data-lucide="clock" class="w-6 h-6 text-purple-600 dark:text-purple-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">活动记录</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">每日开发活动追踪</p>
+                </div>
+            </div>
+
+            <div class="max-w-2xl">
+                <div class="space-y-8">
+                    <div class="timeline-item relative pl-8 border-l-2 border-amber-200 dark:border-amber-800">
+                        <div class="timeline-dot absolute -left-[7px] top-0 w-3 h-3 bg-amber-500 rounded-full"></div>
+                        <p class="text-xs text-slate-500 mb-1">2026.07.08</p>
+                        <p class="font-medium">Phase 0 启动</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">生成俯视角厨师和顾客素材，锁定 AI 风格</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="tag">002批次</span>
+                            <span class="tag">003批次</span>
+                            <span class="tag">风格锁定</span>
+                        </div>
+                    </div>
+                    <div class="timeline-item relative pl-8 border-l-2 border-slate-200 dark:border-slate-700">
+                        <div class="timeline-dot absolute -left-[7px] top-0 w-3 h-3 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
+                        <p class="text-xs text-slate-500 mb-1">2026.07.05</p>
+                        <p class="font-medium">项目初始化</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">创建开发手册、进度看板、提示词库、README</p>
+                        <div class="flex gap-2 mt-2">
+                            <span class="tag">文档</span>
+                            <span class="tag">规范</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 文档与导航 -->
+    <section id="docs" class="py-16 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl">
+                    <i data-lucide="folder-open" class="w-6 h-6 text-emerald-600 dark:text-emerald-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-3xl font-bold">项目文档</h2>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">快速访问所有项目文件</p>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <a href="docs/开发手册_v1.0.md" class="card-hover bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 block">
+                    <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg w-fit mb-4">
+                        <i data-lucide="book-open" class="w-5 h-5 text-blue-600 dark:text-blue-400"></i>
+                    </div>
+                    <h3 class="font-bold mb-2">开发手册 v1.0</h3>
+                    <p class="text-sm text-slate-500">技术规范、代码框架、Git 规范</p>
+                </a>
+                <a href="docs/prompts/AI美术提示词库_v1.0.md" class="card-hover bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 block">
+                    <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg w-fit mb-4">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                    <h3 class="font-bold mb-2">AI 提示词库</h3>
+                    <p class="text-sm text-slate-500">所有素材的生成提示词</p>
+                </a>
+                <a href="docs/进度看板.md" class="card-hover bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 block">
+                    <div class="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg w-fit mb-4">
+                        <i data-lucide="kanban" class="w-5 h-5 text-amber-600 dark:text-amber-400"></i>
+                    </div>
+                    <h3 class="font-bold mb-2">进度看板</h3>
+                    <p class="text-sm text-slate-500">实时项目进度追踪</p>
+                </a>
+                <a href="ReadmeForAgent.md" class="card-hover bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 block">
+                    <div class="p-3 bg-rose-100 dark:bg-rose-900/30 rounded-lg w-fit mb-4">
+                        <i data-lucide="bot" class="w-5 h-5 text-rose-600 dark:text-rose-400"></i>
+                    </div>
+                    <h3 class="font-bold mb-2">Agent 上下文</h3>
+                    <p class="text-sm text-slate-500">给 Kimi 的快速加载文件</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-6 border-t border-slate-200 dark:border-slate-800">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="p-1.5 bg-gradient-to-br from-amber-400 to-red-500 rounded-lg">
+                    <i data-lucide="chef-hat" class="w-4 h-4 text-white"></i>
+                </div>
+                <p class="text-sm text-slate-500">Order Rush · 爆单时刻</p>
+            </div>
+            <p class="text-sm text-slate-400">Last updated: 2026-07-08</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

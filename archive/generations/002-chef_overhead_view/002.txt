@@ -1,0 +1,53 @@
+# 生成批次记录：002
+# 主题：玩家厨师 - 俯视角游戏内 sprite
+# 日期：2026-07-08
+
+## 平台
+工具：即梦（jimeng.jianying.com）
+模型：图片 5.0 Lite
+
+## 参数
+比例：1:1
+尺寸：2048 x 2048
+风格化：75%
+生成数量：4张
+
+## 提示词（v2 修正版）
+Overhead view, bird eye view from directly above, looking straight down from ceiling, 
+a chibi chef character seen from above, only the top of white chef hat visible, 
+shoulders and arms spread to sides, white apron and red scarf seen from above, 
+small body, big round head shape from top, no face visible, only top of head, 
+flat vector illustration, warm saturated colors, clean bold outlines, 
+2D game asset, transparent background, single object centered, filling the frame, 
+no text, no watermark, crisp edges, game-ready sprite, soft shadows, 
+cozy atmosphere, consistent lighting from top-left
+
+## 排除词（融入正面提示词中）
+without 3d render, without realistic style, without photograph, without text, 
+without watermark, without signature, without gradient background, without white background, 
+without cluttered background, without multiple objects, without side view, without front view, 
+without blurry edges
+
+## 生成结果
+| 序号 | 文件名 | 透视 | 背景 | 风格 | 评估 |
+|------|--------|------|------|------|------|
+| 1 | `chef_overhead_v1(selected).png` | ✅ 完美俯视 | ✅ 透明背景 | 扁平Q版 | **选中为最终素材** |
+| 2 | chef_overhead_v2.png | ✅ 完美俯视 | 白色背景 | 扁平Q版 | 备选 |
+| 3 | chef_overhead_v3.png | ✅ 完美俯视 | 白色背景 | 偏极简风格 | 备选 |
+| 4 | chef_overhead_v4.png | ✅ 完美俯视 | 白色背景 | 细节丰富 | 备选 |
+
+## 选中素材
+- 最终文件：`chef_overhead_v1(selected).png`（即梦 7607）
+- 入选原因：唯一透明背景，无需抠图；风格与正面图一致；Q版比例协调
+- 复制到：`assets/art/characters/player_chef_idle.png`（从 `chef_overhead_v1(selected).png` 复制）
+
+## 经验记录
+- ✅ 关键成功："Overhead view, bird eye view from directly above" 比 "top-down perspective" 有效
+- 生成效果：能看到帽子顶部、肩膀向两侧展开、看不到脸，符合游戏俯视角需求
+- 第1张有透明背景（PNG），其余3张为白色背景
+- 风格已锁定：扁平插画 + Q版 + 暖色 + 清晰描边
+- 后续所有素材（顾客、设备、物品）使用此 prompt 结构
+
+## 后续行动
+- 开始生成 003 批次：顾客俯视角
+- 提示词结构：Overhead view, bird eye view from directly above, [主体描述], [统一风格后缀]

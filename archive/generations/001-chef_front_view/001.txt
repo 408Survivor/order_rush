@@ -1,0 +1,45 @@
+# 生成批次记录：001
+# 主题：玩家厨师 - 正面立绘（风格测试）
+# 日期：2026-07-08
+
+## 平台
+工具：即梦（jimeng.jianying.com）
+模型：图片 5.0 Lite
+
+## 参数
+比例：1:1
+尺寸：2048 x 2048
+风格化：75%
+生成数量：4张
+
+## 提示词
+A chibi chef character, top-down perspective, wearing white apron and red scarf, 
+white chef hat, standing pose, holding a small empty tray with both hands, 
+neutral happy expression, big round head, small body, short limbs, 
+flat vector illustration, warm saturated colors, clean bold outlines, 
+2D game asset, transparent background, single object centered, filling the frame, 
+no text, no watermark, crisp edges, game-ready sprite, soft shadows, 
+cozy atmosphere, consistent lighting from top-left
+
+## 排除词（融入正面提示词中）
+without 3d render, without realistic style, without photograph, without text, 
+without watermark, without signature, without gradient background, without white background, 
+without cluttered background, without multiple objects, without side view, without front view, 
+without blurry edges
+
+## 生成结果
+| 序号 | 文件名 | 透视 | 背景 | 风格 | 评估 |
+|------|--------|------|------|------|------|
+| 1 | chef_front_v1.png | 正面正视图 | 白色背景 | 扁平Q版 | 风格很好，但非俯视角 |
+| 2 | chef_front_v2.png | 正面正视图 | 白色背景 | 扁平Q版 | 风格很好，但非俯视角 |
+
+## 经验记录
+- ⚠️ 关键发现：即梦对 "top-down perspective" 的理解为正面站立，不是从天花板俯视
+- 生成的风格（扁平插画、Q版、暖色、描边）完全符合预期
+- 这两张正面图被保留，可用作游戏 logo、标题画面、角色选择头像等 UI 素材
+- 游戏内俯视角 sprite 需要重新生成，提示词需改为 "Overhead view, bird eye view from directly above"
+- 即梦无独立负面提示词输入框，需将排除要求融入正面提示词
+
+## 后续行动
+- 创建 002 批次，使用 v2 提示词重新生成俯视角
+- 保留本批次作为风格参考基准
