@@ -28,8 +28,8 @@ func _physics_process(_delta: float) -> void:
 	# 执行移动（自带碰撞处理）
 	move_and_slide()
 	
-	# 根据移动方向翻转 Sprite
+	# 根据移动方向翻转 Sprite（使用 flip_h 避免锚点跳跃）
 	if _input_vector.x < 0:
-		sprite.scale.x = -0.2  # 向左翻转
+		sprite.flip_h = true   # 向左翻转
 	elif _input_vector.x > 0:
-		sprite.scale.x = 0.2   # 向右（默认）
+		sprite.flip_h = false  # 向右（默认）
