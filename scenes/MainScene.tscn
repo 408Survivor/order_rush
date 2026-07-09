@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://daj3okb8q64jh"]
+
+[ext_resource type="Texture2D" uid="uid://jnmdopia2t2a" path="res://assets/art/characters/player_chef_idle.png" id="1_echbf"]
+
+[node name="TestScene" type="Node2D" unique_id=432433148]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1566202403]
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("1_echbf")
+centered = false
