@@ -1,11 +1,15 @@
 [gd_scene format=3 uid="uid://db624ccgigcb3"]
 
 [ext_resource type="Texture2D" uid="uid://jnmdopia2t2a" path="res://assets/art/characters/player_chef_idle.png" id="1_p7fax"]
+[ext_resource type="Script" uid="uid://hhlbu2ex5qvv" path="res://scripts/entities/player_character.gd" id="2_script"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_5tcya"]
 radius = 180.3
 
 [node name="PlayerCharacter" type="CharacterBody2D" unique_id=1418374193]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("2_script")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1573503862]
 scale = Vector2(0.2, 0.2)
@@ -13,3 +17,32 @@ texture = ExtResource("1_p7fax")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=488060088]
 shape = SubResource("CircleShape2D_5tcya")
+
+[node name="InteractionRay" type="RayCast2D" parent="."]
+target_position = Vector2(0, 480)
+collision_mask = 12
+collide_with_areas = true
+
+[node name="HeldItemPivot" type="Marker2D" parent="."]
+position = Vector2(0, -60)
+
+[node name="InteractionPrompt" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="PromptLabel" type="Label" parent="InteractionPrompt"]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -90.0
+offset_right = 200.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 28
+horizontal_alignment = 1
+vertical_alignment = 1
