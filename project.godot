@@ -18,7 +18,7 @@ config/name="Order Rush"
 config/description="2D 俯视角预制菜小餐馆经营模拟游戏"
 config/tags=PackedStringArray("2d", "simulation", "cooking")
 run/main_scene="res://scenes/MainScene.tscn"
-config/features=PackedStringArray("4.7", "Mobile")
+config/features=PackedStringArray("4.6", "Mobile")
 
 [autoload]
 
