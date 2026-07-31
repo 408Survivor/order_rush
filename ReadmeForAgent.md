@@ -2,7 +2,7 @@
 
 > **本文件由开发者每次会话结束时发起，由 Kimi 更新。**
 > **新会话开始时，请优先阅读此文件，以快速加载项目上下文。**
-> 最后更新：2026-07-22（Session 4：项目上线 GitHub，启用 issue/PR 驱动流程）
+> 最后更新：2026-08-01（Session 5：issue #2 交互系统完成并合并；开发环境切换 Godot 4.6.3）
 
 ---
 
@@ -19,7 +19,7 @@
 | Phase | 名称 | 状态 | 关键里程碑 |
 |-------|------|------|------------|
 | P0 | 🎨 美术风格锁定 | ✅ 完成 | 6/6 核心素材已生成（微波炉为占位版，见 issue #1） |
-| P1 | 🎮 核心循环 | 🔄 开发中 | 项目初始化 + 玩家移动（WASD+碰撞+翻转）已完成；交互系统进行中（issue #2） |
+| P1 | 🎮 核心循环 | 🔄 开发中 | 项目初始化 + 玩家移动 + **交互系统（issue #2 ✅ 已合并）**；顾客系统（issue #3）下一个开工 |
 | P2-P9 | 后续阶段 | 🔒 锁定 | 见开发手册 |
 
 ---
@@ -34,13 +34,11 @@
 **当前任务看板 → GitHub Issues**（不再在本文件手维护待办状态）：
 
 | Issue | 任务 | 依赖 |
-|-------|------|------|
+|-------|------|-------|
 | #1 | [P0 收尾] 微波炉俯视角素材重生成 | 无，不阻塞 |
-| #2 | [P1] 交互系统：E 键拾取/放置物品 | 无，下一个开工 |
-| #3 | [P1] 顾客系统：生成与排队逻辑 | #2 |
+| #2 | [P1] 交互系统：E 键拾取/放置物品 | ✅ 已完成（PR #7 合并） |
+| #3 | [P1] 顾客系统：生成与排队逻辑 | #2 ✅ 已满足，下一个开工 |
 | #4 | [P1] 订单循环最小闭环（P1 收口） | #2 #3 |
-
-**PR #5（issue 模板）待开发者审阅合并。**
 
 ---
 
@@ -89,6 +87,19 @@ archive/generations/001-chef_front_view/
 ---
 
 ## 6. 历次会话关键决策与发现
+
+**2026-08-01 Session 5**
+
+| 事件 | 详情 |
+|------|------|
+| ✅ issue #2 交互系统完成 | E 键拾取料理包/放入微波炉/取出 + 提示 UI + 信号 `item_picked_up`/`item_placed`；PR #7 已合并；开发者实测通过 |
+| ✅ 冒烟测试通道建立 | `addons/smoke_test/`（EditorPlugin，14 项断言）；运行方式：临时在 project.godot 注册 `[editor_plugins] enabled=PackedStringArray("res://addons/smoke_test/plugin.cfg")` → `Godot --path . --editor --quit-after 900` → 看 PASS/FAIL → 移除注册。**插件注册路径必须写 plugin.cfg 完整路径** |
+| ✅ Godot 版本切换 **4.6.3** | `/Applications/Godot.app` 已替换为 4.6.3（开发+验证统一）。4.7.x 崩溃根因：macOS 26 TCC 拦截 Godot 写 `~/Library/Application Support`（日志初始化崩），非代码问题 |
+| ⚠️ 启动方式强制 **Finder 双击** | 终端命令行启动 Godot 无 TCC 权限会崩；已授权 Godot.app 完全磁盘访问，双击/F5 正常。`open -a Godot --args ...`（LaunchServices）也可 |
+| ✅ 项目基线标记 | `project.godot` `config/features` 已更新为 `"4.6"` |
+| ✅ gh CLI 接入 | `408Survivor` 账号已认证（SSH 协议，scope 含 repo）；开 PR：`gh pr create`，合并：`gh pr merge N --squash --delete-branch` |
+| ✅ 脚本 @tool 约定 | 游戏脚本统一加 `@tool` + `Engine.is_editor_hint()` 防护（编辑器进程可实例化真实脚本，测试可跑；对游戏运行无副作用） |
+| ⚠️ headless 不可用 | `--headless` 在 macOS 26 全部崩溃；自动化验证一律走编辑器模式 |
 
 **2026-07-22 Session 4**
 
