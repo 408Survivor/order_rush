@@ -28,3 +28,7 @@ Thumbs.db
 # Godot 4 特定
 *.import
 project.binary
+
+# Reasonix 工具
+.reasonix/
+reasonix.toml
