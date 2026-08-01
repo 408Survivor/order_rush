@@ -12,9 +12,9 @@ const CUSTOMER_SCENE := preload("res://scenes/entities/Customer.tscn")
 # ==================== 导出变量 ====================
 ## 生成间隔（秒）
 @export var spawn_interval := 3.0
-## 排队槽位间距（像素），需大于顾客碰撞直径 130（顾客半径 65）
-@export var queue_spacing := 150.0
-## 最大在场顾客数（超出不再生成；3 人 = 槽位 0-2 均在屏幕内）
+## 排队槽位间距（像素），默认取 LayoutManager.QUEUE_SPACING（200 > 顾客碰撞直径 130）
+@export var queue_spacing := LayoutManager.QUEUE_SPACING
+## 最大在场顾客数（玩法参数；布局空间按 LayoutManager.QUEUE_CAPACITY=5 预留）
 @export var max_queue := 3
 
 # ==================== 节点引用 ====================

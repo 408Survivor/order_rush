@@ -45,6 +45,26 @@ func _run() -> void:
 	_check(microwave != null, "Microwave 存在于 MainScene")
 	_check(meal != null, "MealPackage 存在于 MainScene")
 
+	# ===== 0.5 布局系统（issue #24）：LayoutManager 配置驱动摆放 =====
+	# 放在交互测试之前：此时节点未被移动/销毁，可断言初始摆放
+	var layout = scene.get_node("/root/LayoutManager")
+	var manager = scene.get_node("CustomerManager")
+	var counter = scene.get_node("CounterPoint")
+	_check(layout != null, "LayoutManager (autoload) 可访问")
+	_check(manager != null, "CustomerManager 存在于 MainScene")
+	_check(counter != null, "CounterPoint 存在于 MainScene")
+	_check(layout.WORLD_SIZE == Vector2(1920, 1080), "世界尺寸 1920x1080")
+	_check(scene.get_node("ZoneStorage") != null and scene.get_node("ZoneFront") != null \
+		and scene.get_node("ZoneKitchen") != null and scene.get_node("ZoneDining") != null,
+		"四区色块由布局配置生成")
+	_check(player.global_position == layout.SPAWN_POINT, "玩家出生点位于布局配置点位")
+	_check(counter.global_position == layout.COUNTER_POINT, "柜台位于布局配置点位")
+	_check(scene.get_node("SpawnPoint").global_position == layout.ENTRANCE_POINT, "顾客入口位于布局配置点位")
+	_check(microwave.global_position == layout.get_slot_position(layout.MICROWAVE_SLOTS, 0), "微波炉位于设备槽位 0")
+	_check(meal.global_position == layout.get_slot_position(layout.MEAL_SLOTS, 0), "料理包位于货架槽位 0")
+	_check(scene.get_node("Table1").position == layout.TABLE_SLOTS[0], "餐桌位于就餐区槽位 0")
+	_check(layout.QUEUE_SPACING == 200.0 and manager.get("queue_spacing") == 200.0, "队列间距接入布局系统（200）")
+
 	# ===== 1. 空手靠近料理包 → 拾取 =====
 	_face_and_ray(player, meal, Vector2.UP)
 	_check(player.call("try_interact"), "空手面对料理包按 E 应成功拾取")
@@ -79,28 +99,26 @@ func _run() -> void:
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "取出的是成品菜（dish 组）")
 
 	# ===== 4. 顾客系统：生成 → 排队 → 队首索引 =====
-	var manager = scene.get_node("CustomerManager")
-	var counter = scene.get_node("CounterPoint")
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 
-	# 模拟真实 Timer 节奏生成（3s 间隔 < 走到柜台 ~3.1s，
-	# 验证槽位按在场数分配：c2 不与行走中的 c1 撞槽）
+	# 顾客生成时序：入口(80,520)→柜台(1350,520) 距离 1270px / 160 ≈ 7.9s，
+	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
 	var c1 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(8.5).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(7.5).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(6.0).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
-	_check(c2.get("queue_slot") == counter.global_position - Vector2(150.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
-	_check(c3.get("queue_slot") == counter.global_position - Vector2(300.0, 0.0), "c3 分配槽位 2")
+	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
+	_check(c3.get("queue_slot") == counter.global_position - Vector2(400.0, 0.0), "c3 分配槽位 2")
 	_check(manager.call("get_queue_count") == 3, "3 名顾客应全部入队")
 	_check(manager.call("get_front_customer") == c1, "队首应为第一名顾客（c1）")
 	_check(c1.call("is_waiting") and c2.call("is_waiting") and c3.call("is_waiting"), "顾客到达槽位后处于 WAITING")
 
-	# 槽位不重叠（间距 150 > 碰撞直径 130，留容差按 >120 断言）
+	# 槽位不重叠（间距 200 > 碰撞直径 130，留容差按 >120 断言）
 	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 120.0 \
 		and c2.global_position.distance_to(c3.global_position) > 120.0
 	_check(gap_ok, "相邻顾客间距充足（不重叠）")
@@ -108,7 +126,7 @@ func _run() -> void:
 	# 队首位于柜台服务点（供订单系统索引）
 	_check(c1.global_position.distance_to(counter.global_position) < 100.0, "队首位于柜台服务点")
 
-	# 队列满时不再生成（max_queue=3，槽位 0-2 均在屏幕内）
+	# 队列满时不再生成（max_queue=3，布局空间预留 5 人）
 	_check(manager.call("spawn_customer") == null, "队伍满（3/3）时生成被拒绝")
 
 	# ===== 5. P2 订单队列：多单并发 + 交付/好评 =====
@@ -172,14 +190,14 @@ func _run() -> void:
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
-	# 等待上一批顾客全部离店（_active_count 归零）后生成新一批
-	await get_tree().create_timer(5.0).timeout
+	# 等待上一批顾客全部离店（柜台→入口 1270px ≈ 7.9s）后生成新一批
+	await get_tree().create_timer(8.5).timeout
 	var c4 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(8.5).timeout
 	var c5 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.0).timeout
+	await get_tree().create_timer(7.5).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(6.0).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 
