@@ -57,11 +57,12 @@ func _run() -> void:
 	_check(microwave.call("is_occupied"), "微波炉内部应有物品")
 	_check(_placed_count == 1, "item_placed 信号应发出 1 次")
 
-	# ===== 3. 空手靠近微波炉 → 取出 =====
+	# ===== 3. 空手靠近微波炉：加热中禁止取出 → 加热完成后取出成品菜 =====
 	_face_and_ray(player, microwave, Vector2.UP)
-	_check(player.call("try_interact"), "空手面对微波炉按 E 应成功取出")
-	_check(player.get("held_item") == meal, "取出后 held_item 应为原料理包")
-	_check(not microwave.call("is_occupied"), "取出后微波炉应为空")
+	_check(player.call("try_interact") == false, "加热中取出被拒绝（不能取消加热）")
+	await get_tree().create_timer(3.5).timeout
+	_check(player.call("try_interact"), "加热完成后按 E 取出成品菜")
+	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "取出的是成品菜（dish 组）")
 
 	# ===== 4. 顾客系统：生成 → 排队 → 队首索引 =====
 	var manager = scene.get_node("CustomerManager")
@@ -95,6 +96,51 @@ func _run() -> void:
 
 	# 队列满时不再生成（max_queue=3，槽位 0-2 均在屏幕内）
 	_check(manager.call("spawn_customer") == null, "队伍满（3/3）时生成被拒绝")
+
+	# ===== 5. 订单循环：交付→结算→补位→重复 =====
+	# 注意：编辑器进程物理不步进，RayCast2D 查询结果不稳定，
+	# 本段直接调用内部交互方法（_interact_with_*）验证逻辑，射线路径由游戏运行模式保证
+	# 玩家此时已手持第 3 段产出的成品菜（dish）
+	var gsm = scene.get_node("/root/GameStateManager")
+	_check(gsm != null, "GameStateManager (autoload) 可访问")
+	_check(gsm.get_active_order_count() == 1, "队首到达后自动生成订单")
+	_check(c1.get("order_id") != -1, "队首顾客绑定订单 id")
+	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "玩家手持成品菜（第 3 段产出）")
+
+	# 第一轮交付：手持成品菜交付队首 c1
+	_check(player.call("_interact_with_customer", c1), "手持成品菜交付队首顾客成功")
+	_check(gsm.revenue == 20, "交付后营业额 +20")
+	_check(gsm.get_active_order_count() == 1, "旧订单已结算，新队首订单已生成（count=1）")
+	_check(manager.call("get_queue_count") == 2, "队首离开，队列剩 2 人")
+
+	# 补位：c2 前移到柜台并生成新订单
+	await get_tree().create_timer(2.0).timeout
+	_check(manager.call("get_front_customer") == c2, "补位后队首为 c2")
+	_check(gsm.get_active_order_count() == 1, "新队首自动生成新订单")
+
+	# 第二轮循环：加热（料理包2）→ 交付 c2 → 营业额累加 → c3 补位
+	var meal2 = scene.get_node("Items/MealPackage2")
+	player.call("_interact_with_pickable", meal2)
+	player.call("_interact_with_appliance", microwave)
+	await get_tree().create_timer(3.5).timeout
+	player.call("_interact_with_appliance", microwave)
+	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "第二轮取出成品菜")
+	_check(player.call("_interact_with_customer", c2), "第二轮交付 c2 成功")
+	_check(gsm.revenue == 40, "营业额累加至 40")
+	await get_tree().create_timer(2.0).timeout
+	_check(manager.call("get_front_customer") == c3, "补位后队首为 c3")
+
+	# 第三轮：加热（料理包3）→ 交付 c3 → 队列清空 → 无状态残留
+	var meal3 = scene.get_node("Items/MealPackage3")
+	player.call("_interact_with_pickable", meal3)
+	player.call("_interact_with_appliance", microwave)
+	await get_tree().create_timer(3.5).timeout
+	player.call("_interact_with_appliance", microwave)
+	_check(player.call("_interact_with_customer", c3), "第三轮交付 c3 成功")
+	_check(gsm.revenue == 60, "营业额累加至 60")
+	_check(gsm.get_active_order_count() == 0, "无残留订单")
+	_check(manager.call("get_queue_count") == 0, "队列已清空")
+	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"

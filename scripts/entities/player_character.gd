@@ -88,6 +88,8 @@ func try_interact() -> bool:
 		return false
 	_interaction_cooldown = INTERACTION_COOLDOWN
 
+	# 交互前强制刷新射线，确保使用最新朝向/位置（不依赖物理帧更新）
+	interaction_ray.force_raycast_update()
 	var interactable := _get_interactable_object()
 	if interactable == null:
 		return false
@@ -96,6 +98,8 @@ func try_interact() -> bool:
 	if held_item != null:
 		if interactable.is_in_group("appliance"):
 			return _interact_with_appliance(interactable)
+		elif interactable.is_in_group("customer"):
+			return _interact_with_customer(interactable)
 		return false
 
 	# 空手：取出 / 拾取
@@ -106,11 +110,11 @@ func try_interact() -> bool:
 
 	return false
 
-## 获取交互射线命中的可交互对象
+## 获取交互射线命中的可交互对象（跳过手持物品——它挂在玩家面前会挡住射线）
 func _get_interactable_object() -> Node2D:
 	if interaction_ray.is_colliding():
 		var collider := interaction_ray.get_collider()
-		if collider != null and collider.is_in_group("interactable"):
+		if collider != null and collider.is_in_group("interactable") and collider != held_item:
 			return collider
 	return null
 
@@ -138,6 +142,19 @@ func _interact_with_pickable(pickable: Node2D) -> bool:
 	_pick_up_item(pickable)
 	return true
 
+## 与顾客交互（交付成品菜，issue #4）
+func _interact_with_customer(customer: Node2D) -> bool:
+	if held_item == null:
+		return false
+	if not held_item.is_in_group("dish"):
+		return false
+	if not customer.can_accept_dish(held_item):
+		return false
+	var dish := held_item
+	_drop_from_hand()
+	customer.receive_dish(dish)
+	return true
+
 # ==================== 手持物品管理 ====================
 
 ## 拾取物品到手，挂到 HeldItemPivot 上显示
@@ -156,6 +173,10 @@ func _pick_up_item(item: Node2D) -> void:
 	item.position = Vector2.ZERO
 	item.scale = Vector2.ONE * 0.8  # 手持时稍微缩小
 	item.visible = true             # 防御：确保物品可见
+	# 手持物品禁用碰撞：不再参与物理/交互检测（否则会挡住前方的交互射线）
+	if item is Area2D:
+		item.collision_layer = 0
+		item.collision_mask = 0
 
 	item_picked_up.emit(item)
 	print_rich("[color=cyan]Picked up: %s[/color]" % item.name)
@@ -188,14 +209,16 @@ func _update_prompt() -> void:
 
 	var text := ""
 	if held_item != null:
-		# 手持物品：仅当目标设备可接受时提示"放入"
+		# 手持物品：设备可接受 → 放入；顾客可收 → 交付
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
+		elif target.is_in_group("customer") and target.can_accept_dish(held_item):
+			text = "[E] 交付%s" % _friendly_name(target)
 	else:
-		# 空手：可拾取 → 提示拾取；设备内有物 → 提示取出
+		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出
 		if target.is_in_group("pickable"):
 			text = "[E] 拾取%s" % _friendly_name(target)
-		elif target.is_in_group("appliance") and target.is_occupied():
+		elif target.is_in_group("appliance") and target.is_done():
 			text = "[E] 取出%s" % _friendly_name(target)
 
 	if text == "":

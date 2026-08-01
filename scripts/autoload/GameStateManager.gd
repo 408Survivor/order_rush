@@ -1,16 +1,22 @@
 ## 文件: scripts/autoload/GameStateManager.gd
-## 职责: 全局游戏状态管理，Phase 1 仅维护订单状态
+## 职责: 全局游戏状态管理，Phase 1 维护订单状态与营业额
 ## 依赖: 无
-## 注意: 后续阶段会扩展为包含经济、天数、角色等状态
+## 注意: 后续阶段会扩展为包含经济、天数、角色等状态；@tool 使编辑器进程（冒烟测试）可访问
 
+@tool
 extends Node
 
 # ==================== 信号 ====================
 ## 当订单状态变化时发出（供UI和调试面板监听）
 signal order_state_changed(order_id: int, new_state: int)
+## 订单完成结算时发出（P1 交付成功即结算）
+signal order_completed(order_id: int, revenue: int)
+## 营业额变化时发出（供 HUD 更新）
+signal revenue_changed(total: int)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 1  # Phase 1 只支持1单
+const DISH_PRICE := 20            ## 宫保鸡丁单价（P1 固定价）
 
 # ==================== 枚举 ====================
 enum OrderState {
@@ -26,6 +32,9 @@ enum OrderState {
 ## 当前活跃订单列表
 ## 结构: [{ id: int, state: OrderState, customer_id: int, dish_type: String }]
 var active_orders: Array[Dictionary] = []
+
+## 累计营业额（P1 交付成功累加）
+var revenue := 0
 
 var _next_order_id := 1
 
@@ -104,6 +113,23 @@ func remove_order(order_id: int) -> bool:
 ## 获取当前活跃订单数量
 func get_active_order_count() -> int:
 	return active_orders.size()
+
+
+## 订单交付成功：计入营业额并发出 order_completed（P1 结算入口）
+## 输入: order_id (int)
+## 输出: bool（是否成功结算）
+## 副作用: revenue 累加，订单移除，发出 order_completed / revenue_changed
+func complete_order(order_id: int) -> bool:
+	for i in range(active_orders.size()):
+		if active_orders[i]["id"] == order_id:
+			active_orders.remove_at(i)
+			revenue += DISH_PRICE
+			order_completed.emit(order_id, DISH_PRICE)
+			revenue_changed.emit(revenue)
+			print_rich("[color=green]Order %d completed! Revenue: %d (total %d)[/color]" % [order_id, DISH_PRICE, revenue])
+			return true
+	push_warning("complete_order: order %d not found" % order_id)
+	return false
 
 
 # ==================== 调试辅助 ====================
