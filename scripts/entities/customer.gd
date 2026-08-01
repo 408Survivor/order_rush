@@ -42,6 +42,7 @@ var _leaving := false
 # ==================== 生命周期 ====================
 
 func _ready() -> void:
+	add_to_group("interactable")
 	add_to_group("customer")
 	print_rich("[color=green]Customer spawned at %s, heading to %s[/color]" % [str(global_position), str(queue_slot)])
 

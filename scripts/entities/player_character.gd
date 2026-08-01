@@ -20,6 +20,7 @@ const INTERACTION_COOLDOWN := 0.25  ## 交互冷却（秒），防止连按
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var interaction_ray: RayCast2D = $InteractionRay
+@onready var interact_area: Area2D = $InteractArea
 @onready var held_item_pivot: Marker2D = $HeldItemPivot
 @onready var prompt_label: Label = $InteractionPrompt/PromptLabel
 
@@ -110,8 +111,29 @@ func try_interact() -> bool:
 
 	return false
 
-## 获取交互射线命中的可交互对象（跳过手持物品——它挂在玩家面前会挡住射线）
+## 获取可交互对象：范围检测优先（靠近即触发，不依赖朝向），射线兜底
 func _get_interactable_object() -> Node2D:
+	# 1) 交互范围内最近的 interactable（Area2D 物品/设备 + PhysicsBody 顾客；排除手持物品）
+	var best: Node2D = null
+	var best_dist := INF
+	for area in interact_area.get_overlapping_areas():
+		if area == held_item or not area.is_in_group("interactable"):
+			continue
+		var dist := global_position.distance_to(area.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = area
+	for body in interact_area.get_overlapping_bodies():
+		if body == held_item or not body.is_in_group("interactable"):
+			continue
+		var dist := global_position.distance_to(body.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = body
+	if best != null:
+		return best
+
+	# 2) 回退：射线检测（编辑器进程物理不步进时范围不可用）
 	if interaction_ray.is_colliding():
 		var collider := interaction_ray.get_collider()
 		if collider != null and collider.is_in_group("interactable") and collider != held_item:

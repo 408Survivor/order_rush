@@ -6,6 +6,9 @@
 [sub_resource type="CircleShape2D" id="CircleShape2D_5tcya"]
 radius = 117.0
 
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 300.0
+
 [node name="PlayerCharacter" type="CharacterBody2D" unique_id=1418374193]
 collision_layer = 2
 collision_mask = 1
@@ -25,6 +28,14 @@ collide_with_areas = true
 
 [node name="HeldItemPivot" type="Marker2D" parent="."]
 position = Vector2(0, -40)
+
+[node name="InteractArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 28
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="InteractArea"]
+shape = SubResource("CircleShape2D_interact")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position_smoothing_enabled = true
