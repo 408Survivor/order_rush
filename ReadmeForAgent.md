@@ -2,7 +2,7 @@
 
 > **本文件由开发者每次会话结束时发起，由 Kimi 更新。**
 > **新会话开始时，请优先阅读此文件，以快速加载项目上下文。**
-> 最后更新：2026-08-01（Session 5：issue #2 交互系统完成并合并；开发环境切换 Godot 4.6.3）
+> 最后更新：2026-08-01（Session 6：顾客系统+店内布局+素材去底完成；下一个：issue #4 订单循环）
 
 ---
 
@@ -18,8 +18,8 @@
 
 | Phase | 名称 | 状态 | 关键里程碑 |
 |-------|------|------|------------|
-| P0 | 🎨 美术风格锁定 | ✅ 完成 | 6/6 核心素材已生成（微波炉为占位版，见 issue #1） |
-| P1 | 🎮 核心循环 | 🔄 开发中 | 项目初始化 + 玩家移动 + **交互系统（issue #2 ✅ 已合并）**；顾客系统（issue #3）下一个开工 |
+| P0 | 🎨 美术风格锁定 | ✅ 完成 | 6/6 核心素材已生成（微波炉为占位版，见 issue #1）；**全部素材已去白底转透明**（批次 009） |
+| P1 | 🎮 核心循环 | 🔄 开发中 | 玩家移动 ✅ + 交互系统 ✅ + **顾客系统 ✅** + **店内布局 ✅**；下一个：订单循环（issue #4，P1 收口） |
 | P2-P9 | 后续阶段 | 🔒 锁定 | 见开发手册 |
 
 ---
@@ -36,9 +36,11 @@
 | Issue | 任务 | 依赖 |
 |-------|------|-------|
 | #1 | [P0 收尾] 微波炉俯视角素材重生成 | 无，不阻塞 |
-| #2 | [P1] 交互系统：E 键拾取/放置物品 | ✅ 已完成（PR #7 合并） |
-| #3 | [P1] 顾客系统：生成与排队逻辑 | #2 ✅ 已满足，下一个开工 |
-| #4 | [P1] 订单循环最小闭环（P1 收口） | #2 #3 |
+| #2 | [P1] 交互系统：E 键拾取/放置物品 | ✅ 已完成（PR #7） |
+| #3 | [P1] 顾客系统：生成与排队逻辑 | ✅ 已完成（PR #8） |
+| #4 | [P1] 订单循环最小闭环（P1 收口） | #2 #3 ✅ 已满足，**下一个开工** |
+| #9 | [P1] 店内布局四区划分 | ✅ 已完成（PR #10） |
+| #11 | [P0 收尾] 素材去底（白底→透明） | ✅ 已完成（PR #12） |
 
 ---
 
@@ -46,12 +48,12 @@
 
 | 素材 | 文件名 | 状态 | 路径 |
 |------|--------|------|------|
-| 玩家厨师（俯视角） | `player_chef_idle.png` | ✅ | `assets/art/characters/` |
-| 顾客（俯视角） | `customer_office_waiting.png` | ✅ | `assets/art/characters/` |
-| 微波炉 | `microwave_idle.png` | ⚠️ 占位版（issue #1） | `assets/art/items/` |
-| 料理包 | `meal_kungpao.png` | ✅ | `assets/art/items/` |
-| 成品菜 | `dish_kungpao_plated.png` | ✅ | `assets/art/items/` |
-| 地板 Tile | `floor_tile.png` | ✅ | `assets/art/environment/` |
+| 玩家厨师（俯视角） | `player_chef_idle.png` | ✅ 透明背景 | `assets/art/characters/` |
+| 顾客（俯视角） | `customer_office_waiting.png` | ✅ 透明背景 | `assets/art/characters/` |
+| 微波炉 | `microwave_idle.png` | ⚠️ 占位版（issue #1），已去底 | `assets/art/items/` |
+| 料理包 | `meal_kungpao.png` | ✅ 透明背景 | `assets/art/items/` |
+| 成品菜 | `dish_kungpao_plated.png` | ✅ 透明背景（GrabCut 去底） | `assets/art/items/` |
+| 地板 Tile | `floor_tile.png` | ✅ 满铺贴图不处理 | `assets/art/environment/` |
 
 **AI 生成工具**：即梦 5.0 Lite（已锁定风格）
 **有效提示词结构**：`Overhead view, bird eye view from directly above, [主体描述], [统一风格后缀]`
@@ -87,6 +89,16 @@ archive/generations/001-chef_front_view/
 ---
 
 ## 6. 历次会话关键决策与发现
+
+**2026-08-01 Session 6**
+
+| 事件 | 详情 |
+|------|------|
+| ✅ issue #3 顾客系统完成 | 生成（3s 间隔）→ 槽位分配（按在场数，防撞槽）→ 排队 → 队首索引；PR #8 合并，实测通过 |
+| ✅ issue #9 店内布局四区 | 厨房上/前台中/就餐下/仓库左上；视觉色块+Label 分区；PR #10 合并 |
+| ✅ issue #11 素材去底 | 7 张素材白底→透明：6 张连通域泛洪（阈值 245）+ dish 用 GrabCut（白盘+白背景亮度法失效）；工具存档 `archive/generations/009-bg-removal/`；PR #12 合并 |
+| 💡 去底关键经验 | 白主体+白背景：单一阈值不可兼得（盘沿分隔带决定连通性）；GrabCut 矩形必须盖住整个主体（0.02-0.98 版确认完美）；pip 被 TCC 拦截 → `pip3 install --target /tmp/pylibs` |
+| 📌 布局坐标备忘 | 玩家 (500,200)、微波炉 (950,200)、料理包×3 (150,150)/(250,150)/(200,250)、柜台 (640,420)、入口 (40,420)、队伍间距 220 向左 |
 
 **2026-08-01 Session 5**
 
