@@ -23,6 +23,11 @@ target_position = Vector2(0, 480)
 collision_mask = 28
 collide_with_areas = true
 
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 8.0
+zoom = Vector2(0.7, 0.7)
+
 [node name="HeldItemPivot" type="Marker2D" parent="."]
 position = Vector2(0, -60)
 
@@ -43,6 +48,6 @@ grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 8
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 32
 horizontal_alignment = 1
 vertical_alignment = 1
