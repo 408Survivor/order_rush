@@ -6,115 +6,50 @@
 [ext_resource type="PackedScene" path="res://scenes/props/Microwave.tscn" id="5_mw"]
 [ext_resource type="PackedScene" path="res://scenes/systems/CustomerManager.tscn" id="6_cm"]
 [ext_resource type="Script" uid="uid://blgsbm8im77kl" path="res://scripts/ui/revenue_hud.gd" id="7_hud"]
+[ext_resource type="Script" path="res://scripts/main_scene.gd" id="8_main"]
+
+; ===== 布局说明（issue #24） =====
+; 节点位置由 scripts/main_scene.gd 按 LayoutManager 配置统一摆放（此处坐标仅编辑器占位）。
+; 区域色块/标签/餐桌由脚本按 LayoutManager.ZONE_*/TABLE_SLOTS 动态生成，见 main_scene.gd。
 
 [node name="MainScene" type="Node2D" unique_id=432433148]
+script = ExtResource("8_main")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(960, 540)
 
 [node name="Floor" type="Sprite2D" parent="."]
-position = Vector2(640, 360)
-scale = Vector2(2, 2)
+position = Vector2(960, 540)
+scale = Vector2(3, 3)
 texture = ExtResource("3_floor")
 z_index = -10
-
-; ===== 区域视觉划分（issue #16 重画：素材缩小后四区空间充裕） =====
-
-[node name="ZoneStorage" type="ColorRect" parent="."]
-position = Vector2(60, 60)
-size = Vector2(340, 220)
-color = Color(0.7, 0.85, 1, 0.22)
-z_index = -5
-
-[node name="ZoneKitchen" type="ColorRect" parent="."]
-position = Vector2(440, 60)
-size = Vector2(800, 220)
-color = Color(1, 0.95, 0.7, 0.22)
-z_index = -5
-
-[node name="ZoneFront" type="ColorRect" parent="."]
-position = Vector2(60, 320)
-size = Vector2(1180, 160)
-color = Color(0.8, 1, 0.75, 0.22)
-z_index = -5
-
-[node name="ZoneDining" type="ColorRect" parent="."]
-position = Vector2(60, 520)
-size = Vector2(1180, 160)
-color = Color(1, 0.8, 0.6, 0.22)
-z_index = -5
-
-[node name="StorageLabel" type="Label" parent="."]
-position = Vector2(72, 68)
-z_index = -4
-theme_override_colors/font_color = Color(0.75, 0.88, 1, 0.9)
-theme_override_colors/font_outline_color = Color(0.1, 0.2, 0.3, 0.6)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "仓库区"
-
-[node name="KitchenLabel" type="Label" parent="."]
-position = Vector2(452, 68)
-z_index = -4
-theme_override_colors/font_color = Color(1, 0.93, 0.6, 0.9)
-theme_override_colors/font_outline_color = Color(0.3, 0.25, 0.05, 0.6)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "厨房区"
-
-[node name="FrontLabel" type="Label" parent="."]
-position = Vector2(72, 328)
-z_index = -4
-theme_override_colors/font_color = Color(0.75, 1, 0.68, 0.9)
-theme_override_colors/font_outline_color = Color(0.1, 0.3, 0.08, 0.6)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "前台"
-
-[node name="DiningLabel" type="Label" parent="."]
-position = Vector2(72, 528)
-z_index = -4
-theme_override_colors/font_color = Color(1, 0.75, 0.5, 0.9)
-theme_override_colors/font_outline_color = Color(0.3, 0.15, 0.05, 0.6)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 22
-text = "就餐区"
-
-[node name="Table1" type="ColorRect" parent="."]
-position = Vector2(450, 590)
-size = Vector2(100, 50)
-color = Color(1, 1, 1, 0.35)
-z_index = -4
-
-[node name="Table2" type="ColorRect" parent="."]
-position = Vector2(650, 590)
-size = Vector2(100, 50)
-color = Color(1, 1, 1, 0.35)
-z_index = -4
 
 ; ===== 功能节点 =====
 
 [node name="Items" type="Node2D" parent="."]
 
 [node name="MealPackage" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(180, 130)
+position = Vector2(150, 150)
 
 [node name="MealPackage2" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(280, 130)
+position = Vector2(300, 150)
 
 [node name="MealPackage3" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(230, 200)
+position = Vector2(450, 150)
 
 [node name="Microwave" parent="." instance=ExtResource("5_mw")]
-position = Vector2(1000, 180)
+position = Vector2(1700, 180)
 
 [node name="SpawnPoint" type="Marker2D" parent="."]
-position = Vector2(60, 400)
+position = Vector2(80, 520)
 
 [node name="CounterPoint" type="Marker2D" parent="."]
-position = Vector2(700, 400)
+position = Vector2(1350, 520)
 
 [node name="CustomerManager" parent="." instance=ExtResource("6_cm")]
 
 [node name="PlayerCharacter" parent="." unique_id=1418374193 instance=ExtResource("2_ibiss")]
-position = Vector2(450, 200)
+position = Vector2(960, 260)
 
 [node name="RevenueHUD" type="CanvasLayer" parent="."]
 script = ExtResource("7_hud")
