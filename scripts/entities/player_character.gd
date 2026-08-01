@@ -17,6 +17,8 @@ const MOVE_SPEED := 200.0           ## 像素/秒
 const INTERACTION_DISTANCE := 280.0 ## 交互检测距离（像素，覆盖贴合距离≈273）
 const INTERACTION_COOLDOWN := 0.25  ## 交互冷却（秒），防止连按
 const INTERACT_FOV_DOT := 0.7       ## 交互扇区：cos(45°)，仅身前 ±45° 内可交互
+const DROP_OFFSET := 50.0           ## 放下物品与玩家的距离（像素，沿面向方向）
+const ITEM_COLLISION_LAYER := 8     ## 物品初始碰撞层（Items，与 MealPackage/FinishedDish 场景一致）
 
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
@@ -78,6 +80,9 @@ func _input(event: InputEvent) -> void:
 	# E / Space 触发交互
 	if event.is_action_pressed("interact"):
 		try_interact()
+	# Q 放下手持物品（中途放下，issue #22）
+	elif event.is_action_pressed("drop_item"):
+		drop_held_item()
 
 # ==================== 交互系统 ====================
 
@@ -225,6 +230,34 @@ func _drop_from_hand() -> void:
 		item.get_parent().remove_child(item)
 	item.scale = Vector2.ONE
 
+## 中途放下：把手持物品放回玩家身前地面，恢复为可拾取（Q 键，issue #22）
+## 输出: bool（是否成功放下）
+## 副作用: held_item 置空，物品挂回场景 Items 容器并恢复碰撞/缩放
+func drop_held_item() -> bool:
+	if held_item == null:
+		return false
+	var drop_parent := get_parent()
+	if drop_parent == null:
+		return false  # 玩家不在树内，放弃放下（保持手持状态）
+	# 优先挂到场景的 Items 容器（开发手册目录约定），找不到则挂场景根
+	var items := drop_parent.get_node_or_null("Items")
+	if items != null:
+		drop_parent = items
+
+	var item := held_item
+	held_item = null
+	if item.get_parent() != null:
+		item.get_parent().remove_child(item)
+	drop_parent.add_child(item)
+	item.global_position = global_position + facing_direction * DROP_OFFSET
+	item.scale = Vector2.ONE
+	# 恢复可拾取碰撞（拾取时被清零，见 _pick_up_item；与物品场景初始值一致）
+	if item is Area2D:
+		item.collision_layer = ITEM_COLLISION_LAYER
+		item.collision_mask = 0
+	print_rich("[color=cyan]Dropped: %s at %s[/color]" % [item.name, str(item.global_position)])
+	return true
+
 ## 根据移动方向更新 Sprite 朝向（flip_h，避免 scale.x 翻转瞬移问题）
 func _update_sprite_direction() -> void:
 	if facing_direction.x < 0:
@@ -238,7 +271,11 @@ func _update_sprite_direction() -> void:
 func _update_prompt() -> void:
 	var target := _get_interactable_object()
 	if target == null:
-		hide_prompt()
+		# 手持物品面对空处 → 提示放下（Q，issue #22）；空手无提示
+		if held_item != null:
+			show_prompt("[Q] 放下")
+		else:
+			hide_prompt()
 		return
 
 	var text := ""
@@ -256,6 +293,9 @@ func _update_prompt() -> void:
 					text = "[E] 交付（订单不符/无单）"
 			else:
 				text = "料理包需先加热"
+		# 手持但无目标操作（无可交互目标 / 目标不接受）→ 提示中途放下（Q，issue #22）
+		if text == "":
+			text = "[Q] 放下"
 	else:
 		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出
 		if target.is_in_group("pickable"):
