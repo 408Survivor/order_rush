@@ -14,7 +14,7 @@ signal item_placed(item: Node2D)
 
 # ==================== 常量 ====================
 const MOVE_SPEED := 200.0           ## 像素/秒
-const INTERACTION_DISTANCE := 360.0 ## 交互检测距离（像素，玩家贴近设备边缘即可交互）
+const INTERACTION_DISTANCE := 280.0 ## 交互检测距离（像素，覆盖贴合距离≈273）
 const INTERACTION_COOLDOWN := 0.25  ## 交互冷却（秒），防止连按
 
 # ==================== 节点引用 ====================

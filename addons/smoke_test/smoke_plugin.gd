@@ -80,15 +80,15 @@ func _run() -> void:
 	await get_tree().create_timer(2.5).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
-	_check(c2.get("queue_slot") == counter.global_position - Vector2(220.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
-	_check(c3.get("queue_slot") == counter.global_position - Vector2(440.0, 0.0), "c3 分配槽位 2")
+	_check(c2.get("queue_slot") == counter.global_position - Vector2(150.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
+	_check(c3.get("queue_slot") == counter.global_position - Vector2(300.0, 0.0), "c3 分配槽位 2")
 	_check(manager.call("get_queue_count") == 3, "3 名顾客应全部入队")
 	_check(manager.call("get_front_customer") == c1, "队首应为第一名顾客（c1）")
 	_check(c1.call("is_waiting") and c2.call("is_waiting") and c3.call("is_waiting"), "顾客到达槽位后处于 WAITING")
 
-	# 槽位不重叠（间距 220 > 碰撞直径 200，留容差按 >180 断言）
-	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 180.0 \
-		and c2.global_position.distance_to(c3.global_position) > 180.0
+	# 槽位不重叠（间距 150 > 碰撞直径 130，留容差按 >120 断言）
+	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 120.0 \
+		and c2.global_position.distance_to(c3.global_position) > 120.0
 	_check(gap_ok, "相邻顾客间距充足（不重叠）")
 
 	# 队首位于柜台服务点（供订单系统索引）
@@ -156,8 +156,8 @@ func _face_and_ray(player, target, face: Vector2) -> void:
 	player.global_position = target.global_position + Vector2(0, 280)
 	player.set("facing_direction", face)
 	var ray: RayCast2D = player.get_node("InteractionRay")
-	# 交互距离与 player_character.gd 的 INTERACTION_DISTANCE=360.0 保持一致
-	ray.target_position = face * 360.0
+	# 交互距离与 player_character.gd 的 INTERACTION_DISTANCE=280.0 保持一致
+	ray.target_position = face * 280.0
 	ray.force_raycast_update()
 	# 重置交互冷却，避免连续调用被拦截
 	player.set("_interaction_cooldown", 0.0)
