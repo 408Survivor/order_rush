@@ -30,6 +30,7 @@ const ARRIVE_DISTANCE := 12.0  ## 到达判定阈值（像素）
 
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
+@onready var order_label: Label = $OrderLabel
 
 # ==================== 状态变量 ====================
 var state := CustomerState.WALKING
@@ -41,6 +42,7 @@ var _leaving := false
 # ==================== 生命周期 ====================
 
 func _ready() -> void:
+	add_to_group("interactable")
 	add_to_group("customer")
 	print_rich("[color=green]Customer spawned at %s, heading to %s[/color]" % [str(global_position), str(queue_slot)])
 
@@ -92,17 +94,28 @@ func can_accept_dish(item: Node2D) -> bool:
 ## 接收成品菜：物品销毁，状态置 SERVED，发出 served 信号（管理器结算）
 func receive_dish(dish: Node2D) -> void:
 	state = CustomerState.SERVED
+	clear_order_label()
 	if dish.get_parent() != null:
 		dish.get_parent().remove_child(dish)
 	dish.queue_free()
 	print_rich("[color=green]Customer received dish (order #%d)[/color]" % order_id)
 	served.emit(dish)
 
-## 走向出口并离店（收菜后由管理器调用）
+## 显示订单标记（队首头顶，供玩家识别服务对象）
+func set_order_label(text: String) -> void:
+	order_label.text = text
+	order_label.visible = true
+
+func clear_order_label() -> void:
+	order_label.visible = false
+
+## 走向出口并离店（收菜后由管理器调用；离店时禁用碰撞，避免与补位顾客迎面卡住）
 func leave(exit_pos: Vector2) -> void:
 	_leaving = true
 	queue_slot = exit_pos
 	state = CustomerState.WALKING
+	collision_layer = 0
+	collision_mask = 0
 	print_rich("[color=orange]Customer leaving towards %s[/color]" % str(exit_pos))
 
 ## 走向新槽位（队列补位时由管理器调用）
