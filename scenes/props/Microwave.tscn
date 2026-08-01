@@ -3,8 +3,8 @@
 [ext_resource type="Texture2D" uid="uid://b7h71vqcban3x" path="res://assets/art/items/microwave_idle.png" id="1_tex"]
 [ext_resource type="Script" uid="uid://d0ff7b81c1n73" path="res://scripts/items/microwave.gd" id="2_script"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_mw"]
-radius = 156.0
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mw"]
+size = Vector2(250, 250)
 
 [node name="Microwave" type="Area2D"]
 collision_layer = 5
@@ -16,7 +16,7 @@ scale = Vector2(0.13, 0.13)
 texture = ExtResource("1_tex")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("CircleShape2D_mw")
+shape = SubResource("RectangleShape2D_mw")
 
 [node name="Indicator" type="ColorRect" parent="."]
 offset_left = -14.0
