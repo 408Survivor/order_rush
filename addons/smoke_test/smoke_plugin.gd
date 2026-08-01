@@ -1,8 +1,9 @@
 ## 文件: tests/plugin/smoke_plugin.gd
-## 职责: issue #2 交互闭环冒烟测试（EditorPlugin 方式）
-## 运行: 在 project.godot [editor_plugins] 注册 "res://tests/plugin" 后，
+## 职责: 冒烟测试（EditorPlugin 方式）：交互闭环（issue #2）+ 顾客排队（issue #3）
+## 运行: 在 project.godot [editor_plugins] 注册 "res://addons/smoke_test/plugin.cfg" 后，
 ##       Godot --path . --editor --quit-after N 会自动执行并输出 PASS/FAIL
-## 注意: 编辑器进程不跑 _physics_process，测试手动驱动射线与交互冷却
+## 注意: 编辑器进程会运行 @tool 节点的 _physics_process（玩家/顾客脚本含 is_editor_hint 分支）；
+##       顾客在编辑器进程用直接位移（物理不步进），运行模式走 move_and_slide 真实碰撞
 
 @tool
 extends EditorPlugin
@@ -62,10 +63,43 @@ func _run() -> void:
 	_check(player.get("held_item") == meal, "取出后 held_item 应为原料理包")
 	_check(not microwave.call("is_occupied"), "取出后微波炉应为空")
 
+	# ===== 4. 顾客系统：生成 → 排队 → 队首索引 =====
+	var manager = scene.get_node("CustomerManager")
+	var counter = scene.get_node("CounterPoint")
+	_check(manager != null, "CustomerManager 存在于 MainScene")
+	_check(counter != null, "CounterPoint 存在于 MainScene")
+
+	# 模拟真实 Timer 节奏生成（3s 间隔 < 走到柜台 ~3.1s，
+	# 验证槽位按在场数分配：c2 不与行走中的 c1 撞槽）
+	var c1 = manager.call("spawn_customer")
+	await get_tree().create_timer(3.0).timeout
+	var c2 = manager.call("spawn_customer")
+	await get_tree().create_timer(3.0).timeout
+	var c3 = manager.call("spawn_customer")
+	await get_tree().create_timer(2.5).timeout
+
+	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
+	_check(c2.get("queue_slot") == counter.global_position - Vector2(220.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
+	_check(c3.get("queue_slot") == counter.global_position - Vector2(440.0, 0.0), "c3 分配槽位 2")
+	_check(manager.call("get_queue_count") == 3, "3 名顾客应全部入队")
+	_check(manager.call("get_front_customer") == c1, "队首应为第一名顾客（c1）")
+	_check(c1.call("is_waiting") and c2.call("is_waiting") and c3.call("is_waiting"), "顾客到达槽位后处于 WAITING")
+
+	# 槽位不重叠（间距 220 > 碰撞直径 200，留容差按 >180 断言）
+	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 180.0 \
+		and c2.global_position.distance_to(c3.global_position) > 180.0
+	_check(gap_ok, "相邻顾客间距充足（不重叠）")
+
+	# 队首位于柜台服务点（供订单系统索引）
+	_check(c1.global_position.distance_to(counter.global_position) < 100.0, "队首位于柜台服务点")
+
+	# 队列满时不再生成（max_queue=3，槽位 0-2 均在屏幕内）
+	_check(manager.call("spawn_customer") == null, "队伍满（3/3）时生成被拒绝")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))
-	print("SMOKE INTERACT RESULT: %s (failures=%d)" % [status, _fail_count])
+	print("SMOKE TEST RESULT: %s (failures=%d)" % [status, _fail_count])
 	print("=".repeat(50))
 	get_tree().quit(0 if _fail_count == 0 else 1)
 
