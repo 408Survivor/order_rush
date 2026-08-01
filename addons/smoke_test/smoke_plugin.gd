@@ -65,6 +65,13 @@ func _run() -> void:
 	_check(scene.get_node("Table1").position == layout.TABLE_SLOTS[0], "餐桌位于就餐区槽位 0")
 	_check(layout.QUEUE_SPACING == 200.0 and manager.get("queue_spacing") == 200.0, "队列间距接入布局系统（200）")
 
+	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
+	var board = scene.get_node("OrderBoard")
+	var toast = scene.get_node("ToastManager")
+	_check(board != null, "OrderBoard 存在")
+	_check(toast != null, "ToastManager 存在")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel") != null, "经营面板节点结构就位")
+
 	# ===== 1. 空手靠近料理包 → 拾取 =====
 	_face_and_ray(player, meal, Vector2.UP)
 	_check(player.call("try_interact"), "空手面对料理包按 E 应成功拾取")
@@ -138,6 +145,8 @@ func _run() -> void:
 
 	# P2：每位顾客到达即下单 → 3 名顾客 = 3 个并发订单
 	_check(gsm.get_active_order_count() == 3, "3 名顾客就位后订单队列应有 3 单（P2 多单并发）")
+	board.call("refresh")
+	_check(board.get("_cards").size() == 3, "订单面板显示 3 张卡片")
 	_check(c1.get("order_id") != -1 and c2.get("order_id") != -1 and c3.get("order_id") != -1, "每名顾客均绑定订单 id")
 	var order1: Dictionary = gsm.get_order(c1.get("order_id"))
 	_check(not order1.is_empty() and order1["dish_type"] == "kungpao", "订单菜品为宫保鸡丁")
@@ -157,6 +166,14 @@ func _run() -> void:
 	_check(gsm.good_reviews == 1 and gsm.bad_reviews == 0, "交付成功 → 好评 +1（差评 0）")
 	_check(gsm.get_active_order_count() == 2, "c1 订单结算，队列剩 2 单（c2/c3）")
 	_check(manager.call("get_queue_count") == 2, "c1 离店，队列剩 2 人")
+
+	# 界面联动：订单面板移除已结算卡片、Toast 交付反馈、经营面板营业额更新
+	board.call("refresh")
+	_check(board.get("_cards").size() == 2, "交付后订单面板剩 2 张卡片")
+	toast.call("show_toast", "交付成功  +20", Color(0.45, 1, 0.55))
+	_check(toast.get("_toasts").size() == 1, "Toast 显示交付反馈")
+	scene.get_node("RevenueHUD").call("_update_all")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text == "营业额：20", "经营面板营业额更新")
 
 	# 补位：c2 前移到柜台（已有订单，无需重建）
 	await get_tree().create_timer(2.0).timeout
@@ -206,6 +223,8 @@ func _run() -> void:
 	_check(failed == 3, "tick 大 delta 触发 3 单超时")
 	_check(gsm.bad_reviews == 3, "超时 → 差评 +3")
 	_check(gsm.get_active_order_count() == 0, "超时订单已全部移除")
+	board.call("refresh")
+	_check(board.get("_cards").size() == 0, "超时后订单面板清空")
 	_check(manager.call("get_queue_count") == 0, "超时顾客离店，队列清空")
 	_check(c4.get("order_id") == -1 and c5.get("order_id") == -1 and c6.get("order_id") == -1, "超时顾客订单已解绑")
 
