@@ -52,6 +52,18 @@ func _run() -> void:
 	_check(_picked_up_count == 1, "item_picked_up 信号应发出 1 次")
 	_check(meal.get_parent() == player.get_node("HeldItemPivot"), "料理包应挂到 HeldItemPivot 下")
 
+	# ===== 1.5 中途放下（issue #22）：Q 放下 → 恢复可拾取 → 再拾取 =====
+	_check(player.call("drop_held_item"), "手持时按 Q 放下应成功")
+	_check(player.get("held_item") == null, "放下后玩家空手")
+	_check(meal.get_parent() == scene.get_node("Items"), "料理包挂回场景 Items 容器")
+	_check(abs(meal.global_position.distance_to(player.global_position) - 50.0) < 1.0, "放下位置为玩家身前约 50px")
+	_check(meal.collision_layer == 8 and meal.collision_mask == 0, "放下后恢复可拾取碰撞（layer=8）")
+	_face_and_ray(player, meal, Vector2.UP)
+	# 编辑器进程物理不步进：物品重挂场景后需等一帧注册到物理服务器，射线查询才命中
+	await get_tree().process_frame
+	_check(player.call("try_interact"), "放下后可再次拾取")
+	_check(player.get("held_item") == meal, "再拾取后 held_item 应为该料理包")
+
 	# ===== 2. 手持料理包靠近微波炉 → 放入 =====
 	_face_and_ray(player, microwave, Vector2.UP)
 	_check(player.call("try_interact"), "手持料理包面对微波炉按 E 应成功放入")
