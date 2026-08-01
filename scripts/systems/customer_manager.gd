@@ -64,6 +64,7 @@ func spawn_customer() -> Node2D:
 	customer.global_position = _spawn_point.global_position
 	add_child(customer)
 	customer.arrived.connect(_on_customer_arrived.bind(customer))
+	customer.served.connect(_on_customer_served.bind(customer))
 	customer.tree_exited.connect(_on_customer_left.bind(customer))
 	_active_count += 1
 	print_rich("[color=cyan]Customer spawned (queue before: %d, active: %d)[/color]" % [queue.size(), _active_count])
@@ -75,12 +76,24 @@ func _get_slot_position(index: int) -> Vector2:
 
 # ==================== 队列管理 ====================
 
-## 顾客到达槽位后登记入队
+## 顾客到达槽位后登记入队；队首到达时生成订单
 func _on_customer_arrived(customer: Node2D) -> void:
 	if customer in queue:
 		return
 	queue.append(customer)
 	print_rich("[color=green]Customer queued: #%d (total %d)[/color]" % [queue.size() - 1, queue.size()])
+	# 队首到达 → 生成订单（P1 仅宫保鸡丁，MAX_CONCURRENT_ORDERS=1）
+	if queue.size() == 1:
+		_create_order_for_front()
+
+## 为队首顾客生成订单
+func _create_order_for_front() -> void:
+	var front := get_front_customer()
+	if front == null:
+		return
+	var order_id := GameStateManager.create_order(front.get_instance_id(), "kungpao")
+	if order_id != -1:
+		front.order_id = order_id
 
 ## 队首顾客（当前服务对象），空队返回 null
 func get_front_customer() -> Node2D:
@@ -98,6 +111,28 @@ func remove_customer(customer: Node2D) -> void:
 	if idx != -1:
 		queue.remove_at(idx)
 	print_rich("[color=yellow]Customer removed (left in queue: %d)[/color]" % queue.size())
+
+## 顾客收菜后：结算订单 → 顾客离店 → 队列补位
+## 注意：served 信号带 (dish) 参数 + bind(customer) → 回调签名 (dish, customer)
+func _on_customer_served(_dish: Node2D, customer: Node2D) -> void:
+	if customer.order_id != -1:
+		GameStateManager.complete_order(customer.order_id)
+		customer.order_id = -1
+	# 从队列移除（队首）
+	remove_customer(customer)
+	# 顾客走向出口离店
+	customer.leave(_spawn_point.global_position)
+	# 队列补位：剩余顾客前移一格，新队首生成新订单
+	_shift_queue()
+	if not queue.is_empty():
+		_create_order_for_front()
+
+## 队列补位：queue[i] 走向槽位 i（队首 = 柜台）
+func _shift_queue() -> void:
+	for i in range(queue.size()):
+		var customer: Node2D = queue[i]
+		customer.walk_to(_get_slot_position(i))
+	print_rich("[color=cyan]Queue shifted: %d customer(s) move up[/color]" % queue.size())
 
 ## 顾客节点离开场景树时回收在场计数并清理队列（防悬空引用）
 func _on_customer_left(customer: Node2D) -> void:
