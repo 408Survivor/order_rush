@@ -42,6 +42,10 @@ func _ready() -> void:
 
 	spawn_timer.wait_time = spawn_interval
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
+	# P2：订单超时 → 对应顾客离店（防重复连接：脚本重载/编辑器进程会多次 _ready；
+	# 注意：is_connected 防护在多 CustomerManager 实例下仅首个实例订阅，本项目单实例无碍）
+	if not GameStateManager.order_failed.is_connected(_on_order_failed):
+		GameStateManager.order_failed.connect(_on_order_failed)
 	# @tool：编辑器进程（含编辑器内部检查实例化）不启动定时生成，仅测试/运行时手动触发
 	if Engine.is_editor_hint():
 		spawn_timer.stop()
@@ -76,25 +80,26 @@ func _get_slot_position(index: int) -> Vector2:
 
 # ==================== 队列管理 ====================
 
-## 顾客到达槽位后登记入队；队首到达时生成订单
+## 顾客到达槽位后登记入队；每位顾客到达即生成订单（P2 多单并发，不再仅队首）
 func _on_customer_arrived(customer: Node2D) -> void:
 	if customer in queue:
 		return
 	queue.append(customer)
 	print_rich("[color=green]Customer queued: #%d (total %d)[/color]" % [queue.size() - 1, queue.size()])
-	# 队首到达 → 生成订单（P1 仅宫保鸡丁，MAX_CONCURRENT_ORDERS=1）
-	if queue.size() == 1:
-		_create_order_for_front()
+	_create_order_for_customer(customer)
 
-## 为队首顾客生成订单
-func _create_order_for_front() -> void:
-	var front := get_front_customer()
-	if front == null:
+## 为单个顾客生成订单（到达即下单；已有订单则跳过）
+## 注意: 前置条件 max_queue <= MAX_CONCURRENT_ORDERS（当前 3==3），下单失败仅作防御日志
+func _create_order_for_customer(customer: Node2D) -> void:
+	if customer.get("order_id") != -1:
 		return
-	var order_id := GameStateManager.create_order(front.get_instance_id(), "kungpao")
+	var order_id := GameStateManager.create_order(customer.get_instance_id(), "kungpao")
 	if order_id != -1:
-		front.order_id = order_id
-		front.set_order_label("宫保鸡丁")
+		customer.order_id = order_id
+		customer.set_order_label("宫保鸡丁")
+		print_rich("[color=cyan]Order #%d bound to customer %s[/color]" % [order_id, customer.name])
+	else:
+		push_warning("CustomerManager: 下单失败（并发订单已满），顾客 %s 将无单等待" % customer.name)
 
 ## 队首顾客（当前服务对象），空队返回 null
 func get_front_customer() -> Node2D:
@@ -106,27 +111,38 @@ func get_front_customer() -> Node2D:
 func get_queue_count() -> int:
 	return queue.size()
 
-## 移除顾客（服务完成/离开时调用，issue #4 使用）
+## 移除顾客（服务完成/离开时调用）
 func remove_customer(customer: Node2D) -> void:
 	var idx := queue.find(customer)
 	if idx != -1:
 		queue.remove_at(idx)
 	print_rich("[color=yellow]Customer removed (left in queue: %d)[/color]" % queue.size())
 
-## 顾客收菜后：结算订单 → 顾客离店 → 队列补位
+## 顾客收菜后：结算订单（好评）→ 顾客离店 → 队列补位
 ## 注意：served 信号带 (dish) 参数 + bind(customer) → 回调签名 (dish, customer)
+## P2：每位顾客到达即下单，补位顾客已有订单，无需重建
 func _on_customer_served(_dish: Node2D, customer: Node2D) -> void:
 	if customer.order_id != -1:
 		GameStateManager.complete_order(customer.order_id)
 		customer.order_id = -1
-	# 从队列移除（队首）
+	# 从队列移除（交付后离店，无需区分是否队首）
 	remove_customer(customer)
 	# 顾客走向出口离店
 	customer.leave(_spawn_point.global_position)
-	# 队列补位：剩余顾客前移一格，新队首生成新订单
+	# 队列补位：剩余顾客前移一格（新队首已有订单）
 	_shift_queue()
-	if not queue.is_empty():
-		_create_order_for_front()
+
+## 订单超时失败：找到对应顾客 → 离店 → 补位（P2 差评路径）
+func _on_order_failed(order_id: int) -> void:
+	for customer in queue:
+		if customer.get("order_id") == order_id:
+			customer.order_id = -1
+			customer.clear_order_label()
+			remove_customer(customer)
+			customer.leave(_spawn_point.global_position)
+			_shift_queue()
+			print_rich("[color=red]Customer %s left due to failed order #%d[/color]" % [customer.name, order_id])
+			return
 
 ## 队列补位：queue[i] 走向槽位 i（队首 = 柜台）
 func _shift_queue() -> void:
