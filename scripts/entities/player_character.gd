@@ -238,6 +238,8 @@ func _update_prompt() -> void:
 			if held_item.is_in_group("dish"):
 				if target.can_accept_dish(held_item):
 					text = "[E] 交付%s" % _friendly_name(target)
+				elif target.get("state") == 2:
+					text = ""  # 已服务完的顾客（离店中），无操作提示
 				else:
 					text = "[E] 交付（先服务队首）"
 			else:

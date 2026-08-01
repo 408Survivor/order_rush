@@ -109,11 +109,13 @@ func set_order_label(text: String) -> void:
 func clear_order_label() -> void:
 	order_label.visible = false
 
-## 走向出口并离店（收菜后由管理器调用）
+## 走向出口并离店（收菜后由管理器调用；离店时禁用碰撞，避免与补位顾客迎面卡住）
 func leave(exit_pos: Vector2) -> void:
 	_leaving = true
 	queue_slot = exit_pos
 	state = CustomerState.WALKING
+	collision_layer = 0
+	collision_mask = 0
 	print_rich("[color=orange]Customer leaving towards %s[/color]" % str(exit_pos))
 
 ## 走向新槽位（队列补位时由管理器调用）
