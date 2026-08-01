@@ -253,7 +253,7 @@ func _update_prompt() -> void:
 				elif target.get("state") == 2:
 					text = ""  # 已服务完的顾客（离店中），无操作提示
 				else:
-					text = "[E] 交付（先服务队首）"
+					text = "[E] 交付（订单不符/无单）"
 			else:
 				text = "料理包需先加热"
 	else:

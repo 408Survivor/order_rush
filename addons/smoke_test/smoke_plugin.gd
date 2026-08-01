@@ -1,9 +1,11 @@
 ## 文件: tests/plugin/smoke_plugin.gd
-## 职责: 冒烟测试（EditorPlugin 方式）：交互闭环（issue #2）+ 顾客排队（issue #3）
+## 职责: 冒烟测试（EditorPlugin 方式）：交互闭环（#2）+ 顾客排队（#3）+ 订单循环（#4）
+##       + P2 订单队列/耐心值/超时差评（#20）
 ## 运行: 在 project.godot [editor_plugins] 注册 "res://addons/smoke_test/plugin.cfg" 后，
 ##       Godot --path . --editor --quit-after N 会自动执行并输出 PASS/FAIL
 ## 注意: 编辑器进程会运行 @tool 节点的 _physics_process（玩家/顾客脚本含 is_editor_hint 分支）；
 ##       顾客在编辑器进程用直接位移（物理不步进），运行模式走 move_and_slide 真实碰撞
+## P2: GameStateManager._process 在编辑器进程被拦截，耐心倒计时由测试手动 tick_patience 推进
 
 @tool
 extends EditorPlugin
@@ -97,28 +99,41 @@ func _run() -> void:
 	# 队列满时不再生成（max_queue=3，槽位 0-2 均在屏幕内）
 	_check(manager.call("spawn_customer") == null, "队伍满（3/3）时生成被拒绝")
 
-	# ===== 5. 订单循环：交付→结算→补位→重复 =====
+	# ===== 5. P2 订单队列：多单并发 + 交付/好评 =====
 	# 注意：编辑器进程物理不步进，RayCast2D 查询结果不稳定，
 	# 本段直接调用内部交互方法（_interact_with_*）验证逻辑，射线路径由游戏运行模式保证
 	# 玩家此时已手持第 3 段产出的成品菜（dish）
 	var gsm = scene.get_node("/root/GameStateManager")
 	_check(gsm != null, "GameStateManager (autoload) 可访问")
-	_check(gsm.get_active_order_count() == 1, "队首到达后自动生成订单")
-	_check(c1.get("order_id") != -1, "队首顾客绑定订单 id")
+
+	# P2：每位顾客到达即下单 → 3 名顾客 = 3 个并发订单
+	_check(gsm.get_active_order_count() == 3, "3 名顾客就位后订单队列应有 3 单（P2 多单并发）")
+	_check(c1.get("order_id") != -1 and c2.get("order_id") != -1 and c3.get("order_id") != -1, "每名顾客均绑定订单 id")
+	var order1: Dictionary = gsm.get_order(c1.get("order_id"))
+	_check(not order1.is_empty() and order1["dish_type"] == "kungpao", "订单菜品为宫保鸡丁")
+	_check(order1["patience_total"] == gsm.patience_time, "订单带耐心倒计时（patience_total）")
+	_check(c1.get_node("OrderLabel").visible, "顾客头顶显示订单标记")
+	_check(str(c1.get_node("OrderLabel").text).contains("宫保鸡丁"), "订单标记含菜品名")
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "玩家手持成品菜（第 3 段产出）")
 
-	# 第一轮交付：手持成品菜交付队首 c1
-	_check(player.call("_interact_with_customer", c1), "手持成品菜交付队首顾客成功")
-	_check(gsm.revenue == 20, "交付后营业额 +20")
-	_check(gsm.get_active_order_count() == 1, "旧订单已结算，新队首订单已生成（count=1）")
-	_check(manager.call("get_queue_count") == 2, "队首离开，队列剩 2 人")
+	# 耐心推进：tick 5s 后耐心减少但订单未超时
+	gsm.tick_patience(5.0)
+	_check(gsm.get_order(c1.get("order_id"))["patience_left"] < gsm.patience_time, "耐心倒计时随 tick 递减")
+	_check(gsm.get_active_order_count() == 3, "耐心未耗尽，订单仍在队列")
 
-	# 补位：c2 前移到柜台并生成新订单
+	# 第一轮交付：手持成品菜交付 c1 → 好评 +1
+	_check(player.call("_interact_with_customer", c1), "手持成品菜交付 c1 成功")
+	_check(gsm.revenue == 20, "交付后营业额 +20")
+	_check(gsm.good_reviews == 1 and gsm.bad_reviews == 0, "交付成功 → 好评 +1（差评 0）")
+	_check(gsm.get_active_order_count() == 2, "c1 订单结算，队列剩 2 单（c2/c3）")
+	_check(manager.call("get_queue_count") == 2, "c1 离店，队列剩 2 人")
+
+	# 补位：c2 前移到柜台（已有订单，无需重建）
 	await get_tree().create_timer(2.0).timeout
 	_check(manager.call("get_front_customer") == c2, "补位后队首为 c2")
-	_check(gsm.get_active_order_count() == 1, "新队首自动生成新订单")
+	_check(gsm.get_active_order_count() == 2, "补位顾客已有订单，不重复下单（count=2）")
 
-	# 第二轮循环：加热（料理包2）→ 交付 c2 → 营业额累加 → c3 补位
+	# 第二轮：加热（料理包2）→ 交付 c2 → 好评 +2
 	var meal2 = scene.get_node("Items/MealPackage2")
 	player.call("_interact_with_pickable", meal2)
 	player.call("_interact_with_appliance", microwave)
@@ -127,6 +142,7 @@ func _run() -> void:
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "第二轮取出成品菜")
 	_check(player.call("_interact_with_customer", c2), "第二轮交付 c2 成功")
 	_check(gsm.revenue == 40, "营业额累加至 40")
+	_check(gsm.good_reviews == 2, "好评累加至 2")
 	await get_tree().create_timer(2.0).timeout
 	_check(manager.call("get_front_customer") == c3, "补位后队首为 c3")
 
@@ -138,9 +154,30 @@ func _run() -> void:
 	player.call("_interact_with_appliance", microwave)
 	_check(player.call("_interact_with_customer", c3), "第三轮交付 c3 成功")
 	_check(gsm.revenue == 60, "营业额累加至 60")
+	_check(gsm.good_reviews == 3, "好评累加至 3")
 	_check(gsm.get_active_order_count() == 0, "无残留订单")
 	_check(manager.call("get_queue_count") == 0, "队列已清空")
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
+
+	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
+	# 等待上一批顾客全部离店（_active_count 归零）后生成新一批
+	await get_tree().create_timer(5.0).timeout
+	var c4 = manager.call("spawn_customer")
+	await get_tree().create_timer(3.0).timeout
+	var c5 = manager.call("spawn_customer")
+	await get_tree().create_timer(3.0).timeout
+	var c6 = manager.call("spawn_customer")
+	await get_tree().create_timer(2.5).timeout
+	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
+	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
+
+	# 耐心耗尽 → 3 单全部超时失败（差评）
+	var failed: int = gsm.tick_patience(99999.0)
+	_check(failed == 3, "tick 大 delta 触发 3 单超时")
+	_check(gsm.bad_reviews == 3, "超时 → 差评 +3")
+	_check(gsm.get_active_order_count() == 0, "超时订单已全部移除")
+	_check(manager.call("get_queue_count") == 0, "超时顾客离店，队列清空")
+	_check(c4.get("order_id") == -1 and c5.get("order_id") == -1 and c6.get("order_id") == -1, "超时顾客订单已解绑")
 
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
