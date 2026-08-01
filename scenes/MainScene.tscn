@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://x3fq32rmh0tf" path="res://assets/art/environment/floor_tile.png" id="3_floor"]
 [ext_resource type="PackedScene" path="res://scenes/items/MealPackage.tscn" id="4_meal"]
 [ext_resource type="PackedScene" path="res://scenes/props/Microwave.tscn" id="5_mw"]
+[ext_resource type="PackedScene" path="res://scenes/systems/CustomerManager.tscn" id="6_cm"]
 
 [node name="MainScene" type="Node2D" unique_id=432433148]
 
@@ -23,6 +24,14 @@ position = Vector2(560, 360)
 
 [node name="Microwave" parent="." instance=ExtResource("5_mw")]
 position = Vector2(950, 350)
+
+[node name="SpawnPoint" type="Marker2D" parent="."]
+position = Vector2(40, 350)
+
+[node name="CounterPoint" type="Marker2D" parent="."]
+position = Vector2(600, 350)
+
+[node name="CustomerManager" parent="." instance=ExtResource("6_cm")]
 
 [node name="PlayerCharacter" parent="." unique_id=1418374193 instance=ExtResource("2_ibiss")]
 position = Vector2(250, 520)

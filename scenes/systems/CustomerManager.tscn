@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://bdyr78bp1mnj7" path="res://scripts/systems/customer_manager.gd" id="1_script"]
+
+[node name="CustomerManager" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="SpawnTimer" type="Timer" parent="."]
+wait_time = 3.0
