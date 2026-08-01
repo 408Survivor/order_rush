@@ -16,6 +16,7 @@ signal item_placed(item: Node2D)
 const MOVE_SPEED := 200.0           ## 像素/秒
 const INTERACTION_DISTANCE := 280.0 ## 交互检测距离（像素，覆盖贴合距离≈273）
 const INTERACTION_COOLDOWN := 0.25  ## 交互冷却（秒），防止连按
+const INTERACT_FOV_DOT := 0.7       ## 交互扇区：cos(45°)，仅身前 ±45° 内可交互
 
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
@@ -111,13 +112,15 @@ func try_interact() -> bool:
 
 	return false
 
-## 获取可交互对象：范围检测优先（靠近即触发，不依赖朝向），射线兜底
+## 获取可交互对象：身前扇区检测（面向目标才可交互），射线兜底
 func _get_interactable_object() -> Node2D:
-	# 1) 交互范围内最近的 interactable（Area2D 物品/设备 + PhysicsBody 顾客；排除手持物品）
+	# 1) 交互范围内、且位于身前 ±45° 扇区的最近 interactable（排除手持物品）
 	var best: Node2D = null
 	var best_dist := INF
 	for area in interact_area.get_overlapping_areas():
 		if area == held_item or not area.is_in_group("interactable"):
+			continue
+		if not _is_in_front(area.global_position):
 			continue
 		var dist := global_position.distance_to(area.global_position)
 		if dist < best_dist:
@@ -125,6 +128,8 @@ func _get_interactable_object() -> Node2D:
 			best = area
 	for body in interact_area.get_overlapping_bodies():
 		if body == held_item or not body.is_in_group("interactable"):
+			continue
+		if not _is_in_front(body.global_position):
 			continue
 		var dist := global_position.distance_to(body.global_position)
 		if dist < best_dist:
@@ -139,6 +144,13 @@ func _get_interactable_object() -> Node2D:
 		if collider != null and collider.is_in_group("interactable") and collider != held_item:
 			return collider
 	return null
+
+## 目标是否位于玩家身前扇区（面向方向的 ±45° 内）
+func _is_in_front(target_pos: Vector2) -> bool:
+	var to_target := target_pos - global_position
+	if to_target.length_squared() < 1.0:
+		return true  # 目标与玩家重合视为可交互
+	return to_target.normalized().dot(facing_direction) >= INTERACT_FOV_DOT
 
 ## 与设备交互（微波炉）：手持→放入；空手→取出
 func _interact_with_appliance(appliance: Node2D) -> bool:
