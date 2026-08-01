@@ -209,11 +209,17 @@ func _update_prompt() -> void:
 
 	var text := ""
 	if held_item != null:
-		# 手持物品：设备可接受 → 放入；顾客可收 → 交付
+		# 手持物品：设备可接受 → 放入；顾客 → 交付（区分可收/不可收与物品类型）
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
-		elif target.is_in_group("customer") and target.can_accept_dish(held_item):
-			text = "[E] 交付%s" % _friendly_name(target)
+		elif target.is_in_group("customer"):
+			if held_item.is_in_group("dish"):
+				if target.can_accept_dish(held_item):
+					text = "[E] 交付%s" % _friendly_name(target)
+				else:
+					text = "[E] 交付（先服务队首）"
+			else:
+				text = "料理包需先加热"
 	else:
 		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出
 		if target.is_in_group("pickable"):

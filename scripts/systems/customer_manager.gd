@@ -94,6 +94,7 @@ func _create_order_for_front() -> void:
 	var order_id := GameStateManager.create_order(front.get_instance_id(), "kungpao")
 	if order_id != -1:
 		front.order_id = order_id
+		front.set_order_label("宫保鸡丁")
 
 ## 队首顾客（当前服务对象），空队返回 null
 func get_front_customer() -> Node2D:
