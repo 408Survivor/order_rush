@@ -137,8 +137,8 @@ func create_order(customer_id: int, dish_type: String) -> int:
 		"state": OrderState.PENDING,
 		"customer_id": customer_id,
 		"dish_type": dish_type,
-		"patience_left": patience_time,
-		"patience_total": patience_time,
+		"patience_left": get_patience_time(),
+		"patience_total": get_patience_time(),
 		"created_at": Time.get_time_dict_from_system()
 	}
 	active_orders.append(order)
@@ -200,6 +200,22 @@ func get_active_order_count() -> int:
 func get_dish_display_name(dish_type: String) -> String:
 	return DISH_NAMES.get(dish_type, dish_type)
 
+## 顾客耐心（P6：慢工出细活卡牌 +15s）
+func get_patience_time() -> float:
+	return patience_time + CardManager.get_value("patience_bonus")
+
+## 每单好评数（P6：会员日卡牌 2）
+func get_review_gain() -> int:
+	return 2 if CardManager.has_flag("double_review") else 1
+
+## 外卖骑手 ETA（P6：闪送合作卡牌 +15s）
+func get_takeout_eta() -> float:
+	return TAKEOUT_ETA + CardManager.get_value("takeout_eta_bonus")
+
+## 外卖超时罚款（P6：员工关怀卡牌减半）
+func get_fail_penalty() -> int:
+	return int(round(TAKEOUT_FAIL_PENALTY * CardManager.get_multiplier("penalty_multiplier")))
+
 
 ## 订单交付成功：计入当日收入与成本、好评，并发出 order_completed（结算入口）
 ## 输入: order_id (int)
@@ -211,13 +227,14 @@ func complete_order(order_id: int) -> bool:
 		if active_orders[i]["id"] == order_id:
 			active_orders.remove_at(i)
 			var price := get_dish_price()
+			var gain := get_review_gain()
 			revenue += price
-			good_reviews += 1
+			good_reviews += gain
 			# P3：当日经济统计
 			day_revenue += price
 			day_cost_ingredients += INGREDIENT_COST_PER_ORDER
 			day_cost_consumables += CONSUMABLE_COST_PER_ORDER
-			day_good_reviews += 1
+			day_good_reviews += gain
 			order_completed.emit(order_id, price)
 			revenue_changed.emit(revenue)
 			reviews_changed.emit(good_reviews, bad_reviews)
@@ -256,12 +273,13 @@ func create_takeaway_order() -> int:
 		return -1
 	var order_id := _next_order_id
 	_next_order_id += 1
+	var eta := get_takeout_eta()
 	var order := {
 		"id": order_id,
 		"state": TakeoutState.PACKING,
 		"dish_type": "kungpao",
-		"eta_left": TAKEOUT_ETA,
-		"eta_total": TAKEOUT_ETA,
+		"eta_left": eta,
+		"eta_total": eta,
 		"packed": false,
 	}
 	takeaway_orders.append(order)
@@ -337,12 +355,13 @@ func complete_takeaway(order_id: int) -> bool:
 	if order.is_empty():
 		return false
 	var price := get_dish_price(true)
+	var gain := get_review_gain()
 	revenue += price
-	good_reviews += 1
+	good_reviews += gain
 	day_revenue += price
 	day_cost_ingredients += INGREDIENT_COST_PER_ORDER
 	day_cost_consumables += CONSUMABLE_COST_PER_ORDER
-	day_good_reviews += 1
+	day_good_reviews += gain
 	remove_takeaway(order_id)
 	takeaway_completed.emit(order_id, price)
 	revenue_changed.emit(revenue)
@@ -359,12 +378,13 @@ func fail_takeaway(order_id: int) -> bool:
 		return false
 	bad_reviews += 1
 	day_bad_reviews += 1
-	day_cost_penalty += TAKEOUT_FAIL_PENALTY
+	var penalty := get_fail_penalty()
+	day_cost_penalty += penalty
 	remove_takeaway(order_id)
 	takeaway_failed.emit(order_id)
 	reviews_changed.emit(good_reviews, bad_reviews)
 	day_stats_changed.emit()
-	print_rich("[color=red]Takeaway %d timed out! Penalty %d (day %d)[/color]" % [order_id, TAKEOUT_FAIL_PENALTY, day_cost_penalty])
+	print_rich("[color=red]Takeaway %d timed out! Penalty %d (day %d)[/color]" % [order_id, penalty, day_cost_penalty])
 	return true
 
 ## 打烊作废全部未完成外卖订单（不发 takeaway_failed——不属超时差评，同堂食作废处理）
@@ -409,15 +429,22 @@ func _process(delta: float) -> void:
 
 # ==================== P3 经济系统 ====================
 
-## 每单收入：堂食 = 菜品基础价；外卖 = 基础价 + 打包费 + 平台补贴 − 平台扣点（P4）
+## 每单收入：堂食 = 基础价；外卖 = 基础价 + 打包费 + 平台补贴 − 平台扣点（P4）
+## P6 卡牌：platform_subsidy 外卖额外 +N；premium_price 全部价格 +X%
 func get_dish_price(is_takeout: bool = false) -> int:
+	var base := DISH_PRICE
 	if is_takeout:
-		return DISH_PRICE + PACKING_FEE + PLATFORM_SUBSIDY - int(round(DISH_PRICE * PLATFORM_CUT_RATE))
-	return DISH_PRICE
+		base = DISH_PRICE + PACKING_FEE + PLATFORM_SUBSIDY - int(round(DISH_PRICE * PLATFORM_CUT_RATE))
+		base += int(CardManager.get_value("takeout_extra"))
+	return int(round(base * (1.0 + CardManager.get_value("price_modifier"))))
+
+## 当日房租（P6：房东豁免卡牌减半）
+func get_day_rent() -> int:
+	return int(round(RENT_COST_PER_DAY * CardManager.get_multiplier("rent_multiplier")))
 
 ## 当日总成本（食材 + 耗材 + 水电 + 超时罚款 + 房租）
 func get_day_total_cost() -> int:
-	return day_cost_ingredients + day_cost_consumables + day_cost_utilities + day_cost_penalty + RENT_COST_PER_DAY
+	return day_cost_ingredients + day_cost_consumables + day_cost_utilities + day_cost_penalty + get_day_rent()
 
 ## 当日利润（收入 − 成本）
 func get_day_profit() -> int:
@@ -457,7 +484,9 @@ func close_shop() -> Dictionary:
 	# P4：外卖订单同堂食作废
 	clear_takeaways()
 
-	var profit := get_day_profit()
+	# P6：利润加成卡（仅正利润放大，避免亏本被营销费放大）
+	var raw_profit := get_day_profit()
+	var profit := int(round(raw_profit * CardManager.get_multiplier("profit_multiplier"))) if raw_profit > 0 else raw_profit
 	money += profit
 	var result := {
 		"day": day,
@@ -466,7 +495,7 @@ func close_shop() -> Dictionary:
 		"cost_consumables": day_cost_consumables,
 		"cost_utilities": day_cost_utilities,
 		"cost_penalty": day_cost_penalty,
-		"cost_rent": RENT_COST_PER_DAY,
+		"cost_rent": get_day_rent(),
 		"cost_total": get_day_total_cost(),
 		"profit": profit,
 		"good_reviews": day_good_reviews,
@@ -474,6 +503,8 @@ func close_shop() -> Dictionary:
 		"money": money,
 	}
 	last_settlement = result
+	# P6：结算数据定格后再清空卡牌构筑（每日重新抽卡；不影响本日结算数值）
+	CardManager.reset_cards()
 	shop_closed.emit(result)
 	time_changed.emit(0.0)
 	print_rich("[color=orange]Day %d 打烊！收入 %d − 成本 %d = 利润 %d（累计金币 %d）[/color]" % [day, day_revenue, get_day_total_cost(), profit, money])

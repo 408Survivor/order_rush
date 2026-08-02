@@ -26,6 +26,7 @@ GameStateManager="*res://scripts/autoload/GameStateManager.gd"
 LayoutManager="*res://scripts/autoload/layout_manager.gd"
 UITheme="*res://scripts/autoload/ui_theme.gd"
 UpgradeManager="*res://scripts/autoload/upgrade_manager.gd"
+CardManager="*res://scripts/autoload/card_manager.gd"
 
 [display]
 

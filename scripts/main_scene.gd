@@ -30,6 +30,8 @@ const TAKEOUT_BOARD_SCRIPT := preload("res://scripts/ui/takeaway_board.gd")
 const TAKEOUT_RIDER_SCRIPT := preload("res://scripts/systems/takeaway_rider.gd")
 ## 升级商店脚本（P5，动态实例化 CanvasLayer）
 const UPGRADE_SHOP_SCRIPT := preload("res://scripts/ui/upgrade_shop.gd")
+## 抽卡面板脚本（P6，动态实例化 CanvasLayer）
+const CARD_DRAW_SCRIPT := preload("res://scripts/ui/card_draw.gd")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -46,6 +48,7 @@ func _ready() -> void:
 	_build_takeout_counter()
 	_build_takeaway_ui()
 	_build_upgrade_shop()
+	_build_card_draw()
 	_apply_upgrades()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
@@ -184,6 +187,13 @@ func _build_upgrade_shop() -> void:
 		var shop: CanvasLayer = UPGRADE_SHOP_SCRIPT.new()
 		shop.name = "UpgradeShop"
 		add_child(shop)
+
+## 实例化抽卡面板（P6；打烊暂停中由日结算面板按钮打开，动态生成幂等）
+func _build_card_draw() -> void:
+	if not has_node("CardDraw"):
+		var draw: CanvasLayer = CARD_DRAW_SCRIPT.new()
+		draw.name = "CardDraw"
+		add_child(draw)
 
 # ==================== P5 设备升级应用 ====================
 

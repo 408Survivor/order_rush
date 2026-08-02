@@ -51,23 +51,29 @@ var _progress_max_width := 120.0
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("appliance")
-	heat_time = HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
-	heat_timer.wait_time = heat_time
+	_refresh_heat_time()
 	heat_timer.one_shot = true
 	heat_timer.timeout.connect(_on_heat_timer_timeout)
 	_progress_max_width = progress_fill.size.x
 	_update_indicator()
 	_update_progress(0.0)
-	# P5：购买加热加速后即时生效（无需重启场景）
+	# P5/P6：购买加热加速/卡牌生效后即时刷新（无需重启场景）
 	if not UpgradeManager.upgrades_changed.is_connected(_on_upgrades_changed):
 		UpgradeManager.upgrades_changed.connect(_on_upgrades_changed)
+	if not CardManager.cards_changed.is_connected(_on_upgrades_changed):
+		CardManager.cards_changed.connect(_on_upgrades_changed)
 
-## P5 加热加速升级生效：重新按 heat_level 设置加热时长（含加热中？仅空闲态可购——商店在打烊时打开）
-func _on_upgrades_changed() -> void:
-	var new_time := HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
+## 统一重算加热时长 = 基础（P5 加速可选）× 卡牌乘数（P6 工业烤箱）；即时生效
+func _refresh_heat_time() -> void:
+	var base := HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
+	var new_time := base * CardManager.get_multiplier("heat_multiplier")
 	if heat_time != new_time:
 		heat_time = new_time
 		heat_timer.wait_time = heat_time
+
+## P5/P6 升级/卡牌变化 → 重算加热时长（商店/抽卡在打烊后，仅空闲态）
+func _on_upgrades_changed() -> void:
+	_refresh_heat_time()
 
 func _process(_delta: float) -> void:
 	# 加热中实时刷新进度条
