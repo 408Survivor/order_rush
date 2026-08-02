@@ -264,15 +264,15 @@ func _make_secondary_button(text: String) -> Button:
 	btn.custom_minimum_size = Vector2(160, 40)
 	btn.add_theme_font_size_override("font_size", 20)
 	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(0, 0, 0, 0.25)
+	normal.bg_color = Color(1, 1, 1, 0.7)
 	normal.set_corner_radius_all(10)
 	normal.set_border_width_all(2)
 	normal.border_color = UITheme.COLOR_GOLD_DARK
 	normal.set_content_margin_all(8)
 	var hover := normal.duplicate()
-	hover.bg_color = Color(0, 0, 0, 0.4)
+	hover.bg_color = Color(1, 1, 1, 0.9)
 	var pressed := normal.duplicate()
-	pressed.bg_color = Color(0, 0, 0, 0.55)
+	pressed.bg_color = Color(0.9, 0.85, 0.75, 0.95)
 	btn.add_theme_stylebox_override("normal", normal)
 	btn.add_theme_stylebox_override("hover", hover)
 	btn.add_theme_stylebox_override("pressed", pressed)
@@ -289,9 +289,9 @@ func _make_rule() -> ColorRect:
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return rule
 
-## 成本明细区底（淡色内嵌区块，分区更清晰）
+## 成本明细区底（浅棕内嵌区块，奶油白面板上清晰）
 func _cost_section_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 1, 1, 0.05)
+	sb.bg_color = Color(0.93, 0.88, 0.80, 0.45)
 	sb.set_corner_radius_all(8)
 	return sb

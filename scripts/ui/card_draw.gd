@@ -165,12 +165,12 @@ func _make_label(text: String, font_size: int, color: Color, rich: bool = false)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
-## 卡片底（可抽金色描边 / 口碑不足暗色）
+## 卡片底（可抽奶油白+深金描边 / 口碑不足浅灰）
 func _card_style(affordable: bool) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 1, 1, 0.06) if affordable else Color(0, 0, 0, 0.3)
+	sb.bg_color = Color(1.0, 0.97, 0.90, 0.95) if affordable else Color(0.9, 0.88, 0.82, 0.7)
 	sb.set_corner_radius_all(10)
 	sb.set_border_width_all(2)
-	sb.border_color = UITheme.COLOR_GOLD if affordable else Color(0.3, 0.25, 0.18, 0.6)
+	sb.border_color = UITheme.COLOR_GOLD if affordable else Color(0.6, 0.55, 0.45, 0.6)
 	sb.set_content_margin_all(10)
 	return sb
