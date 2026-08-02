@@ -362,6 +362,50 @@ func _run() -> void:
 	_check(scene.get_node_or_null("Items/MealPackage5") != null, "冰柜扩容后料理包 5 个（含 MealPackage5）")
 	_check(UpgradeManager.is_owned("freezer"), "冰柜升级状态已记录")
 
+	# ===== P6 卡牌系统 =====
+	CardManager.active_cards.clear()
+	_check(CardManager.active_cards.is_empty(), "初始构筑为空")
+	_check(CardManager.get_reputation() == gsm.good_reviews, "口碑 = 累计好评数")
+
+	# 抽卡：3 选 1 + 口碑消耗
+	var offer: Array[String] = CardManager.draw_offer()
+	_check(offer.size() == 3, "抽卡 3 选 1")
+	var reviews_before: int = gsm.good_reviews
+	_check(CardManager.pick_card(offer[0]), "抽卡成功（消耗口碑）")
+	_check(gsm.good_reviews == reviews_before - 3, "抽卡消耗 3 口碑")
+	_check(CardManager.has(offer[0]), "选中卡入构筑")
+	_check(not CardManager.pick_card(offer[0]), "已持有的卡不可重复抽")
+
+	# 口碑不足 → 失败
+	var reviews_low: int = gsm.good_reviews
+	gsm.good_reviews = 1
+	_check(not CardManager.pick_card("premium_price"), "口碑不足抽卡失败")
+	gsm.good_reviews = reviews_low
+
+	# 显式构筑效果卡 → 数值断言（口碑充值 100；跳过已抽到的 held，其余全部入构筑）
+	gsm.good_reviews = 100
+	var held: String = offer[0]
+	var cards_to_pick := ["premium_price", "double_review", "patient_guests", "fast_rider", "industrial_oven", "traffic_peak", "rent_waiver", "platform_subsidy", "penalty_waiver", "profit_bonus"]
+	cards_to_pick.erase(held)
+	for card_id: String in cards_to_pick:
+		_check(CardManager.pick_card(card_id), "选%s" % CardManager.CARDS[card_id]["name"])
+	_check(CardManager.active_cards.size() == 10, "构筑 10 张卡（全流派叠加）")
+	_check(gsm.get_dish_price() == 26, "招牌溢价：堂食 20 → 26（+30%）")
+	_check(gsm.get_dish_price(true) == 36, "平台补贴+招牌溢价：外卖 (23+5) ×1.3 = 36")
+	_check(gsm.get_review_gain() == 2, "会员日：每单好评 +2")
+	_check(absf(gsm.get_patience_time() - 45.0) < 0.01, "慢工出细活：耐心 30 → 45s")
+	_check(absf(gsm.get_takeout_eta() - 55.0) < 0.01, "闪送合作：外卖 ETA 40 → 55s")
+	_check(absf(microwave.heat_time - 1.65) < 0.01, "工业烤箱：加热 ×0.75（P5 加速 2.2 → 1.65s）")
+	_check(absf(manager.get_effective_interval() - 2.25) < 0.01, "客流高峰：顾客间隔 3.0 → 2.25s")
+	_check(gsm.get_day_rent() == 15, "房东豁免：房租 30 → 15")
+	_check(gsm.get_fail_penalty() == 3, "员工关怀：罚款 5 → 2.5 → 3")
+	_check(CardManager.get_multiplier("profit_multiplier") > 1.0, "口碑营销：利润乘数 >1")
+
+	# 打烊：房租减半入结算 + 构筑清空（每日重抽）
+	var close_result: Dictionary = gsm.close_shop()
+	_check(close_result["cost_rent"] == 15, "结算房租减半生效")
+	_check(CardManager.active_cards.is_empty(), "打烊清空构筑（每日重新抽卡）")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

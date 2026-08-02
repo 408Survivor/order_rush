@@ -40,18 +40,29 @@ func _ready() -> void:
 	if _spawn_point == null or _counter_point == null:
 		push_warning("CustomerManager: SpawnPoint/CounterPoint 未找到（应为 MainScene 的直接子节点）")
 
-	spawn_timer.wait_time = spawn_interval
+	spawn_timer.wait_time = get_effective_interval()
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	# P2：订单超时 → 对应顾客离店（防重复连接：脚本重载/编辑器进程会多次 _ready；
 	# 注意：is_connected 防护在多 CustomerManager 实例下仅首个实例订阅，本项目单实例无碍）
 	if not GameStateManager.order_failed.is_connected(_on_order_failed):
 		GameStateManager.order_failed.connect(_on_order_failed)
+	# P6：客流高峰卡生效后即时刷新生成间隔
+	if not CardManager.cards_changed.is_connected(_on_cards_changed):
+		CardManager.cards_changed.connect(_on_cards_changed)
 	# @tool：编辑器进程（含编辑器内部检查实例化）不启动定时生成，仅测试/运行时手动触发
 	if Engine.is_editor_hint():
 		spawn_timer.stop()
 	else:
 		spawn_timer.start()
-	print_rich("[color=green]CustomerManager ready (interval=%.1fs, max_queue=%d)[/color]" % [spawn_interval, max_queue])
+	print_rich("[color=green]CustomerManager ready (interval=%.1fs, max_queue=%d)[/color]" % [get_effective_interval(), max_queue])
+
+## 实际生成间隔（P6：客流高峰卡 -25%）
+func get_effective_interval() -> float:
+	return spawn_interval * CardManager.get_multiplier("spawn_multiplier")
+
+## P6：卡牌变化 → 刷新生成间隔（定时器在下次启动时生效）
+func _on_cards_changed() -> void:
+	spawn_timer.wait_time = get_effective_interval()
 
 # ==================== 生成 ====================
 
