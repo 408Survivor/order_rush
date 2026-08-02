@@ -317,6 +317,8 @@ func _update_prompt() -> void:
 		# 手持物品：设备可接受 → 放入；顾客 → 交付；外卖口 → 打包（区分可收/不可收与物品类型）
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
+		elif target.is_in_group("appliance") and target.has_method("is_broken") and target.is_broken():
+			text = "设备故障中"
 		elif target.is_in_group("takeout"):
 			if held_item.is_in_group("dish") and not GameStateManager.get_pending_takeaway().is_empty():
 				text = "[E] 打包外卖"

@@ -82,11 +82,17 @@ func _process(_delta: float) -> void:
 
 # ==================== 交互接口 ====================
 
-## 检查是否可以接受某物品（仅空闲且为料理包）
+## 检查是否可以接受某物品（仅空闲且为料理包；P7：设备故障期间拒绝放入）
 func can_accept_item(item: Node2D) -> bool:
+	if is_broken():
+		return false
 	if current_state != MicrowaveState.IDLE:
 		return false
 	return item.is_in_group("meal_package")
+
+## P7：设备故障事件中（特殊事件 EQUIPMENT_BREAK）
+func is_broken() -> bool:
+	return GameStateManager.is_event_active(GameStateManager.SpecialEvent.EQUIPMENT_BREAK)
 
 ## 是否内部有物品（供交互提示判断，无副作用）
 func is_occupied() -> bool:
@@ -166,13 +172,17 @@ func _on_heat_timer_timeout() -> void:
 	if current_state != MicrowaveState.HEATING:
 		return
 
-	# 销毁料理包，生成成品菜
+	# 销毁料理包，生成成品菜（P7：成品菜继承料理包的 dish_type）
 	if contained_item != null:
+		var meal_dish_type: String = str(contained_item.get("dish_type"))
 		contained_item.queue_free()
-	var dish: Node2D = FINISHED_DISH_SCENE.instantiate()
-	add_child(dish)
-	dish.position = Vector2.ZERO
-	contained_item = dish
+		var dish: Node2D = FINISHED_DISH_SCENE.instantiate()
+		dish.set("dish_type", meal_dish_type)
+		add_child(dish)
+		dish.position = Vector2.ZERO
+		if dish.has_method("apply_dish_visual"):
+			dish.apply_dish_visual()
+		contained_item = dish
 
 	current_state = MicrowaveState.DONE
 	_update_indicator()

@@ -35,6 +35,9 @@ func _run() -> void:
 	var microwave = scene.get_node("Microwave")
 	var meal = scene.get_node("Items/MealPackage")
 
+	# P7 测试钩子：固定随机菜为宫保鸡丁（保证既有断言确定性；P7 段再解除验证随机）
+	scene.get_node("/root/GameStateManager").set("_dish_override", "kungpao")
+
 	# 监听信号（验收标准：信号命名规范 item_picked_up / item_placed）
 	# 注意：编辑器进程中对非 @tool 脚本的成员访问需用动态 API
 	player.connect("item_picked_up", func(_item): _picked_up_count += 1)
@@ -307,7 +310,7 @@ func _run() -> void:
 	_check(takeout_id > 0, "外卖订单创建成功")
 	_check(gsm.takeaway_orders.size() == 1, "外卖独立队列 1 单（与堂食并行）")
 	_check(gsm.get_takeaway(takeout_id)["state"] == gsm.TakeoutState.PACKING, "外卖初始待打包")
-	_check(absf(gsm.get_takeaway(takeout_id)["eta_left"] - gsm.TAKEOUT_ETA) < 0.01, "骑手 ETA 初始满")
+	_check(absf(gsm.get_takeaway(takeout_id)["eta_left"] - gsm.get_takeout_eta()) < 0.01, "骑手 ETA 初始满")
 
 	var takeaway_board: CanvasLayer = scene.get_node("TakeawayBoard")
 	takeaway_board.call("refresh")
@@ -393,10 +396,10 @@ func _run() -> void:
 	_check(gsm.get_dish_price() == 26, "招牌溢价：堂食 20 → 26（+30%）")
 	_check(gsm.get_dish_price(true) == 36, "平台补贴+招牌溢价：外卖 (23+5) ×1.3 = 36")
 	_check(gsm.get_review_gain() == 2, "会员日：每单好评 +2")
-	_check(absf(gsm.get_patience_time() - 45.0) < 0.01, "慢工出细活：耐心 30 → 45s")
-	_check(absf(gsm.get_takeout_eta() - 55.0) < 0.01, "闪送合作：外卖 ETA 40 → 55s")
+	_check(absf(gsm.get_patience_time() - (45.0 * gsm.get_difficulty()["patience"])) < 0.01, "慢工出细活：耐心 30 → 45s（含难度递减）")
+	_check(absf(gsm.get_takeout_eta() - (55.0 * gsm.get_difficulty()["eta"])) < 0.01, "闪送合作：外卖 ETA 40 → 55s（含难度递减）")
 	_check(absf(microwave.heat_time - 1.65) < 0.01, "工业烤箱：加热 ×0.75（P5 加速 2.2 → 1.65s）")
-	_check(absf(manager.get_effective_interval() - 2.25) < 0.01, "客流高峰：顾客间隔 3.0 → 2.25s")
+	_check(absf(manager.get_effective_interval() - (2.25 * gsm.get_difficulty()["spawn"])) < 0.01, "客流高峰：顾客间隔 3.0 → 2.25s（含难度递减）")
 	_check(gsm.get_day_rent() == 15, "房东豁免：房租 30 → 15")
 	_check(gsm.get_fail_penalty() == 3, "员工关怀：罚款 5 → 2.5 → 3")
 	_check(CardManager.get_multiplier("profit_multiplier") > 1.0, "口碑营销：利润乘数 >1")
@@ -405,6 +408,45 @@ func _run() -> void:
 	var close_result: Dictionary = gsm.close_shop()
 	_check(close_result["cost_rent"] == 15, "结算房租减半生效")
 	_check(CardManager.active_cards.is_empty(), "打烊清空构筑（每日重新抽卡）")
+
+	# ===== P7 多菜品 + 难度 + 招牌菜 + 特殊事件（进入第 3 天） =====
+	gsm.start_next_day()  # P6 已打烊 → 恢复营业进第 3 天
+	_check(gsm.day == 3, "进入第 3 天")
+	_check(GameStateManager.DISHES.size() == 3, "菜品配置 3 种 L1（宫保鸡丁/鱼香肉丝/麻婆豆腐）")
+	# 解除随机菜钩子 → 随机菜来自菜品池
+	gsm.set("_dish_override", "")
+	var random_dish: String = gsm.get_random_dish()
+	_check(random_dish in GameStateManager.L1_DISHES, "随机菜来自菜品池（%s）" % random_dish)
+	gsm.set("_dish_override", "kungpao")
+
+	# 7 天难度：天数越高倍率越低
+	_check(gsm.get_difficulty()["patience"] < 1.0, "第 %d 天难度递增（耐心倍率 <1）" % gsm.day)
+	_check(absf(gsm.get_patience_time() - (gsm.patience_time * gsm.get_difficulty()["patience"])) < 0.01, "耐心随难度递减")
+	_check(gsm.get_difficulty()["spawn"] < 1.0, "顾客间隔难度递减")
+
+	# 招牌菜：价格加成 + 熟练度档位
+	_check(gsm.get_dish_price(false, "yuxiang") == 22, "非招牌菜基础价 22")
+	gsm.set_specialty_dish("yuxiang")
+	_check(gsm.get_dish_price(false, "yuxiang") == 26, "招牌菜价格加成 +20%（22 → 26）")
+	gsm.record_dish_served("yuxiang")
+	gsm.record_dish_served("yuxiang")
+	gsm.record_dish_served("yuxiang")
+	_check(gsm.get_specialty_prof_level("yuxiang") == 1, "熟练度 3 次售出升 1 档")
+	_check(gsm.get_dish_price(false, "yuxiang") == 29, "招牌菜熟练度档加成（26 → 29，+10%）")
+	_check(gsm.get_dish_price(false, "kungpao") == 20, "非招牌菜不受加成")
+
+	# 特殊事件：设备故障 → 微波炉停用；恶劣天气 → 外卖暂停
+	var meal_rebuilt = scene.get_node("Items/MealPackage")  # 新一天重建后的料理包
+	gsm.force_event(GameStateManager.SpecialEvent.EQUIPMENT_BREAK)
+	_check(microwave.is_broken(), "设备故障事件中微波炉停用")
+	_check(not microwave.can_accept_item(meal_rebuilt), "故障期间拒绝放入料理包")
+	gsm.tick_event(100.0)
+	_check(not microwave.is_broken(), "事件结束微波炉恢复")
+	gsm.force_event(GameStateManager.SpecialEvent.BAD_WEATHER)
+	_check(gsm.is_event_active(GameStateManager.SpecialEvent.BAD_WEATHER), "恶劣天气事件激活")
+	_check(gsm.create_takeaway_order() == -1, "恶劣天气外卖暂停生成")
+	gsm.tick_event(100.0)
+	_check(gsm.active_event == GameStateManager.SpecialEvent.NONE, "天气事件结束清除")
 
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"

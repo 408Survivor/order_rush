@@ -32,6 +32,8 @@ const TAKEOUT_RIDER_SCRIPT := preload("res://scripts/systems/takeaway_rider.gd")
 const UPGRADE_SHOP_SCRIPT := preload("res://scripts/ui/upgrade_shop.gd")
 ## 抽卡面板脚本（P6，动态实例化 CanvasLayer）
 const CARD_DRAW_SCRIPT := preload("res://scripts/ui/card_draw.gd")
+## 招牌菜面板脚本（P7，动态实例化 CanvasLayer）
+const SPECIALTY_PANEL_SCRIPT := preload("res://scripts/ui/specialty_panel.gd")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -49,6 +51,7 @@ func _ready() -> void:
 	_build_takeaway_ui()
 	_build_upgrade_shop()
 	_build_card_draw()
+	_build_specialty_panel()
 	_apply_upgrades()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
@@ -100,13 +103,16 @@ func _reset_shop_items() -> void:
 	for child in items_root.get_children():
 		if child.name not in meal_names:
 			child.queue_free()
-	# 重建/复位料理包到货架槽位：缺失的实例化，已存在的重摆（防 Q 放下后跨天残留错位）
+	# 重建/复位料理包到货架槽位：缺失的实例化，已存在的重摆；P7 按菜品池循环分配 dish_type
 	for i in meal_names.size():
 		var meal: Node2D = items_root.get_node_or_null(meal_names[i])
 		if meal == null:
 			meal = MEAL_PACKAGE_SCENE.instantiate()
 			meal.name = meal_names[i]
 			items_root.add_child(meal)
+		meal.set("dish_type", GameStateManager.L1_DISHES[i % GameStateManager.L1_DISHES.size()])
+		if meal.has_method("apply_dish_visual"):
+			meal.apply_dish_visual()
 		meal.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
 	# 玩家复位出生点
 	player.global_position = LayoutManager.SPAWN_POINT
@@ -194,6 +200,13 @@ func _build_card_draw() -> void:
 		var draw: CanvasLayer = CARD_DRAW_SCRIPT.new()
 		draw.name = "CardDraw"
 		add_child(draw)
+
+## 实例化招牌菜面板（P7；打烊暂停中由日结算面板按钮打开，动态生成幂等）
+func _build_specialty_panel() -> void:
+	if not has_node("SpecialtyPanel"):
+		var panel: CanvasLayer = SPECIALTY_PANEL_SCRIPT.new()
+		panel.name = "SpecialtyPanel"
+		add_child(panel)
 
 # ==================== P5 设备升级应用 ====================
 
