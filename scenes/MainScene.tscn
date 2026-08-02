@@ -9,6 +9,7 @@
 [ext_resource type="Script" path="res://scripts/main_scene.gd" id="8_main"]
 [ext_resource type="Script" path="res://scripts/ui/order_board.gd" id="9_board"]
 [ext_resource type="Script" path="res://scripts/ui/toast_manager.gd" id="10_toast"]
+[ext_resource type="Script" path="res://scripts/ui/day_result_panel.gd" id="11_dayresult"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud"]
 bg_color = Color(0, 0, 0, 0.5)
@@ -71,7 +72,7 @@ anchor_bottom = 0.0
 offset_left = -300.0
 offset_top = 12.0
 offset_right = -16.0
-offset_bottom = 116.0
+offset_bottom = 128.0
 grow_horizontal = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_hud")
 
@@ -83,6 +84,14 @@ theme_override_constants/margin_bottom = 8
 
 [node name="VBox" type="VBoxContainer" parent="RevenueHUD/Panel/Margin"]
 theme_override_constants/separation = 4
+
+[node name="DayTimeLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
+theme_override_colors/font_color = Color(1, 0.95, 0.75, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "第 1 天 ｜ 营业剩余 90s"
+horizontal_alignment = 2
 
 [node name="RevenueLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
 theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
@@ -113,3 +122,6 @@ script = ExtResource("9_board")
 
 [node name="ToastManager" type="CanvasLayer" parent="."]
 script = ExtResource("10_toast")
+
+[node name="DayResultPanel" type="CanvasLayer" parent="."]
+script = ExtResource("11_dayresult")

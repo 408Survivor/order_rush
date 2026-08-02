@@ -59,6 +59,10 @@ func _ready() -> void:
 func spawn_customer() -> Node2D:
 	if _spawn_point == null or _counter_point == null:
 		return null
+	# P3：已打烊不再接客（防手动/时序生成）
+	if not GameStateManager.is_shop_open:
+		print_rich("[color=orange]CustomerManager: 已打烊，拒绝生成顾客[/color]")
+		return null
 	if _active_count >= max_queue:
 		print_rich("[color=orange]CustomerManager: 队伍已满（%d/%d），暂不生成[/color]" % [_active_count, max_queue])
 		return null
@@ -162,3 +166,23 @@ func _on_customer_left(customer: Node2D) -> void:
 
 func _on_spawn_timer_timeout() -> void:
 	spawn_customer()
+
+# ==================== 日循环清场（P3） ====================
+
+## 打烊清场：停止接客并移除全部在场顾客（含排队与行走中）
+## 副作用: spawn_timer 停止、队列/计数清零；顾客节点 queue_free（tree_exited 会走 _on_customer_left 防御回收）
+func clear_customers() -> void:
+	spawn_timer.stop()
+	var all_customers := get_children().filter(func(c: Node) -> bool: return c.is_in_group("customer"))
+	queue.clear()
+	_active_count = 0
+	for customer in all_customers:
+		customer.queue_free()
+	print_rich("[color=yellow]CustomerManager: 打烊清场，移除 %d 名顾客[/color]" % all_customers.size())
+
+## 新一天开始接客（由 main_scene 监听 day_started 调用；编辑器进程不自动启动，冒烟测试手动触发）
+func start_serving() -> void:
+	if Engine.is_editor_hint():
+		return
+	spawn_timer.start()
+	print_rich("[color=green]CustomerManager: 开始接客（%.1fs 间隔）[/color]" % spawn_interval)
