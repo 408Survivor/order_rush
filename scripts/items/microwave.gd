@@ -57,22 +57,25 @@ func _ready() -> void:
 	_progress_max_width = progress_fill.size.x
 	_update_indicator()
 	_update_progress(0.0)
-	# P5/P6：购买加热加速/卡牌生效后即时刷新（无需重启场景）
+	# P5/P6/P8：购买加热加速/卡牌/角色技能生效后即时刷新（无需重启场景）
 	if not UpgradeManager.upgrades_changed.is_connected(_on_upgrades_changed):
 		UpgradeManager.upgrades_changed.connect(_on_upgrades_changed)
 	if not CardManager.cards_changed.is_connected(_on_upgrades_changed):
 		CardManager.cards_changed.connect(_on_upgrades_changed)
+	if not CharacterManager.character_changed.is_connected(_on_upgrades_changed):
+		CharacterManager.character_changed.connect(_on_upgrades_changed)
 
-## 统一重算加热时长 = 基础（P5 加速可选）× 卡牌乘数（P6 工业烤箱）；即时生效
+## 统一重算加热时长 = 基础（P5 加速可选）× 卡牌乘数（P6 工业烤箱）× 角色技能（P8 快手主厨）；即时生效
 func _refresh_heat_time() -> void:
 	var base := HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
-	var new_time := base * CardManager.get_multiplier("heat_multiplier")
+	var new_time := base * CardManager.get_multiplier("heat_multiplier") * CharacterManager.get_heat_multiplier()
 	if heat_time != new_time:
 		heat_time = new_time
 		heat_timer.wait_time = heat_time
 
-## P5/P6 升级/卡牌变化 → 重算加热时长（商店/抽卡在打烊后，仅空闲态）
-func _on_upgrades_changed() -> void:
+## P5/P6/P8 升级/卡牌/角色变化 → 重算加热时长（商店/抽卡/角色选择在打烊或营业前，仅空闲态）
+## 注意: 带默认参数以兼容 character_changed(1 参) 与 upgrades/cards_changed(0 参) 两类信号（Godot 4.6 参数数不匹配会报错）
+func _on_upgrades_changed(_extra: Variant = null) -> void:
 	_refresh_heat_time()
 
 func _process(_delta: float) -> void:
