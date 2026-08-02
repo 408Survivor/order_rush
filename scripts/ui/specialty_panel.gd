@@ -165,7 +165,7 @@ func _make_label(text: String, font_size: int, color: Color, rich: bool = false)
 
 func _row_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 1, 1, 0.05)
+	sb.bg_color = Color(0.93, 0.88, 0.80, 0.45)
 	sb.set_corner_radius_all(8)
 	sb.set_content_margin_all(10)
 	return sb

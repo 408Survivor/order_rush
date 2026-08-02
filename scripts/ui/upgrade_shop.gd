@@ -175,18 +175,18 @@ func _make_label(text: String, font_size: int, color: Color, rich: bool = false)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
-## 升级行底（淡色内嵌区块）
+## 升级行底（浅棕内嵌区块，奶油白面板上清晰）
 func _row_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(1, 1, 1, 0.05)
+	sb.bg_color = Color(0.93, 0.88, 0.80, 0.45)
 	sb.set_corner_radius_all(8)
 	sb.set_content_margin_all(10)
 	return sb
 
-## 按钮禁用态（暗色）
+## 按钮禁用态（浅灰）
 func _disabled_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.15, 0.12, 0.09, 0.8)
+	sb.bg_color = Color(0.9, 0.88, 0.82, 0.8)
 	sb.set_corner_radius_all(10)
 	sb.set_content_margin_all(10)
 	return sb

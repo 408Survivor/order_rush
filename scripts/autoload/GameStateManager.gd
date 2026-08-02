@@ -92,8 +92,8 @@ const DISH_NAMES := {
 ## 菜品视觉占位色调（P7：现有素材着色区分；AI 素材 013 批次后替换为真实纹理）
 const DISH_TINT := {
 	"kungpao": Color.WHITE,
-	"yuxiang": Color(1.0, 0.72, 0.68),
-	"mapo": Color(1.0, 0.86, 0.55),
+	"yuxiang": Color(0.95, 0.55, 0.50),
+	"mapo": Color(0.95, 0.72, 0.35),
 }
 
 ## 菜品占位色调（未知菜品回退白色）

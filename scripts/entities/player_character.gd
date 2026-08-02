@@ -44,7 +44,7 @@ func _ready() -> void:
 	add_to_group("player")
 
 	# #30：交互提示气泡样式（半透明深色圆角 + 暖金描边）
-	prompt_panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(12, Color(0.15, 0.11, 0.07, 0.55), Color(0.95, 0.85, 0.6, 0.3)))
+	prompt_panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(12, Color(1.0, 0.97, 0.92, 0.94), Color(0.85, 0.79, 0.68, 0.8)))
 
 	# 确保交互射线初始方向正确
 	interaction_ray.target_position = facing_direction * INTERACTION_DISTANCE

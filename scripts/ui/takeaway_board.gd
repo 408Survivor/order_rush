@@ -128,7 +128,7 @@ func _make_label(text: String, color: Color, font_size: int) -> RichTextLabel:
 
 func _bar_bg_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.10, 0.07, 0.9)
+	sb.bg_color = Color(0.92, 0.88, 0.82, 0.9)
 	sb.set_corner_radius_all(6)
 	return sb
 

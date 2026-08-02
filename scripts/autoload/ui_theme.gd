@@ -9,21 +9,27 @@
 extends Node
 
 # ==================== 调色板（统一 UI 配色，各脚本引用此常量） ====================
-## #32：暖木 × 奶油 × 金 色系——与俯视角暖色插画世界（地板 225/227/228、玩家 215/192/175）同色温，
-##       取代旧深蓝灰冷调（深冷 UI vs 暖亮世界的割裂感来源）
-const COLOR_BG := Color("#1C120A")                    ## 深咖啡黑（结算面板底/遮罩氛围）
-const COLOR_PANEL := Color(0.17, 0.12, 0.08, 0.90)    ## 面板底色（半透明暖深棕，木纹影调）
-const COLOR_PANEL_LIGHT := Color(0.25, 0.18, 0.12, 0.92) ## 亮面板/悬停态
-const COLOR_GOLD := Color("#F2C14E")                   ## 强调金（标题/金币/边框）
-const COLOR_GOLD_DARK := Color("#C8921F")              ## 按钮底金
-const COLOR_GOLD_DARKER := Color("#8F6510")            ## 按钮按下底金
-const COLOR_GREEN := Color("#5ED67A")                  ## 成功
-const COLOR_YELLOW := Color("#F0B429")                 ## 警告
-const COLOR_RED := Color("#F05A4E")                    ## 危险
-const COLOR_BLUE := Color("#8FB4E0")                   ## 信息（柔化，减少冷色冲突）
-const COLOR_TEXT := Color("#F8F1E3")                   ## 主文本（奶油白）
-const COLOR_TEXT_DIM := Color(0.97, 0.94, 0.89, 0.55)  ## 弱文本
-const COLOR_BORDER := Color(0.95, 0.85, 0.60, 0.35)    ## 面板描边（暖金）
+## #42：浅色主题（杯杯倒满式）——奶油白面板底 + 深咖啡文字 + 糖果色点缀（珊瑚粉/奶黄/薄荷绿/天蓝），
+##       取代深色暖木（浅色明亮"温馨奶茶店"观感）；文字在浅底上用深色
+const COLOR_BG := Color("#FFF6E5")                      ## 奶油白（面板底）
+const COLOR_PANEL := Color(1.0, 0.985, 0.94, 0.95)      ## 面板底色（奶油白近不透明）
+const COLOR_PANEL_LIGHT := Color.WHITE                  ## 亮面板/悬停态
+const COLOR_GOLD := Color("#D9A62E")                    ## 强调金（深金色，浅底可读）
+const COLOR_GOLD_DARK := Color("#B8860B")               ## 按钮底金
+const COLOR_GOLD_DARKER := Color("#8F6510")             ## 按钮按下底金
+const COLOR_GREEN := Color("#2E9E5B")                   ## 成功（浅底加深）
+const COLOR_YELLOW := Color("#D9A100")                  ## 警告（浅底加深）
+const COLOR_RED := Color("#E04A3A")                     ## 危险（浅底加深）
+const COLOR_BLUE := Color("#4A8FCE")                    ## 信息（浅底加深）
+const COLOR_TEXT := Color("#4A3728")                    ## 主文本（深咖啡，浅底）
+const COLOR_TEXT_DIM := Color(0.29, 0.22, 0.16, 0.55)   ## 弱文本
+const COLOR_BORDER := Color(0.85, 0.79, 0.68, 0.9)      ## 面板描边（浅棕）
+const COLOR_OUTLINE := Color(0.29, 0.22, 0.16, 0.85)    ## 文字描边（深棕，浅底）
+## 糖果色点缀（图标/进度条/按钮，杯杯倒满式高饱和）
+const COLOR_CORAL := Color("#FF8A80")   ## 珊瑚粉
+const COLOR_MINT := Color("#6FCE96")    ## 薄荷绿
+const COLOR_CREAM := Color("#FFE9A8")   ## 奶黄
+const COLOR_SKY := Color("#7FB8E8")     ## 天蓝
 
 # ==================== 字体 ====================
 const FONT_PATH := "res://assets/fonts/ZCOOLKuaiLe-Regular.ttf"
