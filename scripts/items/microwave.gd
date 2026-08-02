@@ -174,6 +174,13 @@ func _update_indicator() -> void:
 		_:
 			indicator.color = Color(0.30, 0.69, 0.31)  # 绿
 
-## 进度条填充宽度（0.0-1.0）
+## 进度条填充宽度（0.0-1.0）；#30 按状态着色（加热中黄 / 完成红 / 空闲绿）
 func _update_progress(ratio: float) -> void:
 	progress_fill.size.x = _progress_max_width * clampf(ratio, 0.0, 1.0)
+	var color := UITheme.COLOR_GREEN
+	match current_state:
+		MicrowaveState.HEATING:
+			color = UITheme.COLOR_YELLOW
+		MicrowaveState.DONE:
+			color = UITheme.COLOR_RED
+	progress_fill.color = color

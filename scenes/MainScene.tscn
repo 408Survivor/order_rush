@@ -86,11 +86,11 @@ theme_override_constants/margin_bottom = 8
 theme_override_constants/separation = 4
 
 [node name="DayTimeLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
-theme_override_colors/font_color = Color(1, 0.95, 0.75, 1)
+theme_override_colors/font_color = Color(0.95, 0.76, 0.31, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
-text = "第 1 天 ｜ 营业剩余 90s"
+text = "🗓️ 第 1 天　⏱️ 营业剩余 90s"
 horizontal_alignment = 2
 
 [node name="RevenueLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]

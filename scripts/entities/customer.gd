@@ -133,12 +133,12 @@ func _update_order_display() -> void:
 	var total: float = order["patience_total"]
 	var left: float = order["patience_left"]
 	var ratio := 1.0 if total <= 0.0 else left / total
-	order_label.text = "%s %ds" % [GameStateManager.get_dish_display_name(str(order["dish_type"])), int(ceil(left))]
-	var color := Color(0.5, 1.0, 0.5)  # >50% 绿
+	order_label.text = "🍛 %s %ds" % [GameStateManager.get_dish_display_name(str(order["dish_type"])), int(ceil(left))]
+	var color := UITheme.COLOR_GREEN  # >50% 绿
 	if ratio <= 0.5 and ratio > 0.2:
-		color = Color(1.0, 0.9, 0.3)   # ≤50% 黄
+		color = UITheme.COLOR_YELLOW  # ≤50% 黄
 	elif ratio <= 0.2:
-		color = Color(1.0, 0.3, 0.3)   # ≤20% 红
+		color = UITheme.COLOR_RED     # ≤20% 红
 	if color != _last_label_color:
 		order_label.add_theme_color_override("font_color", color)
 		_last_label_color = color

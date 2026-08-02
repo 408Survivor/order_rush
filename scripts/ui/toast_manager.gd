@@ -1,6 +1,7 @@
 ## 文件: scripts/ui/toast_manager.gd
-## 职责: 操作反馈提示——左下角堆叠 Toast（新订单/交付成功/超时差评/加热完成），自动淡出（issue #26）
-## 依赖: GameStateManager (autoload)；运行模式自动监听订单信号，测试/编辑器进程手动调 show_toast()
+## 职责: 操作反馈提示——左下角堆叠 Toast（新订单/交付成功/超时差评/加热完成），自动淡出
+##       （issue #26；#30 升级：左侧类型色带 + 图标）
+## 依赖: GameStateManager/UITheme (autoload)；运行模式自动监听订单信号，测试/编辑器进程手动调 show_toast()
 ## 注意: @tool + 编辑器进程不连接信号（测试手动触发）；纯显示无副作用
 
 @tool
@@ -31,10 +32,10 @@ func _ready() -> void:
 		GameStateManager.order_failed.connect(_on_order_failed)
 
 func _on_order_completed(order_id: int, revenue: int) -> void:
-	show_toast("交付成功  +%d" % revenue, Color(0.45, 1.0, 0.55))
+	show_toast("✅ 交付成功  +%d" % revenue, UITheme.COLOR_GREEN)
 
 func _on_order_failed(order_id: int) -> void:
-	show_toast("订单超时！差评 -1", Color(1.0, 0.4, 0.4))
+	show_toast("❌ 订单超时！差评 -1", UITheme.COLOR_RED)
 
 func _build_container() -> void:
 	var margin := MarginContainer.new()
@@ -53,16 +54,28 @@ func _build_container() -> void:
 # ==================== Toast API ====================
 
 ## 显示一条提示（测试/编辑器进程可手动调用）
+## #30: 左侧类型色带（color 指示）+ 文字描边；icon 由调用方拼入文本
 func show_toast(text: String, color: Color = Color.WHITE, duration: float = TOAST_DURATION) -> void:
 	var bg := PanelContainer.new()
 	bg.add_theme_stylebox_override("panel", _toast_stylebox())
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	bg.add_child(row)
+
+	# 左侧类型色带（竖条，类型色）
+	var stripe := ColorRect.new()
+	stripe.color = color
+	stripe.custom_minimum_size = Vector2(5, 0)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(stripe)
+
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	label.add_theme_constant_override("outline_size", 5)
-	bg.add_child(label)
+	row.add_child(label)
 	_container.add_child(bg)
 
 	var entry := {"bg": bg, "label": label, "fade": false}
@@ -81,7 +94,7 @@ func _on_order_state_changed(order_id: int, new_state: int) -> void:
 	var order := GameStateManager.get_order(order_id)
 	if order.is_empty():
 		return
-	show_toast("新订单：%s" % GameStateManager.get_dish_display_name(str(order["dish_type"])), Color(0.55, 0.85, 1.0))
+	show_toast("📋 新订单：%s" % GameStateManager.get_dish_display_name(str(order["dish_type"])), UITheme.COLOR_BLUE)
 
 ## 淡出并移除（防御：节点可能已被超限移除提前释放）
 func _begin_fade(entry: Dictionary) -> void:
