@@ -32,10 +32,10 @@ func _ready() -> void:
 		GameStateManager.order_failed.connect(_on_order_failed)
 
 func _on_order_completed(order_id: int, revenue: int) -> void:
-	show_toast("✅ 交付成功  +%d" % revenue, UITheme.COLOR_GREEN)
+	show_toast("%s 交付成功  +%d" % [UITheme.icon(UITheme.ICON_CHECK), revenue], UITheme.COLOR_GREEN)
 
 func _on_order_failed(order_id: int) -> void:
-	show_toast("❌ 订单超时！差评 -1", UITheme.COLOR_RED)
+	show_toast("%s 订单超时！差评 -1" % UITheme.icon(UITheme.ICON_CROSS), UITheme.COLOR_RED)
 
 func _build_container() -> void:
 	var margin := MarginContainer.new()
@@ -69,11 +69,14 @@ func show_toast(text: String, color: Color = Color.WHITE, duration: float = TOAS
 	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(stripe)
 
-	var label := Label.new()
+	var label := RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.fit_content = true
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = text
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	label.add_theme_font_size_override("normal_font_size", 20)
+	label.add_theme_color_override("default_color", color)
+	label.add_theme_color_override("outline_color", Color(0, 0, 0, 0.9))
 	label.add_theme_constant_override("outline_size", 5)
 	row.add_child(label)
 	_container.add_child(bg)
@@ -94,7 +97,7 @@ func _on_order_state_changed(order_id: int, new_state: int) -> void:
 	var order := GameStateManager.get_order(order_id)
 	if order.is_empty():
 		return
-	show_toast("📋 新订单：%s" % GameStateManager.get_dish_display_name(str(order["dish_type"])), UITheme.COLOR_BLUE)
+	show_toast("%s 新订单：%s" % [UITheme.icon(UITheme.ICON_ORDER), GameStateManager.get_dish_display_name(str(order["dish_type"]))], UITheme.COLOR_BLUE)
 
 ## 淡出并移除（防御：节点可能已被超限移除提前释放）
 func _begin_fade(entry: Dictionary) -> void:

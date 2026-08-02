@@ -29,6 +29,23 @@ const COLOR_BORDER := Color(0.95, 0.85, 0.60, 0.35)    ## 面板描边（暖金�
 const FONT_PATH := "res://assets/fonts/ZCOOLKuaiLe-Regular.ttf"
 const FONT_SIZE_BASE := 20
 
+# ==================== 图标（#32 第②步：SVG 图标集替换 emoji） ====================
+## 金描边扁平风 SVG 图标（assets/art/ui/icons/），经 RichTextLabel [img] 内联显示
+const ICON_PLATE := "res://assets/art/ui/icons/plate.svg"       ## 菜品（订单卡片/顾客头顶）
+const ICON_COIN := "res://assets/art/ui/icons/coin.svg"         ## 金钱（营业额/结算资金）
+const ICON_CALENDAR := "res://assets/art/ui/icons/calendar.svg" ## 天数
+const ICON_TIMER := "res://assets/art/ui/icons/timer.svg"       ## 倒计时
+const ICON_CLOSED := "res://assets/art/ui/icons/closed.svg"     ## 打烊
+const ICON_GOOD := "res://assets/art/ui/icons/good.svg"         ## 好评
+const ICON_BAD := "res://assets/art/ui/icons/bad.svg"           ## 差评
+const ICON_CHECK := "res://assets/art/ui/icons/check.svg"       ## 成功（Toast）
+const ICON_CROSS := "res://assets/art/ui/icons/cross.svg"       ## 失败（Toast）
+const ICON_ORDER := "res://assets/art/ui/icons/order.svg"       ## 新订单（Toast）
+
+## 生成 RichTextLabel 内联图标 BBCode：[img width=h height=h]path[/img]（默认 22px 匹配正文）
+static func icon(icon_path: String, size: int = 22) -> String:
+	return "[img width=%d height=%d]%s[/img]" % [size, size, icon_path]
+
 ## 加载的字体（缓存；null = 加载失败回退系统字体）
 var font: Font = null
 

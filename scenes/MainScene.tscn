@@ -85,37 +85,49 @@ theme_override_constants/margin_bottom = 8
 [node name="VBox" type="VBoxContainer" parent="RevenueHUD/Panel/Margin"]
 theme_override_constants/separation = 4
 
-[node name="DayTimeLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
-theme_override_colors/font_color = Color(0.95, 0.76, 0.31, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+[node name="DayTimeLabel" type="RichTextLabel" parent="RevenueHUD/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.95, 0.76, 0.31, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 24
-text = "🗓️ 第 1 天　⏱️ 营业剩余 90s"
-horizontal_alignment = 2
+theme_override_font_sizes/normal_font_size = 24
+text = "[img width=22 height=22]res://assets/art/ui/icons/calendar.svg[/img] 第 1 天　[img width=22 height=22]res://assets/art/ui/icons/timer.svg[/img] 营业剩余 90s"
 
-[node name="RevenueLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
-theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+[node name="RevenueLabel" type="RichTextLabel" parent="RevenueHUD/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(1, 0.9, 0.4, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/normal_font_size = 28
 text = "营业额：0"
-horizontal_alignment = 2
 
-[node name="GoodLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
-theme_override_colors/font_color = Color(0.6, 0.95, 0.65, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+[node name="GoodLabel" type="RichTextLabel" parent="RevenueHUD/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.6, 0.95, 0.65, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/normal_font_size = 20
 text = "好评：0"
-horizontal_alignment = 2
 
-[node name="BadLabel" type="Label" parent="RevenueHUD/Panel/Margin/VBox"]
-theme_override_colors/font_color = Color(1, 0.6, 0.6, 1)
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+[node name="BadLabel" type="RichTextLabel" parent="RevenueHUD/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(1, 0.6, 0.6, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/normal_font_size = 20
 text = "差评：0"
-horizontal_alignment = 2
 
 [node name="OrderBoard" type="CanvasLayer" parent="."]
 script = ExtResource("9_board")

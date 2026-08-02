@@ -13,12 +13,12 @@ extends CanvasLayer
 var _overlay: ColorRect = null
 var _panel: PanelContainer = null
 var _title_label: Label = null
-var _revenue_label: Label = null
+var _revenue_label: Control = null
 var _cost_labels: Dictionary = {}   # key -> Label（食材/耗材/水电/房租）
 var _cost_total_label: Label = null
 var _profit_label: Label = null
 var _review_label: Label = null
-var _money_label: Label = null
+var _money_label: Control = null
 var _next_day_button: Button = null
 
 # ==================== 生命周期 ====================
@@ -83,7 +83,7 @@ func _build_panel() -> void:
 	var divider := HSeparator.new()
 	vbox.add_child(divider)
 
-	_revenue_label = _make_label("总收入：0", 24, UITheme.COLOR_GOLD)
+	_revenue_label = _make_label("总收入：0", 24, UITheme.COLOR_GOLD, true)
 	_revenue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_revenue_label)
 
@@ -112,7 +112,7 @@ func _build_panel() -> void:
 	_review_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_review_label)
 
-	_money_label = _make_label("现有资金：0", 22, UITheme.COLOR_GOLD)
+	_money_label = _make_label("现有资金：0", 22, UITheme.COLOR_GOLD, true)
 	_money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_money_label)
 
@@ -143,7 +143,7 @@ func show_result(result: Dictionary) -> void:
 		push_warning("DayResultPanel: 结算结果为空，不显示")
 		return
 	_title_label.text = "第 %d 天 结算" % result.get("day", 0)
-	_revenue_label.text = "💰 总收入：%d" % result.get("revenue", 0)
+	_revenue_label.text = "%s 总收入：%d" % [UITheme.icon(UITheme.ICON_COIN), result.get("revenue", 0)]
 	for key in _cost_labels:
 		_cost_labels[key].text = "%s：%d" % [_cost_labels[key].text.split("：")[0], result.get(key, 0)]
 	_cost_total_label.text = "成本合计：%d" % result.get("cost_total", 0)
@@ -153,7 +153,7 @@ func show_result(result: Dictionary) -> void:
 	_profit_label.add_theme_color_override("font_color", UITheme.COLOR_GREEN if profit >= 0 else UITheme.COLOR_RED)
 
 	_review_label.text = "好评 %d ｜ 差评 %d" % [result.get("good_reviews", 0), result.get("bad_reviews", 0)]
-	_money_label.text = "💰 现有资金：%d" % result.get("money", 0)
+	_money_label.text = "%s 现有资金：%d" % [UITheme.icon(UITheme.ICON_COIN), result.get("money", 0)]
 	_overlay.visible = true
 
 	# #30：弹出动画（编辑器进程直接显示，保证冒烟断言确定性）
@@ -186,7 +186,19 @@ func hide_panel() -> void:
 
 # ==================== 样式辅助 ====================
 
-func _make_label(text: String, font_size: int, color: Color) -> Label:
+## 生成文本标签；rich=true 时返回 RichTextLabel（支持 [img] 内联图标，#32 第②步）
+func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:
+	if rich:
+		var rl := RichTextLabel.new()
+		rl.bbcode_enabled = true
+		rl.fit_content = true
+		rl.text = text
+		rl.add_theme_font_size_override("normal_font_size", font_size)
+		rl.add_theme_color_override("default_color", color)
+		rl.add_theme_color_override("outline_color", Color(0, 0, 0, 0.9))
+		rl.add_theme_constant_override("outline_size", 5)
+		rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return rl
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", font_size)

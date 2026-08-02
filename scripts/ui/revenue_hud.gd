@@ -9,10 +9,10 @@
 extends CanvasLayer
 
 @onready var panel: PanelContainer = $Panel
-@onready var day_time_label: Label = $Panel/Margin/VBox/DayTimeLabel
-@onready var revenue_label: Label = $Panel/Margin/VBox/RevenueLabel
-@onready var good_label: Label = $Panel/Margin/VBox/GoodLabel
-@onready var bad_label: Label = $Panel/Margin/VBox/BadLabel
+@onready var day_time_label: RichTextLabel = $Panel/Margin/VBox/DayTimeLabel
+@onready var revenue_label: RichTextLabel = $Panel/Margin/VBox/RevenueLabel
+@onready var good_label: RichTextLabel = $Panel/Margin/VBox/GoodLabel
+@onready var bad_label: RichTextLabel = $Panel/Margin/VBox/BadLabel
 
 ## 已显示的营业额（数字滚动动画起点）
 var _displayed_revenue := -1
@@ -38,8 +38,8 @@ func _ready() -> void:
 ## 当日统计变化 → 营业额数字滚动 + 评分刷新
 func _on_day_stats_changed() -> void:
 	_animate_revenue(GameStateManager.day_revenue)
-	good_label.text = "👍 好评 %d" % GameStateManager.day_good_reviews
-	bad_label.text = "👎 差评 %d" % GameStateManager.day_bad_reviews
+	good_label.text = "%s 好评 %d" % [UITheme.icon(UITheme.ICON_GOOD), GameStateManager.day_good_reviews]
+	bad_label.text = "%s 差评 %d" % [UITheme.icon(UITheme.ICON_BAD), GameStateManager.day_bad_reviews]
 
 ## 营业倒计时更新 → 刷新天数行（最后 10s 红色脉冲警示；打烊后显示"已打烊"）
 func _on_time_changed(time_left: float) -> void:
@@ -47,12 +47,12 @@ func _on_time_changed(time_left: float) -> void:
 	var urgent := false
 	if GameStateManager.is_shop_open:
 		var left := int(ceil(time_left))
-		text = "🗓️ 第 %d 天　⏱️ 营业剩余 %ds" % [GameStateManager.day, left]
+		text = "%s 第 %d 天　%s 营业剩余 %ds" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day, UITheme.icon(UITheme.ICON_TIMER), left]
 		urgent = left <= 10
 	else:
-		text = "🗓️ 第 %d 天　🛑 已打烊" % GameStateManager.day
+		text = "%s 第 %d 天　%s 已打烊" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day, UITheme.icon(UITheme.ICON_CLOSED)]
 	day_time_label.text = text
-	day_time_label.add_theme_color_override("font_color", UITheme.COLOR_RED if urgent else UITheme.COLOR_GOLD)
+	day_time_label.add_theme_color_override("default_color", UITheme.COLOR_RED if urgent else UITheme.COLOR_GOLD)
 	_update_pulse(urgent)
 
 ## 进入下一天 → 刷新整面板（倒计时已在 time_changed 刷新）
@@ -68,13 +68,13 @@ func _update_all() -> void:
 func _animate_revenue(target: int) -> void:
 	if Engine.is_editor_hint():
 		_displayed_revenue = target
-		revenue_label.text = "💰 营业额 %d" % target
+		revenue_label.text = "%s 营业额 %d" % [UITheme.icon(UITheme.ICON_COIN), target]
 		return
 	if _displayed_revenue < 0:
 		_displayed_revenue = target
 	if _revenue_tween != null and _revenue_tween.is_valid():
 		_revenue_tween.kill()
-	revenue_label.text = "💰 营业额 %d" % _displayed_revenue
+	revenue_label.text = "%s 营业额 %d" % [UITheme.icon(UITheme.ICON_COIN), _displayed_revenue]
 	if _displayed_revenue == target:
 		return
 	_revenue_tween = create_tween()
@@ -82,7 +82,7 @@ func _animate_revenue(target: int) -> void:
 	_displayed_revenue = target
 
 func _set_revenue_text(value: float) -> void:
-	revenue_label.text = "💰 营业额 %d" % int(round(value))
+	revenue_label.text = "%s 营业额 %d" % [UITheme.icon(UITheme.ICON_COIN), int(round(value))]
 
 ## 倒计时脉冲：最后 10s 缩放 1.0↔1.08 循环；非紧急/打烊停止并复位
 func _update_pulse(urgent: bool) -> void:

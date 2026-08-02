@@ -173,7 +173,8 @@ func _run() -> void:
 	toast.call("show_toast", "交付成功  +20", Color(0.45, 1, 0.55))
 	_check(toast.get("_toasts").size() == 1, "Toast 显示交付反馈")
 	scene.get_node("RevenueHUD").call("_update_all")
-	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text == "💰 营业额 20", "经营面板营业额更新（图标化）")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text.contains("营业额 20"), "经营面板营业额更新（图标化）")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text.contains("coin.svg"), "经营面板用 SVG 图标内联（#32 图标集）")
 
 	# 补位：c2 前移到柜台（已有订单，无需重建）
 	await get_tree().create_timer(2.0).timeout
@@ -246,9 +247,11 @@ func _run() -> void:
 	_check(gsm.is_shop_open, "当前营业中")
 	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时初始为满")
 
-	# HUD 天数行（DayTimeLabel）显示天数 + 营业倒计时
+	# HUD 天数行（DayTimeLabel）显示天数 + 营业倒计时（RichTextLabel bbcode，含 SVG 图标）
 	scene.get_node("RevenueHUD").call("_update_all")
-	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text == "🗓️ 第 1 天　⏱️ 营业剩余 90s", "HUD 显示天数与营业倒计时（图标化）")
+	var day_time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text
+	_check(day_time_text.contains("第 1 天") and day_time_text.contains("营业剩余 90s"), "HUD 显示天数与营业倒计时（图标化）")
+	_check(day_time_text.contains("calendar.svg") and day_time_text.contains("timer.svg"), "天数/倒计时行用 SVG 图标（#32 图标集）")
 
 	# 倒计时推进（未到点不触发打烊）
 	gsm.tick_business_time(10.0)
@@ -273,10 +276,10 @@ func _run() -> void:
 	day_result_panel.call("show_result", settlement)
 	_check(day_result_panel.get("_overlay").visible, "结算面板弹出")
 	_check(day_result_panel.get("_title_label").text == "第 1 天 结算", "结算面板标题含天数")
-	_check(day_result_panel.get("_revenue_label").text == "💰 总收入：60", "结算面板收入正确")
+	_check(day_result_panel.get("_revenue_label").text.contains("总收入：60"), "结算面板收入正确（图标化）")
 	_check(day_result_panel.get("_cost_total_label").text == "成本合计：57", "结算面板成本合计正确")
 	_check(day_result_panel.get("_profit_label").text == "今日利润：3", "结算面板利润正确")
-	_check(day_result_panel.get("_money_label").text == "💰 现有资金：3", "结算面板累计金币正确")
+	_check(day_result_panel.get("_money_label").text.contains("现有资金：3"), "结算面板累计金币正确（图标化）")
 
 	# 进入下一天：天数 +1、当日清零、累计保留、场景清场重建
 	gsm.start_next_day()
