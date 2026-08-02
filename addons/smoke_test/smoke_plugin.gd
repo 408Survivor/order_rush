@@ -247,11 +247,12 @@ func _run() -> void:
 	_check(gsm.is_shop_open, "当前营业中")
 	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时初始为满")
 
-	# HUD 天数行（DayTimeLabel）显示天数 + 营业倒计时（RichTextLabel bbcode，含 SVG 图标）
+	# HUD 拆行（#32 第③步）：DayTimeLabel 天数行 + TimeLabel 倒计时行
 	scene.get_node("RevenueHUD").call("_update_all")
-	var day_time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text
-	_check(day_time_text.contains("第 1 天") and day_time_text.contains("营业剩余 90s"), "HUD 显示天数与营业倒计时（图标化）")
-	_check(day_time_text.contains("calendar.svg") and day_time_text.contains("timer.svg"), "天数/倒计时行用 SVG 图标（#32 图标集）")
+	var day_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text
+	var time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/TimeLabel").text
+	_check(day_text.contains("第 1 天") and day_text.contains("calendar.svg"), "HUD 天数行（图标化）")
+	_check(time_text.contains("营业剩余 90s") and time_text.contains("timer.svg"), "HUD 倒计时行（图标化）")
 
 	# 倒计时推进（未到点不触发打烊）
 	gsm.tick_business_time(10.0)

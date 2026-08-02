@@ -1,0 +1,27 @@
+# 012 面板纹理（issue #32 第③步）
+日期: 2026-08-02
+平台: 即梦 5.0 Lite（AI 生成通道，待开发者手动执行）
+状态: SVG 程序化版已落地可用（assets/art/ui/panels/），本批次为可选 AI 升级
+
+## 用途
+面板九宫格纹理（StyleBoxTexture），替换纯色 StyleBoxFlat——给 UI 面板"材质感"。
+
+## 需要生成的 2 张纹理（对应 SVG 文件名）
+1. panel_bg.svg   —— 暖深棕底（#2B1F14 @90%）+ 金边（#F2C14E）+ 顶部高光，圆角 16
+2. panel_dark.svg —— 深咖啡底（#1C120A @92%）+ 金边 + 顶部高光，圆角 16（结算面板用）
+
+## 统一风格（务必一致）
+- 半透明暖深棕/深咖啡底 + 暖金圆角边框（3px）+ 顶部高光弧线
+- 中心区域纯色（九宫格拉伸安全区），装饰只放在四角/四边
+- 圆角半径 16（与代码 PANEL_TEX_MARGIN=18 匹配：圆角 16 + 金边 3 - 1）
+- 建议尺寸 256x256 PNG 或更高（显示时 9-slice 拉伸，越清晰越好）
+
+## 有效提示词结构（AI 升级时）
+`Game UI panel, rounded corner wooden texture, [暖深棕/深咖啡] base with subtle wood grain, thin warm gold border, soft top highlight, flat design, no text, centered empty area, 9-slice friendly, overhead game asset`
+
+注意：AI 生成的木纹如果是满铺纹理，需保证中心区域可拉伸（木纹方向统一，否则 9-slice 拉伸会变形）——这是用程序化纯色底替代 AI 的主要原因。
+
+## 规格
+- 导入路径 assets/art/ui/panels/（替换同名 .svg 或新增 .png）
+- Filter: Nearest（与项目素材一致）
+- 代码引用：UITheme.make_panel_texture_style()（普通/结算 两档，dark 参数切换）

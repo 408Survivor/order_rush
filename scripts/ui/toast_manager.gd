@@ -114,10 +114,6 @@ func _destroy_toast(entry: Dictionary) -> void:
 		entry["bg"].queue_free()
 	_toasts.erase(entry)
 
-## 统一 Toast 样式：暖深棕半透明 + 圆角（#32 暖色板）
-func _toast_stylebox() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.15, 0.11, 0.07, 0.82)
-	sb.set_corner_radius_all(8)
-	sb.set_content_margin_all(10)
-	return sb
+## 统一 Toast 样式：纹理面板（#32 第③步 九宫格金边圆角）
+func _toast_stylebox() -> StyleBoxTexture:
+	return UITheme.make_panel_texture_style()

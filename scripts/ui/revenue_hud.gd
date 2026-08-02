@@ -10,6 +10,7 @@ extends CanvasLayer
 
 @onready var panel: PanelContainer = $Panel
 @onready var day_time_label: RichTextLabel = $Panel/Margin/VBox/DayTimeLabel
+@onready var time_label: RichTextLabel = $Panel/Margin/VBox/TimeLabel
 @onready var revenue_label: RichTextLabel = $Panel/Margin/VBox/RevenueLabel
 @onready var good_label: RichTextLabel = $Panel/Margin/VBox/GoodLabel
 @onready var bad_label: RichTextLabel = $Panel/Margin/VBox/BadLabel
@@ -21,8 +22,8 @@ var _revenue_tween: Tween = null
 var _pulse_tween: Tween = null
 
 func _ready() -> void:
-	# #30：统一面板样式（代码覆盖 tscn 占位 stylebox；@tool 下同样生效，纯视觉无副作用）
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(12))
+	# #30/#32：纹理面板样式（九宫格金边圆角；代码覆盖 tscn 占位 stylebox；@tool 下同样生效，纯视觉无副作用）
+	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
 	# @tool：编辑器进程不连接信号/刷新（冒烟测试手动 _update_all 断言），与 toast/order_board 拦截模式一致
 	if Engine.is_editor_hint():
 		return
@@ -41,18 +42,17 @@ func _on_day_stats_changed() -> void:
 	good_label.text = "%s 好评 %d" % [UITheme.icon(UITheme.ICON_GOOD), GameStateManager.day_good_reviews]
 	bad_label.text = "%s 差评 %d" % [UITheme.icon(UITheme.ICON_BAD), GameStateManager.day_bad_reviews]
 
-## 营业倒计时更新 → 刷新天数行（最后 10s 红色脉冲警示；打烊后显示"已打烊"）
+## 营业倒计时更新 → 天数与倒计时分两行显示（#32 第③步 版式拆行）；最后 10s 红色脉冲警示；打烊后显示"已打烊"
 func _on_time_changed(time_left: float) -> void:
-	var text: String
 	var urgent := false
+	day_time_label.text = "%s 第 %d 天" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day]
 	if GameStateManager.is_shop_open:
 		var left := int(ceil(time_left))
-		text = "%s 第 %d 天　%s 营业剩余 %ds" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day, UITheme.icon(UITheme.ICON_TIMER), left]
+		time_label.text = "%s 营业剩余 %ds" % [UITheme.icon(UITheme.ICON_TIMER), left]
 		urgent = left <= 10
 	else:
-		text = "%s 第 %d 天　%s 已打烊" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day, UITheme.icon(UITheme.ICON_CLOSED)]
-	day_time_label.text = text
-	day_time_label.add_theme_color_override("default_color", UITheme.COLOR_RED if urgent else UITheme.COLOR_GOLD)
+		time_label.text = "%s 已打烊" % UITheme.icon(UITheme.ICON_CLOSED)
+	time_label.add_theme_color_override("default_color", UITheme.COLOR_RED if urgent else UITheme.COLOR_GOLD)
 	_update_pulse(urgent)
 
 ## 进入下一天 → 刷新整面板（倒计时已在 time_changed 刷新）
@@ -84,18 +84,18 @@ func _animate_revenue(target: int) -> void:
 func _set_revenue_text(value: float) -> void:
 	revenue_label.text = "%s 营业额 %d" % [UITheme.icon(UITheme.ICON_COIN), int(round(value))]
 
-## 倒计时脉冲：最后 10s 缩放 1.0↔1.08 循环；非紧急/打烊停止并复位
+## 倒计时脉冲：最后 10s 缩放 1.0↔1.08 循环（作用于 TimeLabel）；非紧急/打烊停止并复位
 func _update_pulse(urgent: bool) -> void:
 	if Engine.is_editor_hint():
 		return
 	if urgent and (_pulse_tween == null or not _pulse_tween.is_valid()):
 		# 每次用当前 size 设 pivot（首帧布局后 size 才稳定）
-		day_time_label.pivot_offset = day_time_label.size / 2.0
+		time_label.pivot_offset = time_label.size / 2.0
 		_pulse_tween = create_tween().set_loops()
-		_pulse_tween.tween_property(day_time_label, "scale", Vector2(1.08, 1.08), 0.45)
-		_pulse_tween.tween_property(day_time_label, "scale", Vector2.ONE, 0.45)
+		_pulse_tween.tween_property(time_label, "scale", Vector2(1.08, 1.08), 0.45)
+		_pulse_tween.tween_property(time_label, "scale", Vector2.ONE, 0.45)
 	elif not urgent:
 		if _pulse_tween != null and _pulse_tween.is_valid():
 			_pulse_tween.kill()
 			_pulse_tween = null
-		day_time_label.scale = Vector2.ONE
+		time_label.scale = Vector2.ONE

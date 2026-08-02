@@ -67,13 +67,35 @@ func _load_font() -> void:
 
 # ==================== 便捷样式 ====================
 
-## 统一面板样式（半透明深色 + 圆角 + 暖金描边）
+## 统一面板样式（半透明深色 + 圆角 + 暖金描边；#32 第③步起主面板改用 make_panel_texture_style 纹理版，
+## 本函数保留给需要自定义颜色/小元素（如交互气泡）的场景）
 static func make_panel_style(corner_radius: int = 10, bg: Color = COLOR_PANEL, border: Color = COLOR_BORDER) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.set_corner_radius_all(corner_radius)
 	sb.set_border_width_all(2)
 	sb.border_color = border
+	return sb
+
+# ==================== 面板纹理（#32 第③步：StyleBoxTexture 九宫格） ====================
+const PANEL_TEX_PATH := "res://assets/art/ui/panels/panel_bg.svg"       ## 暖深棕金边圆角
+const PANEL_DARK_TEX_PATH := "res://assets/art/ui/panels/panel_dark.svg" ## 深咖啡金边圆角（结算等强调面板）
+const PANEL_TEX_MARGIN := 18  ## 九宫格 patch 边距 = 圆角 16 + 金边 3
+
+## 纹理面板样式（九宫格拉伸，角/边不变形）；dark=true 用深咖啡底
+static func make_panel_texture_style(dark: bool = false) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	var tex: Texture2D = load(PANEL_DARK_TEX_PATH if dark else PANEL_TEX_PATH)
+	if tex != null:
+		sb.texture = tex
+	sb.texture_margin_left = PANEL_TEX_MARGIN
+	sb.texture_margin_right = PANEL_TEX_MARGIN
+	sb.texture_margin_top = PANEL_TEX_MARGIN
+	sb.texture_margin_bottom = PANEL_TEX_MARGIN
+	sb.content_margin_left = 10
+	sb.content_margin_right = 10
+	sb.content_margin_top = 8
+	sb.content_margin_bottom = 8
 	return sb
 
 ## 金色按钮样式（normal/hover/pressed 三态）

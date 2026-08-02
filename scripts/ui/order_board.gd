@@ -97,7 +97,7 @@ func _update_card(order: Dictionary) -> void:
 ## 创建一张卡片（PanelContainer > Margin > VBox: 菜名 + HBox(进度条 + 秒)）
 func _create_card(order_id: int) -> Dictionary:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(10, UITheme.COLOR_PANEL, Color(0.9, 0.85, 0.6, 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
 	panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
 
 	var margin := MarginContainer.new()
