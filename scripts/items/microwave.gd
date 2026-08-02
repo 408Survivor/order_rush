@@ -164,15 +164,15 @@ func _on_heat_timer_timeout() -> void:
 
 # ==================== 视觉辅助 ====================
 
-## 指示灯：IDLE 绿 / HEATING 黄 / DONE 红
+## 指示灯：IDLE 绿 / HEATING 黄 / DONE 红（#32 统一引用 UITheme 功能色，与耐心三色一致）
 func _update_indicator() -> void:
 	match current_state:
 		MicrowaveState.HEATING:
-			indicator.color = Color(0.95, 0.76, 0.20)  # 黄
+			indicator.color = UITheme.COLOR_YELLOW
 		MicrowaveState.DONE:
-			indicator.color = Color(0.90, 0.22, 0.21)  # 红
+			indicator.color = UITheme.COLOR_RED
 		_:
-			indicator.color = Color(0.30, 0.69, 0.31)  # 绿
+			indicator.color = UITheme.COLOR_GREEN
 
 ## 进度条填充宽度（0.0-1.0）；#30 按状态着色（加热中黄 / 完成红 / 空闲绿）
 func _update_progress(ratio: float) -> void:

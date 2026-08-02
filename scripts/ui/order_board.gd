@@ -182,10 +182,10 @@ func _remove_card(order_id: int) -> void:
 
 # ==================== 样式 ====================
 
-## 进度条轨道样式（深色圆角）
+## 进度条轨道样式（暖深棕圆角）
 func _bar_bg_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.12, 0.14, 0.18, 0.9)
+	sb.bg_color = Color(0.13, 0.10, 0.07, 0.9)
 	sb.set_corner_radius_all(7)
 	return sb
 

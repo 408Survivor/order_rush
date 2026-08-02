@@ -9,18 +9,20 @@
 extends Node
 
 # ==================== 调色板（统一 UI 配色，各脚本引用此常量） ====================
-const COLOR_BG := Color("#10141C")                    ## 深色背景
-const COLOR_PANEL := Color(0.08, 0.10, 0.14, 0.88)    ## 面板底色（半透明深蓝灰）
-const COLOR_PANEL_LIGHT := Color(0.13, 0.16, 0.22, 0.92) ## 亮面板/悬停态
+## #32：暖木 × 奶油 × 金 色系——与俯视角暖色插画世界（地板 225/227/228、玩家 215/192/175）同色温，
+##       取代旧深蓝灰冷调（深冷 UI vs 暖亮世界的割裂感来源）
+const COLOR_BG := Color("#1C120A")                    ## 深咖啡黑（结算面板底/遮罩氛围）
+const COLOR_PANEL := Color(0.17, 0.12, 0.08, 0.90)    ## 面板底色（半透明暖深棕，木纹影调）
+const COLOR_PANEL_LIGHT := Color(0.25, 0.18, 0.12, 0.92) ## 亮面板/悬停态
 const COLOR_GOLD := Color("#F2C14E")                   ## 强调金（标题/金币/边框）
 const COLOR_GOLD_DARK := Color("#C8921F")              ## 按钮底金
 const COLOR_GOLD_DARKER := Color("#8F6510")            ## 按钮按下底金
 const COLOR_GREEN := Color("#5ED67A")                  ## 成功
 const COLOR_YELLOW := Color("#F0B429")                 ## 警告
 const COLOR_RED := Color("#F05A4E")                    ## 危险
-const COLOR_BLUE := Color("#6FB8F0")                   ## 信息
-const COLOR_TEXT := Color("#F5F0E6")                   ## 主文本（暖白）
-const COLOR_TEXT_DIM := Color(0.96, 0.94, 0.90, 0.55)  ## 弱文本
+const COLOR_BLUE := Color("#8FB4E0")                   ## 信息（柔化，减少冷色冲突）
+const COLOR_TEXT := Color("#F8F1E3")                   ## 主文本（奶油白）
+const COLOR_TEXT_DIM := Color(0.97, 0.94, 0.89, 0.55)  ## 弱文本
 const COLOR_BORDER := Color(0.95, 0.85, 0.60, 0.35)    ## 面板描边（暖金）
 
 # ==================== 字体 ====================

@@ -107,7 +107,7 @@ func _build_zones() -> void:
 		label.position = rect.position + Vector2(12, 8)
 		label.z_index = -4
 		label.add_theme_color_override("font_color", color.lightened(0.55))
-		label.add_theme_color_override("font_outline_color", Color(0.1, 0.15, 0.2, 0.6))
+		label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 0.6))
 		label.add_theme_constant_override("outline_size", 4)
 		label.add_theme_font_size_override("font_size", 22)
 		label.text = label_text
