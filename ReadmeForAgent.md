@@ -74,9 +74,14 @@
 | 玩家厨师（俯视角） | `player_chef_idle.png` | ✅ 透明背景 | `assets/art/characters/` |
 | 顾客（俯视角） | `customer_office_waiting.png` | ✅ 透明背景 | `assets/art/characters/` |
 | 微波炉 | `microwave_idle.png` | ⚠️ 占位版（issue #1），已去底 | `assets/art/items/` |
-| 料理包 | `meal_kungpao.png` | ✅ 透明背景 | `assets/art/items/` |
-| 成品菜 | `dish_kungpao_plated.png` | ✅ 透明背景（GrabCut 去底） | `assets/art/items/` |
+| 料理包 | `meal_kungpao.png` | ✅ 透明背景（P7 多菜品用色调占位区分） | `assets/art/items/` |
+| 成品菜 | `dish_kungpao_plated.png` | ✅ 透明背景（GrabCut 去底；P7 同上占位） | `assets/art/items/` |
 | 地板 Tile | `floor_tile.png` | ✅ 满铺贴图不处理 | `assets/art/environment/` |
+| **UI 图标 ×10（彩色贴纸风）** | `plate/coin/calendar/timer/closed/good/bad/check/cross/order.svg` | ✅ SVG 手绘（#42 浅色主题重画；AI 通道存档 011） | `assets/art/ui/icons/` |
+| **UI 面板纹理 ×2（浅色）** | `panel_bg.svg`（奶油白）/ `panel_dark.svg`（奶黄金边） | ✅ SVG 手绘（#42 重画；AI 通道存档 012） | `assets/art/ui/panels/` |
+| 中文字体 | `ZCOOLKuaiLe-Regular.ttf` | ✅ 站酷快乐体（SIL OFL） | `assets/fonts/` |
+
+**视觉占位待替换**：骑手（复用顾客素材+蓝色调）、多菜品料理包/成品菜（色调区分）、微波炉（issue #1）
 
 **AI 生成工具**：即梦 5.0 Lite（已锁定风格）
 **有效提示词结构**：`Overhead view, bird eye view from directly above, [主体描述], [统一风格后缀]`
@@ -126,6 +131,10 @@ archive/generations/001-chef_front_view/
 | ✅ issue #36 P5 设备升级（PR #37） | 新 autoload `upgrade_manager.gd`：三档升级状态 + `UPGRADES` 常量定义 + `buy_upgrade`（扣钱/应用/存档/`upgrades_changed` 信号）+ **JSON 存档 `user://save_p5.json`**（启动加载/购买保存，写失败仅告警）；**升级商店**（`upgrade_shop.gd`）：日结算面板"升级设备"次按钮打开（暂停中可交互），3 项——第二微波炉 80（`MICROWAVE_SLOTS[1]` 实例化）/ 加热加速 50（3.0s→2.2s 即时生效）/ 冰柜扩容 60（料理包 3→5，`_get_meal_names()` 首包名保持 "MealPackage" 兼容）；金币不足置灰/已购防重复；冒烟 159 断言 PASS |
 | 💡 squash 合并链冲突处理 | 分支 B 基于分支 A 开发，A 被 squash 合并后，B 上原 A 的提交与新 main **内容相同但 hash 不同** → gh 报 not mergeable；解决：`git rebase origin/main`（自动 skip 重复提交）→ `git push --force-with-lease` → 等 GitHub 冲突检测刷新（UNKNOWN→CLEAN）→ 再合并 |
 | 📌 经济数值（当前） | 宫保鸡丁 20 / 食材 6 / 耗材 2 / 房租 30 / 水电 1 / 营业 90s；全部常量集中在 `GameStateManager.gd`，可调 |
+| ✅ issue #38 P6 卡牌系统（PR #39） | 新 autoload `card_manager.gd`：**10 张卡** + Modifier 三查接口（`get_value` 累加/`get_multiplier` 连乘/`has_flag` 标记）；**口碑抽卡**（3 选 1，消耗 3 口碑，口碑 = 累计好评）；效果覆盖价格/好评/耐心/ETA/加热/客流/房租/补贴/罚款/利润；抽卡面板（`card_draw.gd`，日结算"口碑抽卡"入口，暂停中可交互）；打烊结算后重置构筑（**先定格结算数据再清卡**——初版顺序导致 cost_rent 断言 FAIL 已修）；冒烟 189 断言 |
+| ✅ issue #40 P7 多菜品+难度（PR #41） | `DISHES` **3 种 L1**（宫保鸡丁 20/鱼香肉丝 22/麻婆豆腐 18）+ 堂食/外卖**随机点菜**（`_dish_override` 测试钩子保既有断言确定性）+ 料理包/成品菜 dish_type 驱动（占位色调）+ **招牌菜**（+20% 基础 + 熟练度 3 次/档 +10% 上限 3 档，`specialty_panel.gd` 选择）+ **7 天难度表**（顾客间隔/耐心/ETA 逐天递减，第 7 天封顶）+ **特殊事件**（设备故障停微波炉 8s/恶劣天气停外卖 15s，`tick_event` 随机触发 + Toast）；L2 炒锅/L3 现做二期；冒烟 206 断言 |
+| ✅ issue #42 浅色主题（PR #43） | **杯杯倒满式风格改造**：色板深暖棕→**奶油白 `#FFF6E5`** + 深咖啡字 `#4A3728`（浅底深字）+ **糖果色点缀**（珊瑚粉/薄荷绿/奶黄/天蓝）+ `COLOR_OUTLINE` 深棕描边；面板纹理重画浅色（强调面板奶黄底金边）；**10 图标金线稿→彩色贴纸风**（彩色填充+深棕描边+奶油白细节）；各面板/按钮/进度条/场景文字浅色适配；冒烟 206 断言 |
+| 🔍 风格调研（杯杯倒满 Feed The Cups） | Steam app 2336220、Vambear Games（台湾 2 人团队）、**Godot 3.6.1**、**2D 正俯视卡通**（非像素）；浅色明亮（奶油白底+高饱和糖果色）、Q 版 2~2.5 头身、贴纸式图标、气泡对话框、0.1-0.2s 弹跳动画、软萌吐槽文案——作为 #42 改造依据 |
 
 **2026-08-01 Session 9（界面优化）**
 
