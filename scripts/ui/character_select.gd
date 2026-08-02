@@ -107,6 +107,7 @@ func _make_card(character_id: String, def: Dictionary) -> Control:
 	btn.add_theme_stylebox_override("pressed", btn_styles["pressed"])
 	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	btn.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
+	UITheme.style_button_feedback(btn)
 	btn.pressed.connect(func() -> void: _on_select(character_id))
 	vbox.add_child(btn)
 
@@ -116,6 +117,8 @@ func _on_select(character_id: String) -> void:
 	if CharacterManager.select_character(character_id):
 		hide_select()
 		get_tree().paused = false
+		# P9：开始营业播放 BGM（文件由 SunoAI 生成后生效，缺失静默）
+		AudioManager.play_bgm("bgm_shop.ogg")
 
 # ==================== 样式辅助 ====================
 

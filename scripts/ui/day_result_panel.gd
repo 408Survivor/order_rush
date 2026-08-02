@@ -133,12 +133,15 @@ func _build_panel() -> void:
 
 	# P5/P6/P7：升级商店 + 抽卡 + 招牌菜入口（次按钮，打烊暂停中打开）
 	var shop_button := _make_secondary_button("升级设备")
+	UITheme.style_button_feedback(shop_button)
 	shop_button.pressed.connect(_on_shop_pressed)
 	vbox.add_child(shop_button)
 	var draw_button := _make_secondary_button("口碑抽卡")
+	UITheme.style_button_feedback(draw_button)
 	draw_button.pressed.connect(_on_draw_pressed)
 	vbox.add_child(draw_button)
 	var specialty_button := _make_secondary_button("选招牌菜")
+	UITheme.style_button_feedback(specialty_button)
 	specialty_button.pressed.connect(_on_specialty_pressed)
 	vbox.add_child(specialty_button)
 
@@ -154,6 +157,7 @@ func _build_panel() -> void:
 	_next_day_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	_next_day_button.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
 	_next_day_button.add_theme_color_override("font_hover_color", Color.WHITE)
+	UITheme.style_button_feedback(_next_day_button)
 	_next_day_button.pressed.connect(_on_next_day_pressed)
 	vbox.add_child(_next_day_button)
 

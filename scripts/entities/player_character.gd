@@ -238,6 +238,7 @@ func _pick_up_item(item: Node2D) -> void:
 		item.collision_mask = 0
 
 	item_picked_up.emit(item)
+	AudioManager.play_sfx("pickup")
 	print_rich("[color=cyan]Picked up: %s[/color]" % item.name)
 
 ## 从手上移除物品（不落回场景，交给设备接管）
@@ -249,6 +250,7 @@ func _drop_from_hand() -> void:
 	if item.get_parent() != null:
 		item.get_parent().remove_child(item)
 	item.scale = Vector2.ONE
+	AudioManager.play_sfx("place")
 
 ## 中途放下：把手持物品放回玩家身前地面，恢复为可拾取（Q 键，issue #22）
 ## 输出: bool（是否成功放下）

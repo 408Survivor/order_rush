@@ -468,6 +468,17 @@ func _run() -> void:
 	# 微波炉即时生效：P5 加热加速(2.2s) × 卡牌(无，已重置) × 快手主厨(0.85) = 1.87
 	_check(absf(microwave.heat_time - (2.2 * 0.85)) < 0.01, "微波炉加热角色技能生效（2.2 → 1.87s）")
 
+	# ===== P9 Polish =====
+	_check(load("res://assets/audio/sfx/deliver.wav") != null, "交付音效文件存在")
+	_check(load("res://assets/audio/sfx/timeout.wav") != null, "超时音效文件存在")
+	_check(load("res://assets/audio/sfx/new_order.wav") != null, "新订单音效文件存在")
+	_check(load("res://assets/audio/sfx/pickup.wav") != null, "拾取音效文件存在")
+	var audio_mgr = scene.get_node_or_null("/root/AudioManager")
+	_check(audio_mgr != null, "AudioManager autoload 可访问")
+	audio_mgr.call("play_sfx", "click")
+	_check(load("res://scripts/systems/particle_fx.gd") != null, "ParticleFX 工具脚本存在")
+	_check(FileAccess.file_exists("res://docs/发布指南.md"), "发布指南文档存在")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

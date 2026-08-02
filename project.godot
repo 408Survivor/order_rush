@@ -28,6 +28,7 @@ UITheme="*res://scripts/autoload/ui_theme.gd"
 UpgradeManager="*res://scripts/autoload/upgrade_manager.gd"
 CardManager="*res://scripts/autoload/card_manager.gd"
 CharacterManager="*res://scripts/autoload/character_manager.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
 
 [display]
 

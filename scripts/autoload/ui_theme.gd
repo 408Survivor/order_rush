@@ -52,6 +52,27 @@ const ICON_ORDER := "res://assets/art/ui/icons/order.svg"       ## 新订单（T
 static func icon(icon_path: String, size: int = 22) -> String:
 	return "[img width=%d height=%d]%s[/img]" % [size, size, icon_path]
 
+# ==================== 交互反馈（P9 Polish） ====================
+
+## 为按钮附加点击音效（编辑器进程/音频缺失静默）
+static func attach_click(button: Button) -> void:
+	button.pressed.connect(func() -> void: AudioManager.play_sfx("click"))
+
+## 为按钮附加按下/释放缩放反馈（短促弹性）
+static func attach_scale_feedback(button: Button) -> void:
+	button.button_down.connect(func() -> void:
+		button.pivot_offset = button.size / 2.0
+		button.scale = Vector2(0.94, 0.94)
+	)
+	button.button_up.connect(func() -> void:
+		button.scale = Vector2.ONE
+	)
+
+## 一键接入：点击音效 + 缩放反馈
+static func style_button_feedback(button: Button) -> void:
+	attach_click(button)
+	attach_scale_feedback(button)
+
 ## 加载的字体（缓存；null = 加载失败回退系统字体）
 var font: Font = null
 

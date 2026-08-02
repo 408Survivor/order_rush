@@ -21,6 +21,7 @@ enum CustomerState {
 
 # ==================== 常量 ====================
 const ARRIVE_DISTANCE := 12.0  ## 到达判定阈值（像素）
+const ParticleFX := preload("res://scripts/systems/particle_fx.gd")  ## P9 粒子工具
 
 # ==================== 导出变量 ====================
 ## 移动速度（像素/秒）
@@ -110,6 +111,8 @@ func receive_dish(dish: Node2D) -> void:
 	if dish.get_parent() != null:
 		dish.get_parent().remove_child(dish)
 	dish.queue_free()
+	# P9：交付成功金币粒子反馈
+	ParticleFX.burst(self, Vector2(0, -60), Color(1.0, 0.78, 0.3), 14, Vector2(0, -350), 200.0, 0.7)
 	print_rich("[color=green]Customer received dish (order #%d)[/color]" % order_id)
 	served.emit(dish)
 

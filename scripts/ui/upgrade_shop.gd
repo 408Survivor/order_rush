@@ -73,6 +73,7 @@ func _build_panel() -> void:
 	back.add_theme_stylebox_override("pressed", btn_styles["pressed"])
 	back.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	back.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
+	UITheme.style_button_feedback(back)
 	back.pressed.connect(_on_back_pressed)
 	vbox.add_child(back)
 
@@ -133,6 +134,7 @@ func _make_upgrade_row(id: String, def: Dictionary) -> Control:
 	buy.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
 	buy.add_theme_color_override("font_disabled_color", UITheme.COLOR_TEXT_DIM)
 	buy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	UITheme.style_button_feedback(buy)
 	buy.pressed.connect(func() -> void: _on_buy_pressed(id))
 	hbox.add_child(buy)
 	return row
