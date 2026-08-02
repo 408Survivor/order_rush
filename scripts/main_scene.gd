@@ -34,6 +34,8 @@ const UPGRADE_SHOP_SCRIPT := preload("res://scripts/ui/upgrade_shop.gd")
 const CARD_DRAW_SCRIPT := preload("res://scripts/ui/card_draw.gd")
 ## 招牌菜面板脚本（P7，动态实例化 CanvasLayer）
 const SPECIALTY_PANEL_SCRIPT := preload("res://scripts/ui/specialty_panel.gd")
+## 角色选择面板脚本（P8，动态实例化 CanvasLayer）
+const CHARACTER_SELECT_SCRIPT := preload("res://scripts/ui/character_select.gd")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -52,6 +54,7 @@ func _ready() -> void:
 	_build_upgrade_shop()
 	_build_card_draw()
 	_build_specialty_panel()
+	_build_character_select()
 	_apply_upgrades()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
@@ -207,6 +210,16 @@ func _build_specialty_panel() -> void:
 		var panel: CanvasLayer = SPECIALTY_PANEL_SCRIPT.new()
 		panel.name = "SpecialtyPanel"
 		add_child(panel)
+
+## 实例化角色选择面板（P8；未选角色时启动弹出，动态生成幂等）
+func _build_character_select() -> void:
+	if not has_node("CharacterSelect"):
+		var select: CanvasLayer = CHARACTER_SELECT_SCRIPT.new()
+		select.name = "CharacterSelect"
+		add_child(select)
+	# 未选角色 → 开店前弹出选择（暂停中；选择后恢复开始营业）
+	if not CharacterManager.has_selected():
+		get_node("CharacterSelect").call("show_select")
 
 # ==================== P5 设备升级应用 ====================
 

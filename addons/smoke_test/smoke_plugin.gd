@@ -27,6 +27,10 @@ func _run() -> void:
 		await get_tree().process_frame
 
 	var scene: Node2D = (load("res://scenes/MainScene.tscn") as PackedScene).instantiate()
+	# P8 测试钩子：预选主厨角色，避免启动角色选择弹窗暂停干扰测试（真实启动由选择面板处理）
+	var character_manager = get_tree().root.get_node_or_null("CharacterManager")
+	if character_manager != null:
+		character_manager.set("current_character", "chef")
 	get_tree().root.add_child(scene)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -447,6 +451,22 @@ func _run() -> void:
 	_check(gsm.create_takeaway_order() == -1, "恶劣天气外卖暂停生成")
 	gsm.tick_event(100.0)
 	_check(gsm.active_event == GameStateManager.SpecialEvent.NONE, "天气事件结束清除")
+
+	# ===== P8 角色系统 =====
+	CharacterManager.save_path = "/tmp/test_save_p8.json"
+	CharacterManager.current_character = ""
+	_check(CharacterManager.CHARACTERS.size() == 2, "角色配置 2 个（主厨/快手主厨）")
+	_check(not CharacterManager.has_selected(), "重置后未选角色")
+
+	_check(CharacterManager.select_character("chef"), "选择主厨成功")
+	_check(CharacterManager.get_heat_multiplier() == 1.0, "主厨无加热加成")
+	_check(not CharacterManager.select_character("invalid"), "非法角色拒绝")
+	_check(not CharacterManager.select_character(""), "空角色拒绝")
+
+	_check(CharacterManager.select_character("fast_chef"), "选择快手主厨")
+	_check(absf(CharacterManager.get_heat_multiplier() - 0.85) < 0.01, "快手主厨加热乘数 ×0.85")
+	# 微波炉即时生效：P5 加热加速(2.2s) × 卡牌(无，已重置) × 快手主厨(0.85) = 1.87
+	_check(absf(microwave.heat_time - (2.2 * 0.85)) < 0.01, "微波炉加热角色技能生效（2.2 → 1.87s）")
 
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"

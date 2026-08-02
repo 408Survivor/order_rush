@@ -27,6 +27,7 @@ LayoutManager="*res://scripts/autoload/layout_manager.gd"
 UITheme="*res://scripts/autoload/ui_theme.gd"
 UpgradeManager="*res://scripts/autoload/upgrade_manager.gd"
 CardManager="*res://scripts/autoload/card_manager.gd"
+CharacterManager="*res://scripts/autoload/character_manager.gd"
 
 [display]
 
@@ -34,6 +35,10 @@ window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/smoke_test/plugin.cfg")
 
 [input]
 
