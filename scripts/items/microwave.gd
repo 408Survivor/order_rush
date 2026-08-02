@@ -125,9 +125,23 @@ func give_item() -> Node2D:
 	print_rich("[color=cyan]Microwave: item removed (%s)[/color]" % item.name)
 	return item
 
+## 打烊清场：清空内部物品（含加热中强制中止）并复位状态（P3 日循环）
+## 副作用: 内部物品销毁、计时停止、状态回 IDLE
+func clear_contents() -> void:
+	heat_timer.stop()
+	if contained_item != null:
+		var item := contained_item
+		contained_item = null
+		if is_instance_valid(item):
+			item.queue_free()
+	current_state = MicrowaveState.IDLE
+	_update_indicator()
+	_update_progress(0.0)
+	print_rich("[color=yellow]Microwave: contents cleared (打烊清场)[/color]")
+
 # ==================== 加热逻辑 ====================
 
-## 加热完成：料理包替换为成品菜，状态置 DONE
+## 加热完成：料理包替换为成品菜，状态置 DONE，并计入一次水电成本（P3 经济）
 func _on_heat_timer_timeout() -> void:
 	if current_state != MicrowaveState.HEATING:
 		return
@@ -143,6 +157,8 @@ func _on_heat_timer_timeout() -> void:
 	current_state = MicrowaveState.DONE
 	_update_indicator()
 	_update_progress(1.0)
+	# P3：每次加热完成计入一次水电成本（GameStateManager 为 autoload，编辑器进程可安全调用）
+	GameStateManager.record_heat()
 	heating_finished.emit()
 	print_rich("[color=green]Microwave: heating finished![/color]")
 

@@ -265,6 +265,20 @@ func _update_sprite_direction() -> void:
 	elif facing_direction.x > 0:
 		sprite.flip_h = false
 
+## 销毁手持物品（打烊清场用：跨天物品不保留，P3 日循环）
+## 输出: bool（是否销毁了物品）
+## 副作用: held_item 置空并 queue_free，不触发放下/放置逻辑
+func discard_held_item() -> bool:
+	if held_item == null:
+		return false
+	var item := held_item
+	held_item = null
+	if item.get_parent() != null:
+		item.get_parent().remove_child(item)
+	item.queue_free()
+	print_rich("[color=yellow]Held item discarded: %s[/color]" % item.name)
+	return true
+
 # ==================== 交互提示 ====================
 
 ## 根据当前目标与手持状态刷新底部提示文案

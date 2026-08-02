@@ -228,6 +228,71 @@ func _run() -> void:
 	_check(manager.call("get_queue_count") == 0, "超时顾客离店，队列清空")
 	_check(c4.get("order_id") == -1 and c5.get("order_id") == -1 and c6.get("order_id") == -1, "超时顾客订单已解绑")
 
+	# ===== 7. P3 经济系统：收入/成本/日结算/日循环（issue #28） =====
+	# 前序数据：3 单交付（revenue=60、加热 3 次）+ 3 单超时差评 → 当日收入 60、食材 18、耗材 6、水电 3、房租 30
+	var day_result_panel = scene.get_node("DayResultPanel")
+	_check(day_result_panel != null, "DayResultPanel 存在")
+	_check(gsm.day == 1, "初始为第 1 天")
+	_check(gsm.day_revenue == 60, "当日收入 = 3 单 × 20 = 60")
+	_check(gsm.day_cost_ingredients == 18, "食材成本 = 3 单 × 6 = 18")
+	_check(gsm.day_cost_consumables == 6, "耗材成本 = 3 单 × 2 = 6")
+	_check(gsm.day_cost_utilities == 3, "水电成本 = 3 次加热 × 1 = 3")
+	_check(gsm.get_day_total_cost() == 57, "当日总成本 = 18+6+3+30 = 57")
+	_check(gsm.day_good_reviews == 3 and gsm.day_bad_reviews == 3, "当日好评 3 / 差评 3")
+	_check(gsm.get_dish_price() == 20, "每单收入 = 菜品基础价 20")
+	_check(gsm.is_shop_open, "当前营业中")
+	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时初始为满")
+
+	# HUD 天数行（DayTimeLabel）显示天数 + 营业倒计时
+	scene.get_node("RevenueHUD").call("_update_all")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text == "第 1 天 ｜ 营业剩余 90s", "HUD 显示天数与营业倒计时")
+
+	# 倒计时推进（未到点不触发打烊）
+	gsm.tick_business_time(10.0)
+	_check(absf(gsm.business_time_left - (gsm.BUSINESS_TIME_PER_DAY - 10.0)) < 0.01, "营业倒计时随 tick 递减")
+	_check(gsm.is_shop_open, "未到点仍营业")
+
+	# 倒计时耗尽 → 自动打烊：停止营业、作废订单、结算利润
+	# 打烊前造一笔未完成订单（P2 超时段已把订单清空），真实覆盖“打烊作废订单”分支
+	gsm.create_order(999, "kungpao")
+	_check(gsm.get_active_order_count() == 1, "打烊前存在未完成订单")
+	var closed: bool = gsm.tick_business_time(99999.0)
+	_check(closed, "倒计时耗尽触发打烊")
+	_check(not gsm.is_shop_open, "打烊后停止营业")
+	_check(gsm.get_active_order_count() == 0, "打烊作废全部未完成订单")
+	_check(gsm.get_day_profit() == 3, "当日利润 = 收入60 − 成本57 = 3")
+	_check(gsm.money == 3, "利润并入累计金币（3）")
+	_check(gsm.close_shop().is_empty(), "重复打烊被拒绝（防御）")
+
+	# 结算面板展示
+	var settlement: Dictionary = gsm.last_settlement
+	_check(not settlement.is_empty() and settlement["day"] == 1, "结算结果已生成（含天数）")
+	day_result_panel.call("show_result", settlement)
+	_check(day_result_panel.get("_overlay").visible, "结算面板弹出")
+	_check(day_result_panel.get("_title_label").text == "第 1 天 结算", "结算面板标题含天数")
+	_check(day_result_panel.get("_revenue_label").text == "总收入：60", "结算面板收入正确")
+	_check(day_result_panel.get("_cost_total_label").text == "成本合计：57", "结算面板成本合计正确")
+	_check(day_result_panel.get("_profit_label").text == "今日利润：3", "结算面板利润正确")
+	_check(day_result_panel.get("_money_label").text == "现有资金：3", "结算面板累计金币正确")
+
+	# 进入下一天：天数 +1、当日清零、累计保留、场景清场重建
+	gsm.start_next_day()
+	_check(gsm.day == 2, "天数 +1 → 第 2 天")
+	_check(gsm.is_shop_open, "新一天恢复营业")
+	_check(gsm.day_revenue == 0 and gsm.day_cost_ingredients == 0 \
+		and gsm.day_cost_consumables == 0 and gsm.day_cost_utilities == 0, "当日收入/成本清零")
+	_check(gsm.day_good_reviews == 0 and gsm.day_bad_reviews == 0, "当日评分清零")
+	_check(gsm.money == 3, "累计金币跨天保留")
+	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时重置")
+	_check(gsm.revenue == 60 and gsm.good_reviews == 3 and gsm.bad_reviews == 3, "累计营业额/评分跨天保留")
+
+	# 场景清场（main_scene 监听 day_started）：顾客清空、料理包重建、玩家复位
+	_check(manager.call("get_queue_count") == 0, "新一天顾客队列清空")
+	_check(scene.get_node_or_null("Items/MealPackage") != null \
+		and scene.get_node_or_null("Items/MealPackage2") != null \
+		and scene.get_node_or_null("Items/MealPackage3") != null, "被消费的料理包已重建（3 个）")
+	_check(player.global_position == layout.SPAWN_POINT, "玩家复位出生点")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

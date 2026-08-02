@@ -1,8 +1,9 @@
 ## 文件: scripts/autoload/GameStateManager.gd
-## 职责: 全局游戏状态管理，P2 维护订单队列（多单）、耐心值、评分与营业额
+## 职责: 全局游戏状态管理：P2 订单队列（多单）/耐心值/评分，P3 经济（收入/成本/日结算/天数）
 ## 依赖: 无
-## 注意: 后续阶段会扩展为包含经济、天数、角色等状态；@tool 使编辑器进程（冒烟测试）可访问
-## P2: 耐心倒计时由本管理器驱动（tick_patience），编辑器进程拦截自动 tick（冒烟测试手动推进）
+## 注意: @tool 使编辑器进程（冒烟测试）可访问；P2/P3 的自动 tick（耐心/营业倒计时）
+##       在编辑器进程被拦截（冒烟测试手动推进）；打烊暂停由结算面板负责（编辑器进程安全）
+## P3: 收入=基础价（堂食阶段；打包费/平台扣点 P4 外卖启用），成本=食材+房租+水电+耗材
 
 @tool
 extends Node
@@ -18,10 +19,25 @@ signal order_failed(order_id: int)
 signal revenue_changed(total: int)
 ## 好评/差评数变化时发出（P2 评分，供 HUD 更新）
 signal reviews_changed(good: int, bad: int)
+## 当日统计变化时发出（P3：当日收入/评分/成本变化，供 HUD 刷新；不携带参数，读取状态即可）
+signal day_stats_changed()
+## 营业倒计时更新时发出（P3，供 HUD 显示剩余时间）
+signal time_changed(time_left: float)
+## 打烊结算时发出（P3，参数为结算结果字典，供日结算面板显示）
+signal shop_closed(result: Dictionary)
+## 进入下一天时发出（P3，供场景清场/重启营业）
+signal day_started(day: int)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 3  # P2: 最多同时 3 单（与 max_queue=3 对齐）
-const DISH_PRICE := 20            ## 宫保鸡丁单价（P2 固定价）
+const DISH_PRICE := 20            ## 宫保鸡丁基础价（P2 固定价，P3 经济收入侧）
+
+# ===== P3 经济常量（可调，P5 设备/卡牌效果会引用） =====
+const INGREDIENT_COST_PER_ORDER := 6   ## 食材成本（按售出量计，每单）
+const CONSUMABLE_COST_PER_ORDER := 2   ## 耗材成本（按售出量计，每单：餐具/餐盒）
+const RENT_COST_PER_DAY := 30          ## 固定房租（每天）
+const UTILITY_COST_PER_HEAT := 1       ## 水电燃气（按设备使用次数计，每次加热）
+const BUSINESS_TIME_PER_DAY := 90.0    ## 每天营业时长（秒），到点自动打烊
 ## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 多菜品时扩展）
 const DISH_NAMES := {
 	"kungpao": "宫保鸡丁",
@@ -43,12 +59,33 @@ enum OrderState {
 ##         patience_left: float, patience_total: float }]
 var active_orders: Array[Dictionary] = []
 
-## 累计营业额（交付成功累加）
+## 累计营业额（跨天累加，交付成功累加；P3 保留作历史统计/兼容）
 var revenue := 0
 
-## 好评数（订单完成 +1）与差评数（订单超时 +1），P2 评分
+## 累计好评数（订单完成 +1）与差评数（订单超时 +1），P2 评分（跨天累加）
 var good_reviews := 0
 var bad_reviews := 0
+
+# ===== P3 经济状态 =====
+## 当前天数（第 1 天起）
+var day := 1
+## 累计金币（= 累计净利润；打烊结算时累加，P5 设备升级购买用）
+var money := 0
+## 当日收入（交付成功累加）
+var day_revenue := 0
+## 当日成本明细（食材/耗材按单计，水电按加热次数计；房租为常量 RENT_COST_PER_DAY）
+var day_cost_ingredients := 0
+var day_cost_consumables := 0
+var day_cost_utilities := 0
+## 当日好评/差评（结算面板用；累计值见 good_reviews/bad_reviews）
+var day_good_reviews := 0
+var day_bad_reviews := 0
+## 营业倒计时（剩余秒数），营业中递减，到 0 自动打烊
+var business_time_left := BUSINESS_TIME_PER_DAY
+## 是否营业中（false = 已打烊，等待进入下一天）
+var is_shop_open := true
+## 最近一次打烊结算结果（close_shop 写入；调试/结算面板/测试读取）
+var last_settlement: Dictionary = {}
 
 ## 订单耐心时长（秒），运行时可调（调试/测试用）
 var patience_time := 30.0
@@ -138,20 +175,28 @@ func get_dish_display_name(dish_type: String) -> String:
 	return DISH_NAMES.get(dish_type, dish_type)
 
 
-## 订单交付成功：计入营业额与好评并发出 order_completed（结算入口）
+## 订单交付成功：计入当日收入与成本、好评，并发出 order_completed（结算入口）
 ## 输入: order_id (int)
 ## 输出: bool（是否成功结算）
-## 副作用: revenue 累加，好评 +1，订单移除，发出 order_completed / revenue_changed / reviews_changed
+## 副作用: 当日收入 + 菜品价、食材/耗材成本累加、好评 +1；累计 revenue/good_reviews 同步；
+##         发出 order_completed / revenue_changed / reviews_changed / day_stats_changed
 func complete_order(order_id: int) -> bool:
 	for i in range(active_orders.size()):
 		if active_orders[i]["id"] == order_id:
 			active_orders.remove_at(i)
-			revenue += DISH_PRICE
+			var price := get_dish_price()
+			revenue += price
 			good_reviews += 1
-			order_completed.emit(order_id, DISH_PRICE)
+			# P3：当日经济统计
+			day_revenue += price
+			day_cost_ingredients += INGREDIENT_COST_PER_ORDER
+			day_cost_consumables += CONSUMABLE_COST_PER_ORDER
+			day_good_reviews += 1
+			order_completed.emit(order_id, price)
 			revenue_changed.emit(revenue)
 			reviews_changed.emit(good_reviews, bad_reviews)
-			print_rich("[color=green]Order %d completed! Revenue: %d (total %d), good review (+1)[/color]" % [order_id, DISH_PRICE, revenue])
+			day_stats_changed.emit()
+			print_rich("[color=green]Order %d completed! Revenue: %d (day %d, total %d)[/color]" % [order_id, price, day_revenue, revenue])
 			return true
 	push_warning("complete_order: order %d not found" % order_id)
 	return false
@@ -159,14 +204,16 @@ func complete_order(order_id: int) -> bool:
 ## 订单超时失败：差评 +1，订单移除（P2 超时/差评入口）
 ## 输入: order_id (int)
 ## 输出: bool（是否成功标记失败）
-## 副作用: 差评 +1，订单移除，发出 order_failed / reviews_changed
+## 副作用: 差评 +1（累计与当日），订单移除，发出 order_failed / reviews_changed / day_stats_changed
 func fail_order(order_id: int) -> bool:
 	for i in range(active_orders.size()):
 		if active_orders[i]["id"] == order_id:
 			active_orders.remove_at(i)
 			bad_reviews += 1
+			day_bad_reviews += 1
 			order_failed.emit(order_id)
 			reviews_changed.emit(good_reviews, bad_reviews)
+			day_stats_changed.emit()
 			print_rich("[color=red]Order %d failed (patience expired)! Bad review (+1)[/color]" % order_id)
 			return true
 	push_warning("fail_order: order %d not found" % order_id)
@@ -196,10 +243,107 @@ func tick_patience(delta: float) -> int:
 	return failed
 
 func _process(delta: float) -> void:
-	# @tool：编辑器进程（冒烟测试）不自动推进耐心，测试手动 tick_patience 控制时序
+	# @tool：编辑器进程（冒烟测试）不自动推进，测试手动 tick_patience / tick_business_time 控制时序
 	if Engine.is_editor_hint():
 		return
+	# 打烊后（等待结算）不再推进耐心/倒计时，订单已在 close_shop 清空
+	if not is_shop_open:
+		return
 	tick_patience(delta)
+	tick_business_time(delta)
+
+
+# ==================== P3 经济系统 ====================
+
+## 每单收入（P3 堂食阶段 = 菜品基础价；P4 外卖扩展：基础价 + 打包费 + 平台补贴 − 平台扣点）
+func get_dish_price() -> int:
+	return DISH_PRICE
+
+## 当日总成本（食材 + 耗材 + 水电 + 房租）
+func get_day_total_cost() -> int:
+	return day_cost_ingredients + day_cost_consumables + day_cost_utilities + RENT_COST_PER_DAY
+
+## 当日利润（收入 − 成本）
+func get_day_profit() -> int:
+	return day_revenue - get_day_total_cost()
+
+## 记录一次设备加热（微波炉加热完成时调用），计入水电成本（P3）
+func record_heat() -> void:
+	day_cost_utilities += UTILITY_COST_PER_HEAT
+	day_stats_changed.emit()
+
+## 推进营业倒计时（运行模式由 _process 调用，测试手动调用）
+## 输入: delta (float) 秒
+## 输出: bool（是否触发打烊）
+## 副作用: 倒计时归零时调用 close_shop() 并发出 time_changed
+func tick_business_time(delta: float) -> bool:
+	if not is_shop_open:
+		return false
+	business_time_left = maxf(business_time_left - delta, 0.0)
+	time_changed.emit(business_time_left)
+	if business_time_left <= 0.0:
+		close_shop()
+		return true
+	return false
+
+## 打烊结算：停止营业、作废未完成订单、计算利润并入累计金币，发出 shop_closed
+## 输出: Dictionary（结算结果：day/收入/成本明细/利润/评分/累计金币；重复调用返回空字典）
+## 注意: 不在此处暂停场景树（编辑器进程/冒烟测试安全）——运行模式由日结算面板监听
+##       shop_closed 后自行暂停；顾客/物品清场由 main_scene 监听 shop_closed 处理
+func close_shop() -> Dictionary:
+	if not is_shop_open:
+		push_warning("close_shop: 已打烊，忽略重复结算")
+		return {}
+	is_shop_open = false
+	business_time_left = 0.0
+	# 打烊作废全部未完成订单（不发 order_failed——不属超时差评，结算只统计当日已发生）
+	active_orders.clear()
+
+	var profit := get_day_profit()
+	money += profit
+	var result := {
+		"day": day,
+		"revenue": day_revenue,
+		"cost_ingredients": day_cost_ingredients,
+		"cost_consumables": day_cost_consumables,
+		"cost_utilities": day_cost_utilities,
+		"cost_rent": RENT_COST_PER_DAY,
+		"cost_total": get_day_total_cost(),
+		"profit": profit,
+		"good_reviews": day_good_reviews,
+		"bad_reviews": day_bad_reviews,
+		"money": money,
+	}
+	last_settlement = result
+	shop_closed.emit(result)
+	time_changed.emit(0.0)
+	print_rich("[color=orange]Day %d 打烊！收入 %d − 成本 %d = 利润 %d（累计金币 %d）[/color]" % [day, day_revenue, get_day_total_cost(), profit, money])
+	return result
+
+## 进入下一天：天数 +1、当日统计清零、恢复营业（累计 revenue/评分/金币保留）
+## 注意: 场景清场（顾客/物品/玩家复位）由 main_scene 监听 day_started 处理；
+##       暂停恢复由日结算面板负责（先恢复再进入下一天）
+func start_next_day() -> void:
+	if is_shop_open:
+		push_warning("start_next_day: 尚未打烊，无法进入下一天")
+		return
+	day += 1
+	_reset_day_stats()
+	is_shop_open = true
+	business_time_left = BUSINESS_TIME_PER_DAY
+	day_started.emit(day)
+	day_stats_changed.emit()
+	time_changed.emit(business_time_left)
+	print_rich("[color=green]Day %d 开始！营业时间 %.0fs[/color]" % [day, BUSINESS_TIME_PER_DAY])
+
+## 当日统计清零（进入下一天时调用；累计 revenue/good_reviews/bad_reviews/money 保留）
+func _reset_day_stats() -> void:
+	day_revenue = 0
+	day_cost_ingredients = 0
+	day_cost_consumables = 0
+	day_cost_utilities = 0
+	day_good_reviews = 0
+	day_bad_reviews = 0
 
 
 # ==================== 调试辅助 ====================

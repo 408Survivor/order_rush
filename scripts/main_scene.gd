@@ -1,6 +1,7 @@
 ## 文件: scripts/main_scene.gd
-## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块+标签）并摆放全部节点
-## 依赖: LayoutManager (autoload)；场景节点结构见 MainScene.tscn（节点位置以本脚本为准）
+## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块+标签）并摆放全部节点；
+##       P3 日循环清场（打烊清顾客/新一天重置物品与玩家）
+## 依赖: LayoutManager/GameStateManager (autoload)；场景节点结构见 MainScene.tscn（节点位置以本脚本为准）
 ## 注意: @tool 使编辑器进程打开场景即按配置摆放（位置单一权威 = LayoutManager，issue #24）
 
 @tool
@@ -14,6 +15,12 @@ extends Node2D
 @onready var spawn_point: Marker2D = $SpawnPoint
 @onready var counter_point: Marker2D = $CounterPoint
 @onready var player: Node2D = $PlayerCharacter
+@onready var order_board: CanvasLayer = $OrderBoard
+@onready var toast_manager: CanvasLayer = $ToastManager
+
+## 料理包场景（打烊清场后重建，P3 日循环）
+const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
+const MEAL_NAMES := ["MealPackage", "MealPackage2", "MealPackage3"]
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -28,6 +35,52 @@ func _ready() -> void:
 	_build_zones()
 	_build_tables()
 	_place_nodes()
+	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
+	if not GameStateManager.shop_closed.is_connected(_on_shop_closed):
+		GameStateManager.shop_closed.connect(_on_shop_closed)
+	if not GameStateManager.day_started.is_connected(_on_day_started):
+		GameStateManager.day_started.connect(_on_day_started)
+
+# ==================== P3 日循环 ====================
+
+## 打烊：清空顾客、刷新订单面板（未完成订单已由 close_shop 作废）
+func _on_shop_closed(result: Dictionary) -> void:
+	var customer_manager := get_node_or_null("CustomerManager")
+	if customer_manager != null and customer_manager.has_method("clear_customers"):
+		customer_manager.clear_customers()
+	if order_board != null and order_board.has_method("refresh"):
+		order_board.refresh()
+	# 注意：不在此处弹 Toast——结算面板已暂停游戏并全屏遮罩，Toast 不可见（由面板本身承担反馈）
+
+## 新一天：顾客重新接客 + 物品/玩家复位
+func _on_day_started(_day: int) -> void:
+	var customer_manager := get_node_or_null("CustomerManager")
+	if customer_manager != null and customer_manager.has_method("start_serving"):
+		customer_manager.start_serving()
+	_reset_shop_items()
+
+## 新一天重置：销毁手持/微波炉内/散落物品，重建料理包，玩家复位出生点
+func _reset_shop_items() -> void:
+	# 玩家手持物品销毁（跨天不保留）
+	if player.has_method("discard_held_item"):
+		player.discard_held_item()
+	# 微波炉内物品清空（含加热中强制中止）
+	if microwave.has_method("clear_contents"):
+		microwave.clear_contents()
+	# 清理散落物品（Q 放下/交付残留的成品菜等），料理包由下方重建逻辑处理
+	for child in items_root.get_children():
+		if child.name not in MEAL_NAMES:
+			child.queue_free()
+	# 重建/复位料理包到货架槽位：缺失的实例化，已存在的重摆（防 Q 放下后跨天残留错位）
+	for i in MEAL_NAMES.size():
+		var meal: Node2D = items_root.get_node_or_null(MEAL_NAMES[i])
+		if meal == null:
+			meal = MEAL_PACKAGE_SCENE.instantiate()
+			meal.name = MEAL_NAMES[i]
+			items_root.add_child(meal)
+		meal.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
+	# 玩家复位出生点
+	player.global_position = LayoutManager.SPAWN_POINT
 
 # ==================== 区域视觉 ====================
 
@@ -92,7 +145,7 @@ func _place_nodes() -> void:
 	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
 
 	# 料理包 → 货架前 3 位（P7 多菜品扩展）
-	var meal_names := ["MealPackage", "MealPackage2", "MealPackage3"]
+	var meal_names := MEAL_NAMES
 	for i in meal_names.size():
 		var meal := items_root.get_node_or_null(meal_names[i])
 		if meal != null:
