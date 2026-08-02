@@ -76,7 +76,7 @@ func _update_card(order: Dictionary) -> void:
 		card = _cards[order_id]
 
 	var dish_name: String = GameStateManager.get_dish_display_name(str(order["dish_type"]))
-	card["name_label"].text = "🍛 %s" % dish_name
+	card["name_label"].text = "%s %s" % [UITheme.icon(UITheme.ICON_PLATE), dish_name]
 
 	var total: float = order["patience_total"]
 	var left: float = order["patience_left"]
@@ -97,7 +97,7 @@ func _update_card(order: Dictionary) -> void:
 ## 创建一张卡片（PanelContainer > Margin > VBox: 菜名 + HBox(进度条 + 秒)）
 func _create_card(order_id: int) -> Dictionary:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(10, UITheme.COLOR_PANEL, Color(0.9, 0.85, 0.6, 0.4)))
+	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
 	panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
 
 	var margin := MarginContainer.new()
@@ -109,10 +109,13 @@ func _create_card(order_id: int) -> Dictionary:
 	vbox.add_theme_constant_override("separation", 4)
 	margin.add_child(vbox)
 
-	var name_label := Label.new()
-	name_label.add_theme_font_size_override("font_size", 22)
-	name_label.add_theme_color_override("font_color", UITheme.COLOR_GOLD)
-	name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	var name_label := RichTextLabel.new()
+	name_label.bbcode_enabled = true
+	name_label.fit_content = true
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	name_label.add_theme_font_size_override("normal_font_size", 22)
+	name_label.add_theme_color_override("default_color", UITheme.COLOR_GOLD)
+	name_label.add_theme_color_override("outline_color", Color(0, 0, 0, 0.8))
 	name_label.add_theme_constant_override("outline_size", 4)
 	vbox.add_child(name_label)
 
@@ -182,10 +185,10 @@ func _remove_card(order_id: int) -> void:
 
 # ==================== 样式 ====================
 
-## 进度条轨道样式（深色圆角）
+## 进度条轨道样式（暖深棕圆角）
 func _bar_bg_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.12, 0.14, 0.18, 0.9)
+	sb.bg_color = Color(0.13, 0.10, 0.07, 0.9)
 	sb.set_corner_radius_all(7)
 	return sb
 

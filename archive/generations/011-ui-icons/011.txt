@@ -1,0 +1,35 @@
+# 011 UI 图标集（issue #32 第②步）
+日期: 2026-08-02
+平台: 即梦 5.0 Lite（AI 生成通道，待开发者手动执行）
+状态: SVG 矢量版已落地可用（assets/art/ui/icons/），本批次为可选 AI 升级
+
+## 用途
+替换 UI 全部 emoji 的统一风格图标集（金描边扁平风，适配暖深棕面板）。
+
+## 需要生成的 10 个图标（对应 SVG 文件名）
+1. plate.svg   —— 俯视白瓷盘（外盘+内圈+碗）          → 替换 🍛 菜品（订单卡片/顾客头顶）
+2. coin.svg    —— 中式铜钱（外圆+方孔）               → 替换 💰 金钱（营业额/结算资金）
+3. calendar.svg —— 日历牌（圆角+挂耳+中线+圆点）      → 替换 🗓️ 天数（经营面板）
+4. timer.svg   —— 钟面+指针+顶钮                      → 替换 ⏱️ 倒计时（经营面板）
+5. closed.svg  —— 八角停止牌+横杠                     → 替换 🛑 打烊（经营面板）
+6. good.svg    —— 笑脸（圆+两点眼+微笑弧）             → 替换 👍 好评
+7. bad.svg     —— 哭脸（圆+两点眼+下弯嘴）             → 替换 👎 差评
+8. check.svg   —— 圆+对勾                             → 替换 ✅ 成功（Toast）
+9. cross.svg   —— 圆+叉                               → 替换 ❌ 失败（Toast）
+10. order.svg  —— 单据（圆角页+标题条+内容线）         → 替换 📋 新订单（Toast）
+
+## 统一风格（务必全部一致）
+- Overhead view 简化版：扁平描边图标（line-art），非写实、非立体
+- 单色描边：暖金 #F2C14E，描边粗细均匀（≈视口 1/16）
+- 白底透明背景（PNG）；若即梦输出白底需去底（见 009 批次经验）
+- 目标尺寸 256x256 PNG 或更高（游戏内显示 20-24px，Nearest 缩小）
+
+## 有效提示词结构
+`Flat line-art icon, single warm gold #F2C14E stroke, [主体描述], rounded stroke caps, transparent background, game UI icon, consistent minimal style`
+
+示例（plate）：`Flat line-art icon, single warm gold stroke, overhead view of a round white plate with a small bowl in center, rounded stroke caps, transparent background, game UI icon`
+
+## 规格
+- 导入路径 assets/art/ui/icons/（替换同名 .svg 或新增 .png）
+- Filter: Nearest（与项目素材一致）
+- 导入后需在代码引用处核对显示（RichTextLabel [img] 内联，尺寸 20-24px）

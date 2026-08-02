@@ -13,12 +13,12 @@ extends CanvasLayer
 var _overlay: ColorRect = null
 var _panel: PanelContainer = null
 var _title_label: Label = null
-var _revenue_label: Label = null
+var _revenue_label: Control = null
 var _cost_labels: Dictionary = {}   # key -> Label（食材/耗材/水电/房租）
 var _cost_total_label: Label = null
 var _profit_label: Label = null
 var _review_label: Label = null
-var _money_label: Label = null
+var _money_label: Control = null
 var _next_day_button: Button = null
 
 # ==================== 生命周期 ====================
@@ -62,7 +62,7 @@ func _build_panel() -> void:
 	_overlay.add_child(center)
 
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(16, UITheme.COLOR_BG, UITheme.COLOR_GOLD))
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
 	center.add_child(_panel)
 
 	var margin := MarginContainer.new()
@@ -75,19 +75,32 @@ func _build_panel() -> void:
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(vbox)
 
+	# 标题 + 上下金色装饰线（#32 第③步 版式）
+	vbox.add_child(_make_rule())
 	_title_label = _make_label("", 40, UITheme.COLOR_GOLD)
-	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_title_label)
+	vbox.add_child(_make_rule())
 
 	# 分隔线
 	var divider := HSeparator.new()
 	vbox.add_child(divider)
 
-	_revenue_label = _make_label("总收入：0", 24, UITheme.COLOR_GOLD)
-	_revenue_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# 收入区（大字金色）
+	_revenue_label = _make_label("总收入：0", 26, UITheme.COLOR_GOLD, true)
 	vbox.add_child(_revenue_label)
 
-	# 成本明细（4 行）
+	# 成本明细区（内嵌淡色区块，与收入/利润分区更清晰）
+	var cost_panel := PanelContainer.new()
+	cost_panel.add_theme_stylebox_override("panel", _cost_section_style())
+	vbox.add_child(cost_panel)
+	var cost_margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		cost_margin.add_theme_constant_override("margin_" + side, 12)
+	cost_panel.add_child(cost_margin)
+	var cost_vbox := VBoxContainer.new()
+	cost_vbox.add_theme_constant_override("separation", 4)
+	cost_margin.add_child(cost_vbox)
+
 	var cost_specs := [
 		["cost_ingredients", "食材成本"],
 		["cost_consumables", "耗材成本"],
@@ -96,24 +109,21 @@ func _build_panel() -> void:
 	]
 	for spec in cost_specs:
 		var label := _make_label("%s：0" % spec[1], 20, UITheme.COLOR_TEXT)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(label)
+		cost_vbox.add_child(label)
 		_cost_labels[spec[0]] = label
 
-	_cost_total_label = _make_label("成本合计：0", 22, UITheme.COLOR_TEXT)
-	_cost_total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_cost_total_label)
+	_cost_total_label = _make_label("成本合计：0", 22, UITheme.COLOR_GOLD)
+	cost_vbox.add_child(_cost_total_label)
 
+	# 利润区（大字红绿）
 	_profit_label = _make_label("今日利润：0", 30, UITheme.COLOR_GREEN)
-	_profit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_profit_label)
 
+	# 评分 + 资金
 	_review_label = _make_label("好评 0 ｜ 差评 0", 20, UITheme.COLOR_TEXT)
-	_review_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(_review_label)
 
-	_money_label = _make_label("现有资金：0", 22, UITheme.COLOR_GOLD)
-	_money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_money_label = _make_label("现有资金：0", 22, UITheme.COLOR_GOLD, true)
 	vbox.add_child(_money_label)
 
 	var spacer := Control.new()
@@ -143,7 +153,7 @@ func show_result(result: Dictionary) -> void:
 		push_warning("DayResultPanel: 结算结果为空，不显示")
 		return
 	_title_label.text = "第 %d 天 结算" % result.get("day", 0)
-	_revenue_label.text = "💰 总收入：%d" % result.get("revenue", 0)
+	_revenue_label.text = "%s 总收入：%d" % [UITheme.icon(UITheme.ICON_COIN), result.get("revenue", 0)]
 	for key in _cost_labels:
 		_cost_labels[key].text = "%s：%d" % [_cost_labels[key].text.split("：")[0], result.get(key, 0)]
 	_cost_total_label.text = "成本合计：%d" % result.get("cost_total", 0)
@@ -153,7 +163,7 @@ func show_result(result: Dictionary) -> void:
 	_profit_label.add_theme_color_override("font_color", UITheme.COLOR_GREEN if profit >= 0 else UITheme.COLOR_RED)
 
 	_review_label.text = "好评 %d ｜ 差评 %d" % [result.get("good_reviews", 0), result.get("bad_reviews", 0)]
-	_money_label.text = "💰 现有资金：%d" % result.get("money", 0)
+	_money_label.text = "%s 现有资金：%d" % [UITheme.icon(UITheme.ICON_COIN), result.get("money", 0)]
 	_overlay.visible = true
 
 	# #30：弹出动画（编辑器进程直接显示，保证冒烟断言确定性）
@@ -186,12 +196,43 @@ func hide_panel() -> void:
 
 # ==================== 样式辅助 ====================
 
-func _make_label(text: String, font_size: int, color: Color) -> Label:
+## 生成文本标签（统一居中）；rich=true 时返回 RichTextLabel（支持 [img] 内联图标，#32 第②步）
+func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:
+	if rich:
+		var rl := RichTextLabel.new()
+		rl.bbcode_enabled = true
+		rl.fit_content = true
+		# Godot 4.4+ typed enum：RichTextLabel.alignment 直接赋值 int 被拒，需经 set() 传 Variant（与 tscn 反序列化同路径）
+		rl.set("alignment", HorizontalAlignment.HORIZONTAL_ALIGNMENT_CENTER)
+		rl.text = text
+		rl.add_theme_font_size_override("normal_font_size", font_size)
+		rl.add_theme_color_override("default_color", color)
+		rl.add_theme_color_override("outline_color", Color(0, 0, 0, 0.9))
+		rl.add_theme_constant_override("outline_size", 5)
+		rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return rl
 	var label := Label.new()
 	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", font_size)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+## 金色装饰线（标题上下，#32 第③步 版式）
+func _make_rule() -> ColorRect:
+	var rule := ColorRect.new()
+	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
+	rule.custom_minimum_size = Vector2(140, 2)
+	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return rule
+
+## 成本明细区底（淡色内嵌区块，分区更清晰）
+func _cost_section_style() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.05)
+	sb.set_corner_radius_all(8)
+	return sb

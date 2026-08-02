@@ -30,7 +30,7 @@ const ARRIVE_DISTANCE := 12.0  ## 到达判定阈值（像素）
 
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
-@onready var order_label: Label = $OrderLabel
+@onready var order_label: RichTextLabel = $OrderLabel
 
 # ==================== 状态变量 ====================
 var state := CustomerState.WALKING
@@ -133,14 +133,14 @@ func _update_order_display() -> void:
 	var total: float = order["patience_total"]
 	var left: float = order["patience_left"]
 	var ratio := 1.0 if total <= 0.0 else left / total
-	order_label.text = "🍛 %s %ds" % [GameStateManager.get_dish_display_name(str(order["dish_type"])), int(ceil(left))]
+	order_label.text = "%s %s %ds" % [UITheme.icon(UITheme.ICON_PLATE, 18), GameStateManager.get_dish_display_name(str(order["dish_type"])), int(ceil(left))]
 	var color := UITheme.COLOR_GREEN  # >50% 绿
 	if ratio <= 0.5 and ratio > 0.2:
 		color = UITheme.COLOR_YELLOW  # ≤50% 黄
 	elif ratio <= 0.2:
 		color = UITheme.COLOR_RED     # ≤20% 红
 	if color != _last_label_color:
-		order_label.add_theme_color_override("font_color", color)
+		order_label.add_theme_color_override("default_color", color)
 		_last_label_color = color
 
 ## 走向出口并离店（收菜后由管理器调用；离店时禁用碰撞，避免与补位顾客迎面卡住）
