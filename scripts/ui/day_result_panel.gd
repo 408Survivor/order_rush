@@ -131,6 +131,11 @@ func _build_panel() -> void:
 	spacer.custom_minimum_size = Vector2(0, 6)
 	vbox.add_child(spacer)
 
+	# P5：升级商店入口（次按钮，打烊暂停中打开设备升级商店）
+	var shop_button := _make_secondary_button("升级设备")
+	shop_button.pressed.connect(_on_shop_pressed)
+	vbox.add_child(shop_button)
+
 	_next_day_button = Button.new()
 	_next_day_button.text = "进入下一天"
 	_next_day_button.custom_minimum_size = Vector2(220, 52)
@@ -190,6 +195,14 @@ func _on_next_day_pressed() -> void:
 	GameStateManager.start_next_day()
 	hide_panel()
 
+## 打开设备升级商店（P5；商店为 main_scene 动态实例化的 UpgradeShop，打烊暂停中可交互）
+func _on_shop_pressed() -> void:
+	if Engine.is_editor_hint():
+		return
+	var shop := get_tree().current_scene.get_node_or_null("UpgradeShop")
+	if shop != null and shop.has_method("show_shop"):
+		shop.show_shop()
+
 ## 隐藏面板（新一天开始后由按钮触发；防御重复调用）
 func hide_panel() -> void:
 	if _overlay != null:
@@ -221,6 +234,29 @@ func _make_label(text: String, font_size: int, color: Color, rich: bool = false)
 	label.add_theme_constant_override("outline_size", 5)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
+
+## 次级按钮（描边金 + 透明底，区别于主按钮金色实底；P5 商店入口用）
+func _make_secondary_button(text: String) -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.custom_minimum_size = Vector2(160, 40)
+	btn.add_theme_font_size_override("font_size", 20)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0, 0, 0, 0.25)
+	normal.set_corner_radius_all(10)
+	normal.set_border_width_all(2)
+	normal.border_color = UITheme.COLOR_GOLD_DARK
+	normal.set_content_margin_all(8)
+	var hover := normal.duplicate()
+	hover.bg_color = Color(0, 0, 0, 0.4)
+	var pressed := normal.duplicate()
+	pressed.bg_color = Color(0, 0, 0, 0.55)
+	btn.add_theme_stylebox_override("normal", normal)
+	btn.add_theme_stylebox_override("hover", hover)
+	btn.add_theme_stylebox_override("pressed", pressed)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	btn.add_theme_color_override("font_color", UITheme.COLOR_GOLD)
+	return btn
 
 ## 金色装饰线（标题上下，#32 第③步 版式）
 func _make_rule() -> ColorRect:

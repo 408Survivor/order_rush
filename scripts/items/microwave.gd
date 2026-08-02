@@ -25,7 +25,8 @@ enum MicrowaveState {
 
 # ==================== 常量 ====================
 const FINISHED_DISH_SCENE := preload("res://scenes/items/FinishedDish.tscn")
-const HEAT_TIME := 3.0  ## 加热时长（秒）
+const HEAT_TIME := 3.0    ## 基础加热时长（秒）
+const HEAT_TIME_UPGRADED := 2.2  ## 加热加速后时长（P5 升级 heat_level>=1）
 
 # ==================== 导出变量 ====================
 ## 显示名称（用于交互提示）
@@ -40,6 +41,8 @@ const HEAT_TIME := 3.0  ## 加热时长（秒）
 # ==================== 状态变量 ====================
 var current_state := MicrowaveState.IDLE
 var contained_item: Node2D = null  ## 内部物品（料理包或成品菜）
+## 实际加热时长（P5：按 UpgradeManager.heat_level 取基础 3.0s 或加速 2.2s）
+var heat_time := HEAT_TIME
 
 var _progress_max_width := 120.0
 
@@ -48,17 +51,28 @@ var _progress_max_width := 120.0
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("appliance")
-	heat_timer.wait_time = HEAT_TIME
+	heat_time = HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
+	heat_timer.wait_time = heat_time
 	heat_timer.one_shot = true
 	heat_timer.timeout.connect(_on_heat_timer_timeout)
 	_progress_max_width = progress_fill.size.x
 	_update_indicator()
 	_update_progress(0.0)
+	# P5：购买加热加速后即时生效（无需重启场景）
+	if not UpgradeManager.upgrades_changed.is_connected(_on_upgrades_changed):
+		UpgradeManager.upgrades_changed.connect(_on_upgrades_changed)
+
+## P5 加热加速升级生效：重新按 heat_level 设置加热时长（含加热中？仅空闲态可购——商店在打烊时打开）
+func _on_upgrades_changed() -> void:
+	var new_time := HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
+	if heat_time != new_time:
+		heat_time = new_time
+		heat_timer.wait_time = heat_time
 
 func _process(_delta: float) -> void:
 	# 加热中实时刷新进度条
 	if current_state == MicrowaveState.HEATING:
-		_update_progress(1.0 - heat_timer.time_left / HEAT_TIME)
+		_update_progress(1.0 - heat_timer.time_left / heat_time)
 
 # ==================== 交互接口 ====================
 
