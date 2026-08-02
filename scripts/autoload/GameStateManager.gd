@@ -27,6 +27,11 @@ signal time_changed(time_left: float)
 signal shop_closed(result: Dictionary)
 ## 进入下一天时发出（P3，供场景清场/重启营业）
 signal day_started(day: int)
+## P4 外卖信号：创建 / 状态变化（打包等）/ 完成取餐 / 超时罚款
+signal takeaway_created(order_id: int)
+signal takeaway_state_changed(order_id: int, new_state: int)
+signal takeaway_completed(order_id: int, revenue: int)
+signal takeaway_failed(order_id: int)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 3  # P2: 最多同时 3 单（与 max_queue=3 对齐）
@@ -38,6 +43,15 @@ const CONSUMABLE_COST_PER_ORDER := 2   ## 耗材成本（按售出量计，每�
 const RENT_COST_PER_DAY := 30          ## 固定房租（每天）
 const UTILITY_COST_PER_HEAT := 1       ## 水电燃气（按设备使用次数计，每次加热）
 const BUSINESS_TIME_PER_DAY := 90.0    ## 每天营业时长（秒），到点自动打烊
+
+# ===== P4 外卖常量（可调） =====
+const TAKEOUT_MAX_CONCURRENT := 3       ## 外卖订单并发上限（与堂食 3 单并行）
+const TAKEOUT_ORDER_INTERVAL := 25.0    ## 外卖订单生成间隔（秒）
+const TAKEOUT_ETA := 40.0               ## 骑手 ETA（秒）——外卖时间压力核心
+const PACKING_FEE := 2                  ## 打包费（外卖收入加成）
+const PLATFORM_SUBSIDY := 3             ## 平台补贴（外卖收入加成）
+const PLATFORM_CUT_RATE := 0.10         ## 平台扣点比例（外卖收入扣减）
+const TAKEOUT_FAIL_PENALTY := 5         ## 外卖超时罚款（计入当日成本）
 ## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 多菜品时扩展）
 const DISH_NAMES := {
 	"kungpao": "宫保鸡丁",
@@ -53,11 +67,22 @@ enum OrderState {
 	FAILED      ## 超时或失败（Phase 2启用）
 }
 
+## 外卖订单状态（P4）
+enum TakeoutState {
+	PACKING,  ## 待打包（玩家需加热并到外卖口打包）
+	READY,    ## 已打包待取餐（骑手 ETA 归零后取走）
+}
+
 # ==================== 状态变量 ====================
 ## 当前活跃订单列表
 ## 结构: [{ id: int, state: OrderState, customer_id: int, dish_type: String,
 ##         patience_left: float, patience_total: float }]
 var active_orders: Array[Dictionary] = []
+
+## P4 外卖订单（独立队列，与堂食并行）
+## 结构: [{ id: int, state: TakeoutState, dish_type: String, eta_left: float, eta_total: float, packed: bool }]
+var takeaway_orders: Array[Dictionary] = []
+var _takeaway_spawn_timer := TAKEOUT_ORDER_INTERVAL  ## 距离下一单外卖生成（秒）
 
 ## 累计营业额（跨天累加，交付成功累加；P3 保留作历史统计/兼容）
 var revenue := 0
@@ -77,6 +102,7 @@ var day_revenue := 0
 var day_cost_ingredients := 0
 var day_cost_consumables := 0
 var day_cost_utilities := 0
+var day_cost_penalty := 0                ## 当日超时罚款（P4 外卖超时，计入成本）
 ## 当日好评/差评（结算面板用；累计值见 good_reviews/bad_reviews）
 var day_good_reviews := 0
 var day_bad_reviews := 0
@@ -219,6 +245,133 @@ func fail_order(order_id: int) -> bool:
 	push_warning("fail_order: order %d not found" % order_id)
 	return false
 
+# ==================== P4 外卖系统 ====================
+
+## 生成一个外卖订单（独立队列，运行模式由 tick_takeaway 定时触发，测试可手动）
+## 输出: int (order_id；打烊/达并发上限返回 -1)
+func create_takeaway_order() -> int:
+	if not is_shop_open:
+		return -1
+	if takeaway_orders.size() >= TAKEOUT_MAX_CONCURRENT:
+		return -1
+	var order_id := _next_order_id
+	_next_order_id += 1
+	var order := {
+		"id": order_id,
+		"state": TakeoutState.PACKING,
+		"dish_type": "kungpao",
+		"eta_left": TAKEOUT_ETA,
+		"eta_total": TAKEOUT_ETA,
+		"packed": false,
+	}
+	takeaway_orders.append(order)
+	takeaway_created.emit(order_id)
+	print_rich("[color=cyan]Takeaway %d created (ETA %.1fs)[/color]" % [order_id, TAKEOUT_ETA])
+	return order_id
+
+## 每帧推进外卖：生成计时 + 全部订单 ETA；ETA 归零结算（已打包→骑手取餐完成 / 未打包→超时罚款）
+func tick_takeaway(delta: float) -> void:
+	if not is_shop_open:
+		return
+	_takeaway_spawn_timer -= delta
+	if _takeaway_spawn_timer <= 0.0:
+		_takeaway_spawn_timer = TAKEOUT_ORDER_INTERVAL
+		create_takeaway_order()
+	var finished: Array[int] = []
+	for order in takeaway_orders:
+		order["eta_left"] = maxf(order["eta_left"] - delta, 0.0)
+		takeaway_state_changed.emit(order["id"], order["state"])
+		if order["eta_left"] <= 0.0:
+			finished.append(order["id"])
+	for order_id in finished:
+		if order_is_packed(order_id):
+			complete_takeaway(order_id)
+		else:
+			fail_takeaway(order_id)
+
+## 获取外卖订单（找不到返回空字典）
+func get_takeaway(order_id: int) -> Dictionary:
+	for order in takeaway_orders:
+		if order["id"] == order_id:
+			return order
+	return {}
+
+## 取一个待打包的外卖订单（外卖口打包入口；返回空字典表示无待打包单）
+func get_pending_takeaway() -> Dictionary:
+	for order in takeaway_orders:
+		if not order["packed"]:
+			return order
+	return {}
+
+## 判断外卖订单是否已打包
+func order_is_packed(order_id: int) -> bool:
+	var order := get_takeaway(order_id)
+	return not order.is_empty() and order["packed"]
+
+## 打包一份外卖（玩家在外卖口交付成品菜时调用；PACKING → READY）
+## 输出: bool（是否成功打包）
+func pack_takeaway(order_id: int) -> bool:
+	for order in takeaway_orders:
+		if order["id"] == order_id:
+			if order["packed"]:
+				return false
+			order["packed"] = true
+			order["state"] = TakeoutState.READY
+			takeaway_state_changed.emit(order_id, TakeoutState.READY)
+			print_rich("[color=yellow]Takeaway %d packed, rider arriving[/color]" % order_id)
+			return true
+	return false
+
+## 移除外卖订单（完成/失败后清理）
+func remove_takeaway(order_id: int) -> bool:
+	for i in range(takeaway_orders.size()):
+		if takeaway_orders[i]["id"] == order_id:
+			takeaway_orders.remove_at(i)
+			return true
+	return false
+
+## 外卖完成（已打包 + ETA 归零 → 骑手取餐）：收入=外卖价、好评+1、食材/耗材成本
+## 输出: bool
+func complete_takeaway(order_id: int) -> bool:
+	var order := get_takeaway(order_id)
+	if order.is_empty():
+		return false
+	var price := get_dish_price(true)
+	revenue += price
+	good_reviews += 1
+	day_revenue += price
+	day_cost_ingredients += INGREDIENT_COST_PER_ORDER
+	day_cost_consumables += CONSUMABLE_COST_PER_ORDER
+	day_good_reviews += 1
+	remove_takeaway(order_id)
+	takeaway_completed.emit(order_id, price)
+	revenue_changed.emit(revenue)
+	reviews_changed.emit(good_reviews, bad_reviews)
+	day_stats_changed.emit()
+	print_rich("[color=green]Takeaway %d delivered! Revenue: %d (day %d)[/color]" % [order_id, price, day_revenue])
+	return true
+
+## 外卖超时（未打包 + ETA 归零 → 骑手空手离开）：罚款计入当日成本、差评 +1
+## 输出: bool
+func fail_takeaway(order_id: int) -> bool:
+	var order := get_takeaway(order_id)
+	if order.is_empty():
+		return false
+	bad_reviews += 1
+	day_bad_reviews += 1
+	day_cost_penalty += TAKEOUT_FAIL_PENALTY
+	remove_takeaway(order_id)
+	takeaway_failed.emit(order_id)
+	reviews_changed.emit(good_reviews, bad_reviews)
+	day_stats_changed.emit()
+	print_rich("[color=red]Takeaway %d timed out! Penalty %d (day %d)[/color]" % [order_id, TAKEOUT_FAIL_PENALTY, day_cost_penalty])
+	return true
+
+## 打烊作废全部未完成外卖订单（不发 takeaway_failed——不属超时差评，同堂食作废处理）
+func clear_takeaways() -> void:
+	takeaway_orders.clear()
+	_takeaway_spawn_timer = TAKEOUT_ORDER_INTERVAL
+
 # ==================== 耐心值（P2） ====================
 
 ## 每帧推进所有活跃订单的耐心倒计时（运行模式由 _process 调用，测试手动调用）
@@ -250,18 +403,21 @@ func _process(delta: float) -> void:
 	if not is_shop_open:
 		return
 	tick_patience(delta)
+	tick_takeaway(delta)
 	tick_business_time(delta)
 
 
 # ==================== P3 经济系统 ====================
 
-## 每单收入（P3 堂食阶段 = 菜品基础价；P4 外卖扩展：基础价 + 打包费 + 平台补贴 − 平台扣点）
-func get_dish_price() -> int:
+## 每单收入：堂食 = 菜品基础价；外卖 = 基础价 + 打包费 + 平台补贴 − 平台扣点（P4）
+func get_dish_price(is_takeout: bool = false) -> int:
+	if is_takeout:
+		return DISH_PRICE + PACKING_FEE + PLATFORM_SUBSIDY - int(round(DISH_PRICE * PLATFORM_CUT_RATE))
 	return DISH_PRICE
 
-## 当日总成本（食材 + 耗材 + 水电 + 房租）
+## 当日总成本（食材 + 耗材 + 水电 + 超时罚款 + 房租）
 func get_day_total_cost() -> int:
-	return day_cost_ingredients + day_cost_consumables + day_cost_utilities + RENT_COST_PER_DAY
+	return day_cost_ingredients + day_cost_consumables + day_cost_utilities + day_cost_penalty + RENT_COST_PER_DAY
 
 ## 当日利润（收入 − 成本）
 func get_day_profit() -> int:
@@ -298,6 +454,8 @@ func close_shop() -> Dictionary:
 	business_time_left = 0.0
 	# 打烊作废全部未完成订单（不发 order_failed——不属超时差评，结算只统计当日已发生）
 	active_orders.clear()
+	# P4：外卖订单同堂食作废
+	clear_takeaways()
 
 	var profit := get_day_profit()
 	money += profit
@@ -307,6 +465,7 @@ func close_shop() -> Dictionary:
 		"cost_ingredients": day_cost_ingredients,
 		"cost_consumables": day_cost_consumables,
 		"cost_utilities": day_cost_utilities,
+		"cost_penalty": day_cost_penalty,
 		"cost_rent": RENT_COST_PER_DAY,
 		"cost_total": get_day_total_cost(),
 		"profit": profit,
@@ -342,6 +501,7 @@ func _reset_day_stats() -> void:
 	day_cost_ingredients = 0
 	day_cost_consumables = 0
 	day_cost_utilities = 0
+	day_cost_penalty = 0
 	day_good_reviews = 0
 	day_bad_reviews = 0
 

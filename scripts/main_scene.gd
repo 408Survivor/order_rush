@@ -21,6 +21,12 @@ extends Node2D
 ## 料理包场景（打烊清场后重建，P3 日循环）
 const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
 const MEAL_NAMES := ["MealPackage", "MealPackage2", "MealPackage3"]
+## 外卖口场景（P4，动态实例化）
+const TAKEOUT_COUNTER_SCENE := preload("res://scenes/props/TakeoutCounter.tscn")
+## 外卖订单面板脚本（P4，动态实例化 CanvasLayer）
+const TAKEOUT_BOARD_SCRIPT := preload("res://scripts/ui/takeaway_board.gd")
+## 骑手视觉管理器脚本（P4）
+const TAKEOUT_RIDER_SCRIPT := preload("res://scripts/systems/takeaway_rider.gd")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -34,6 +40,8 @@ func _ready() -> void:
 	]
 	_build_zones()
 	_build_tables()
+	_build_takeout_counter()
+	_build_takeaway_ui()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
 	if not GameStateManager.shop_closed.is_connected(_on_shop_closed):
@@ -128,6 +136,29 @@ func _build_tables() -> void:
 		table.color = Color(1, 1, 1, 0.35)
 		table.z_index = -4
 		add_child(table)
+
+# ==================== 外卖口（P4） ====================
+
+## 实例化外卖取餐口并摆到布局点位（动态生成幂等：has_node 防编辑器热重载重复 _ready）
+func _build_takeout_counter() -> void:
+	if has_node("TakeoutCounter"):
+		$TakeoutCounter.global_position = LayoutManager.PICKUP_POINT
+		return
+	var counter: Node2D = TAKEOUT_COUNTER_SCENE.instantiate()
+	counter.name = "TakeoutCounter"
+	add_child(counter)
+	counter.global_position = LayoutManager.PICKUP_POINT
+
+## 实例化外卖 UI：订单面板 + 骑手视觉（动态生成幂等）
+func _build_takeaway_ui() -> void:
+	if not has_node("TakeawayBoard"):
+		var board: CanvasLayer = TAKEOUT_BOARD_SCRIPT.new()
+		board.name = "TakeawayBoard"
+		add_child(board)
+	if not has_node("TakeawayRider"):
+		var rider: Node2D = TAKEOUT_RIDER_SCRIPT.new()
+		rider.name = "TakeawayRider"
+		add_child(rider)
 
 # ==================== 节点摆放 ====================
 
