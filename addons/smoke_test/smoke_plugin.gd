@@ -300,6 +300,40 @@ func _run() -> void:
 		and scene.get_node_or_null("Items/MealPackage3") != null, "被消费的料理包已重建（3 个）")
 	_check(player.global_position == layout.SPAWN_POINT, "玩家复位出生点")
 
+	# ===== P4 外卖系统（第 2 天营业中） =====
+	_check(gsm.get_dish_price() == 20 and gsm.get_dish_price(true) == 23, "外卖定价 = 基础价+打包费+平台补贴−扣点（堂食 20 vs 外卖 23）")
+	gsm.set("_takeaway_spawn_timer", 99999.0)  # 禁用自动生成，测试手动控制时序
+	var takeout_id: int = gsm.create_takeaway_order()
+	_check(takeout_id > 0, "外卖订单创建成功")
+	_check(gsm.takeaway_orders.size() == 1, "外卖独立队列 1 单（与堂食并行）")
+	_check(gsm.get_takeaway(takeout_id)["state"] == gsm.TakeoutState.PACKING, "外卖初始待打包")
+	_check(absf(gsm.get_takeaway(takeout_id)["eta_left"] - gsm.TAKEOUT_ETA) < 0.01, "骑手 ETA 初始满")
+
+	var takeaway_board: CanvasLayer = scene.get_node("TakeawayBoard")
+	takeaway_board.call("refresh")
+	_check(takeaway_board.get("_list").get_child_count() == 1, "外卖面板显示 1 行订单")
+
+	_check(gsm.pack_takeaway(takeout_id), "打包外卖成功（PACKING→READY）")
+	_check(gsm.order_is_packed(takeout_id), "打包后标记已打包")
+
+	var revenue_before: int = gsm.day_revenue
+	gsm.tick_takeaway(gsm.TAKEOUT_ETA + 1.0)
+	_check(gsm.takeaway_orders.is_empty(), "骑手取餐后外卖队列清空")
+	_check(gsm.day_revenue == revenue_before + 23, "外卖完成收入 +23（打包费+补贴−扣点）")
+	_check(gsm.day_good_reviews == 1, "外卖完成好评 +1")
+
+	var takeout2: int = gsm.create_takeaway_order()
+	_check(takeout2 > 0, "第二单外卖创建")
+	var bad_before: int = gsm.day_bad_reviews
+	gsm.tick_takeaway(gsm.TAKEOUT_ETA + 1.0)
+	_check(gsm.takeaway_orders.is_empty(), "超时单已移除")
+	_check(gsm.day_cost_penalty == gsm.TAKEOUT_FAIL_PENALTY, "超时罚款计入成本（%d）" % gsm.TAKEOUT_FAIL_PENALTY)
+	_check(gsm.day_bad_reviews == bad_before + 1, "外卖超时差评 +1")
+
+	var takeout_counter = scene.get_node_or_null("TakeoutCounter")
+	_check(takeout_counter != null, "外卖口已实例化")
+	_check(takeout_counter.global_position == layout.PICKUP_POINT, "外卖口位于布局点位")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

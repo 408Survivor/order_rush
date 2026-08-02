@@ -111,6 +111,8 @@ func try_interact() -> bool:
 			return _interact_with_appliance(interactable)
 		elif interactable.is_in_group("customer"):
 			return _interact_with_customer(interactable)
+		elif interactable.is_in_group("takeout"):
+			return _interact_with_takeout(interactable)
 		return false
 
 	# 空手：取出 / 拾取
@@ -197,6 +199,20 @@ func _interact_with_customer(customer: Node2D) -> bool:
 	_drop_from_hand()
 	customer.receive_dish(dish)
 	return true
+
+## 与外卖口交互（打包外卖订单，P4）：持成品菜 → 打包 → 成品菜消耗（进餐盒）
+func _interact_with_takeout(counter: Node2D) -> bool:
+	if held_item == null or not held_item.is_in_group("dish"):
+		return false
+	if GameStateManager.get_pending_takeaway().is_empty():
+		return false
+	var dish := held_item
+	if counter.call("pack_with", dish):
+		_drop_from_hand()
+		dish.queue_free()
+		print_rich("[color=cyan]Takeout packed at counter[/color]")
+		return true
+	return false
 
 # ==================== 手持物品管理 ====================
 
@@ -298,9 +314,12 @@ func _update_prompt() -> void:
 
 	var text := ""
 	if held_item != null:
-		# 手持物品：设备可接受 → 放入；顾客 → 交付（区分可收/不可收与物品类型）
+		# 手持物品：设备可接受 → 放入；顾客 → 交付；外卖口 → 打包（区分可收/不可收与物品类型）
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
+		elif target.is_in_group("takeout"):
+			if held_item.is_in_group("dish") and not GameStateManager.get_pending_takeaway().is_empty():
+				text = "[E] 打包外卖"
 		elif target.is_in_group("customer"):
 			if held_item.is_in_group("dish"):
 				if target.can_accept_dish(held_item):

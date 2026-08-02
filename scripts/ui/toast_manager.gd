@@ -30,6 +30,13 @@ func _ready() -> void:
 		GameStateManager.order_completed.connect(_on_order_completed)
 	if not GameStateManager.order_failed.is_connected(_on_order_failed):
 		GameStateManager.order_failed.connect(_on_order_failed)
+	# P4 外卖反馈：新订单 / 骑手取餐 / 超时罚款
+	if not GameStateManager.takeaway_created.is_connected(_on_takeaway_created):
+		GameStateManager.takeaway_created.connect(_on_takeaway_created)
+	if not GameStateManager.takeaway_completed.is_connected(_on_takeaway_completed):
+		GameStateManager.takeaway_completed.connect(_on_takeaway_completed)
+	if not GameStateManager.takeaway_failed.is_connected(_on_takeaway_failed):
+		GameStateManager.takeaway_failed.connect(_on_takeaway_failed)
 
 func _on_order_completed(order_id: int, revenue: int) -> void:
 	show_toast("%s 交付成功  +%d" % [UITheme.icon(UITheme.ICON_CHECK), revenue], UITheme.COLOR_GREEN)
@@ -98,6 +105,21 @@ func _on_order_state_changed(order_id: int, new_state: int) -> void:
 	if order.is_empty():
 		return
 	show_toast("%s 新订单：%s" % [UITheme.icon(UITheme.ICON_ORDER), GameStateManager.get_dish_display_name(str(order["dish_type"]))], UITheme.COLOR_BLUE)
+
+## P4 外卖反馈：新外卖订单（骑手已接单，注意打包）
+func _on_takeaway_created(order_id: int) -> void:
+	var order := GameStateManager.get_takeaway(order_id)
+	if order.is_empty():
+		return
+	show_toast("%s 新外卖：%s 骑手 %.0fs 后到" % [UITheme.icon(UITheme.ICON_ORDER), GameStateManager.get_dish_display_name(str(order["dish_type"])), order["eta_total"]], UITheme.COLOR_BLUE)
+
+## P4 外卖反馈：骑手取餐成功
+func _on_takeaway_completed(_order_id: int, revenue: int) -> void:
+	show_toast("%s 骑手取餐 +%d" % [UITheme.icon(UITheme.ICON_CHECK), revenue], UITheme.COLOR_GREEN)
+
+## P4 外卖反馈：超时罚款
+func _on_takeaway_failed(_order_id: int) -> void:
+	show_toast("%s 外卖超时！罚款 %d" % [UITheme.icon(UITheme.ICON_CROSS), GameStateManager.TAKEOUT_FAIL_PENALTY], UITheme.COLOR_RED)
 
 ## 淡出并移除（防御：节点可能已被超限移除提前释放）
 func _begin_fade(entry: Dictionary) -> void:

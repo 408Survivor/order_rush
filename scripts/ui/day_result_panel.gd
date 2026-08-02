@@ -105,6 +105,7 @@ func _build_panel() -> void:
 		["cost_ingredients", "食材成本"],
 		["cost_consumables", "耗材成本"],
 		["cost_utilities", "水电成本"],
+		["cost_penalty", "超时罚款"],
 		["cost_rent", "房租"],
 	]
 	for spec in cost_specs:
