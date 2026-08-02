@@ -334,6 +334,34 @@ func _run() -> void:
 	_check(takeout_counter != null, "外卖口已实例化")
 	_check(takeout_counter.global_position == layout.PICKUP_POINT, "外卖口位于布局点位")
 
+	# ===== P5 设备升级（内存态，避免污染开发者真实存档） =====
+	UpgradeManager.has_second_microwave = false
+	UpgradeManager.heat_level = 0
+	UpgradeManager.freezer_level = 0
+	UpgradeManager.save_path = "/tmp/test_save_p5.json"
+	_check(not UpgradeManager.is_owned("second_microwave"), "初始无第二微波炉")
+
+	# 金币不足 → 购买失败不扣钱
+	gsm.money = 10
+	_check(not UpgradeManager.buy_upgrade("second_microwave"), "金币不足购买失败")
+	_check(gsm.money == 10, "购买失败不扣金币")
+
+	# 金币足够 → 购买成功扣钱
+	gsm.money = 200
+	_check(UpgradeManager.buy_upgrade("second_microwave"), "购买第二微波炉成功")
+	_check(gsm.money == 120, "购买第二微波炉扣 80 金币")
+	_check(not UpgradeManager.buy_upgrade("second_microwave"), "已购不可重复购买")
+	_check(UpgradeManager.buy_upgrade("heat_accel"), "购买加热加速成功")
+	_check(UpgradeManager.buy_upgrade("freezer"), "购买冰柜扩容成功")
+	_check(gsm.money == 10, "三项共扣 190（200−80−50−60）")
+
+	# 效果应用（buy_upgrade 发 upgrades_changed，main_scene/微波炉同步响应）
+	_check(scene.get_node_or_null("Microwave2") != null, "第二微波炉已实例化")
+	_check(scene.get_node("Microwave2").global_position == layout.get_slot_position(layout.MICROWAVE_SLOTS, 1), "第二微波炉位于槽位 2")
+	_check(microwave.heat_time == 2.2, "微波炉加热加速生效（3.0→2.2）")
+	_check(scene.get_node_or_null("Items/MealPackage5") != null, "冰柜扩容后料理包 5 个（含 MealPackage5）")
+	_check(UpgradeManager.is_owned("freezer"), "冰柜升级状态已记录")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

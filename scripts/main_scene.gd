@@ -20,13 +20,16 @@ extends Node2D
 
 ## 料理包场景（打烊清场后重建，P3 日循环）
 const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
-const MEAL_NAMES := ["MealPackage", "MealPackage2", "MealPackage3"]
+## 微波炉场景（P5：第二台升级后实例化）
+const MICROWAVE_SCENE := preload("res://scenes/props/Microwave.tscn")
 ## 外卖口场景（P4，动态实例化）
 const TAKEOUT_COUNTER_SCENE := preload("res://scenes/props/TakeoutCounter.tscn")
 ## 外卖订单面板脚本（P4，动态实例化 CanvasLayer）
 const TAKEOUT_BOARD_SCRIPT := preload("res://scripts/ui/takeaway_board.gd")
 ## 骑手视觉管理器脚本（P4）
 const TAKEOUT_RIDER_SCRIPT := preload("res://scripts/systems/takeaway_rider.gd")
+## 升级商店脚本（P5，动态实例化 CanvasLayer）
+const UPGRADE_SHOP_SCRIPT := preload("res://scripts/ui/upgrade_shop.gd")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -42,12 +45,17 @@ func _ready() -> void:
 	_build_tables()
 	_build_takeout_counter()
 	_build_takeaway_ui()
+	_build_upgrade_shop()
+	_apply_upgrades()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
 	if not GameStateManager.shop_closed.is_connected(_on_shop_closed):
 		GameStateManager.shop_closed.connect(_on_shop_closed)
 	if not GameStateManager.day_started.is_connected(_on_day_started):
 		GameStateManager.day_started.connect(_on_day_started)
+	# P5 升级：购买后应用（第二微波炉/冰柜扩容即时生效）
+	if not UpgradeManager.upgrades_changed.is_connected(_on_upgrades_changed):
+		UpgradeManager.upgrades_changed.connect(_on_upgrades_changed)
 
 # ==================== P3 日循环 ====================
 
@@ -67,24 +75,34 @@ func _on_day_started(_day: int) -> void:
 		customer_manager.start_serving()
 	_reset_shop_items()
 
+## 料理包数量/名字（P5：冰柜扩容后 3→5，MEAL_SLOTS 前 5 位；首包名保持 "MealPackage" 兼容旧引用）
+func _get_meal_names() -> Array[String]:
+	var count := 5 if UpgradeManager.freezer_level >= 1 else 3
+	var names: Array[String] = []
+	for i in range(count):
+		names.append("MealPackage" if i == 0 else "MealPackage%d" % (i + 1))
+	return names
+
 ## 新一天重置：销毁手持/微波炉内/散落物品，重建料理包，玩家复位出生点
 func _reset_shop_items() -> void:
 	# 玩家手持物品销毁（跨天不保留）
 	if player.has_method("discard_held_item"):
 		player.discard_held_item()
-	# 微波炉内物品清空（含加热中强制中止）
-	if microwave.has_method("clear_contents"):
-		microwave.clear_contents()
+	# 微波炉内物品清空（含加热中强制中止）——含 P5 第二台
+	for mw: Node in [microwave, get_node_or_null("Microwave2")]:
+		if mw != null and mw.has_method("clear_contents"):
+			mw.clear_contents()
 	# 清理散落物品（Q 放下/交付残留的成品菜等），料理包由下方重建逻辑处理
+	var meal_names := _get_meal_names()
 	for child in items_root.get_children():
-		if child.name not in MEAL_NAMES:
+		if child.name not in meal_names:
 			child.queue_free()
 	# 重建/复位料理包到货架槽位：缺失的实例化，已存在的重摆（防 Q 放下后跨天残留错位）
-	for i in MEAL_NAMES.size():
-		var meal: Node2D = items_root.get_node_or_null(MEAL_NAMES[i])
+	for i in meal_names.size():
+		var meal: Node2D = items_root.get_node_or_null(meal_names[i])
 		if meal == null:
 			meal = MEAL_PACKAGE_SCENE.instantiate()
-			meal.name = MEAL_NAMES[i]
+			meal.name = meal_names[i]
 			items_root.add_child(meal)
 		meal.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
 	# 玩家复位出生点
@@ -160,6 +178,33 @@ func _build_takeaway_ui() -> void:
 		rider.name = "TakeawayRider"
 		add_child(rider)
 
+## 实例化升级商店（P5；打烊暂停中由日结算面板按钮打开，动态生成幂等）
+func _build_upgrade_shop() -> void:
+	if not has_node("UpgradeShop"):
+		var shop: CanvasLayer = UPGRADE_SHOP_SCRIPT.new()
+		shop.name = "UpgradeShop"
+		add_child(shop)
+
+# ==================== P5 设备升级应用 ====================
+
+## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容由 _reset_shop_items 的 _get_meal_names 生效
+func _apply_upgrades() -> void:
+	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
+	if not UpgradeManager.has_second_microwave:
+		if has_node("Microwave2"):
+			$Microwave2.queue_free()
+		return
+	if not has_node("Microwave2"):
+		var mw2: Node2D = MICROWAVE_SCENE.instantiate()
+		mw2.name = "Microwave2"
+		add_child(mw2)
+	$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
+
+## 升级购买后：应用设备效果 + 重置物品（冰柜扩容即时补全料理包）
+func _on_upgrades_changed() -> void:
+	_apply_upgrades()
+	_reset_shop_items()
+
 # ==================== 节点摆放 ====================
 
 ## 按 LayoutManager 配置摆放全部功能节点（位置单一权威）
@@ -172,11 +217,8 @@ func _place_nodes() -> void:
 	if floor_sprite.texture != null:
 		floor_sprite.scale = LayoutManager.WORLD_SIZE / floor_sprite.texture.get_size()
 
-	# 微波炉 → 设备槽位 0（第 2 槽位 P5 解锁）
-	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
-
-	# 料理包 → 货架前 3 位（P7 多菜品扩展）
-	var meal_names := MEAL_NAMES
+	# 料理包 → 货架（P5：数量按冰柜升级 3/5）
+	var meal_names := _get_meal_names()
 	for i in meal_names.size():
 		var meal := items_root.get_node_or_null(meal_names[i])
 		if meal != null:

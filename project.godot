@@ -25,6 +25,7 @@ config/features=PackedStringArray("4.6", "Mobile")
 GameStateManager="*res://scripts/autoload/GameStateManager.gd"
 LayoutManager="*res://scripts/autoload/layout_manager.gd"
 UITheme="*res://scripts/autoload/ui_theme.gd"
+UpgradeManager="*res://scripts/autoload/upgrade_manager.gd"
 
 [display]
 
