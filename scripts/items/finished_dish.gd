@@ -18,3 +18,9 @@ func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("pickable")
 	add_to_group("dish")
+	apply_dish_visual()
+
+## P7：按 dish_type 应用名称/色调（占位视觉——现有素材着色区分，AI 素材 013 批次后替换）
+func apply_dish_visual() -> void:
+	display_name = GameStateManager.get_dish_display_name(dish_type)
+	modulate = GameStateManager.get_dish_tint(dish_type)

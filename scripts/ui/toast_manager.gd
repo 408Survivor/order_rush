@@ -37,6 +37,9 @@ func _ready() -> void:
 		GameStateManager.takeaway_completed.connect(_on_takeaway_completed)
 	if not GameStateManager.takeaway_failed.is_connected(_on_takeaway_failed):
 		GameStateManager.takeaway_failed.connect(_on_takeaway_failed)
+	# P7 特殊事件提示（设备故障/恶劣天气）
+	if not GameStateManager.event_started.is_connected(_on_event_started):
+		GameStateManager.event_started.connect(_on_event_started)
 
 func _on_order_completed(order_id: int, revenue: int) -> void:
 	show_toast("%s 交付成功  +%d" % [UITheme.icon(UITheme.ICON_CHECK), revenue], UITheme.COLOR_GREEN)
@@ -120,6 +123,13 @@ func _on_takeaway_completed(_order_id: int, revenue: int) -> void:
 ## P4 外卖反馈：超时罚款
 func _on_takeaway_failed(_order_id: int) -> void:
 	show_toast("%s 外卖超时！罚款 %d" % [UITheme.icon(UITheme.ICON_CROSS), GameStateManager.TAKEOUT_FAIL_PENALTY], UITheme.COLOR_RED)
+
+## P7 特殊事件提示（设备故障 / 恶劣天气）
+func _on_event_started(event_type: int) -> void:
+	if event_type == GameStateManager.SpecialEvent.EQUIPMENT_BREAK:
+		show_toast("⚠ 设备故障！微波炉停用 8s", UITheme.COLOR_RED)
+	elif event_type == GameStateManager.SpecialEvent.BAD_WEATHER:
+		show_toast("⚠ 恶劣天气！外卖暂停 15s", UITheme.COLOR_YELLOW)
 
 ## 淡出并移除（防御：节点可能已被超限移除提前释放）
 func _begin_fade(entry: Dictionary) -> void:

@@ -131,13 +131,16 @@ func _build_panel() -> void:
 	spacer.custom_minimum_size = Vector2(0, 6)
 	vbox.add_child(spacer)
 
-	# P5/P6：升级商店 + 抽卡入口（次按钮，打烊暂停中打开）
+	# P5/P6/P7：升级商店 + 抽卡 + 招牌菜入口（次按钮，打烊暂停中打开）
 	var shop_button := _make_secondary_button("升级设备")
 	shop_button.pressed.connect(_on_shop_pressed)
 	vbox.add_child(shop_button)
 	var draw_button := _make_secondary_button("口碑抽卡")
 	draw_button.pressed.connect(_on_draw_pressed)
 	vbox.add_child(draw_button)
+	var specialty_button := _make_secondary_button("选招牌菜")
+	specialty_button.pressed.connect(_on_specialty_pressed)
+	vbox.add_child(specialty_button)
 
 	_next_day_button = Button.new()
 	_next_day_button.text = "进入下一天"
@@ -213,6 +216,14 @@ func _on_draw_pressed() -> void:
 	var draw := get_tree().current_scene.get_node_or_null("CardDraw")
 	if draw != null and draw.has_method("show_draw"):
 		draw.show_draw()
+
+## 打开招牌菜选择（P7；面板为 main_scene 动态实例化的 SpecialtyPanel，打烊暂停中可交互）
+func _on_specialty_pressed() -> void:
+	if Engine.is_editor_hint():
+		return
+	var panel := get_tree().current_scene.get_node_or_null("SpecialtyPanel")
+	if panel != null and panel.has_method("show_panel"):
+		panel.show_panel()
 
 ## 隐藏面板（新一天开始后由按钮触发；防御重复调用）
 func hide_panel() -> void:

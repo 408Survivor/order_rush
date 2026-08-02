@@ -56,9 +56,9 @@ func _ready() -> void:
 		spawn_timer.start()
 	print_rich("[color=green]CustomerManager ready (interval=%.1fs, max_queue=%d)[/color]" % [get_effective_interval(), max_queue])
 
-## 实际生成间隔（P6：客流高峰卡 -25%）
+## 实际生成间隔（P6：客流高峰卡 -25%；P7：难度递增）
 func get_effective_interval() -> float:
-	return spawn_interval * CardManager.get_multiplier("spawn_multiplier")
+	return spawn_interval * CardManager.get_multiplier("spawn_multiplier") * GameStateManager.get_difficulty()["spawn"]
 
 ## P6：卡牌变化 → 刷新生成间隔（定时器在下次启动时生效）
 func _on_cards_changed() -> void:
@@ -108,7 +108,7 @@ func _on_customer_arrived(customer: Node2D) -> void:
 func _create_order_for_customer(customer: Node2D) -> void:
 	if customer.get("order_id") != -1:
 		return
-	var order_id := GameStateManager.create_order(customer.get_instance_id(), "kungpao")
+	var order_id := GameStateManager.create_order(customer.get_instance_id(), GameStateManager.get_random_dish())
 	if order_id != -1:
 		customer.order_id = order_id
 		customer.set_order_label("宫保鸡丁")

@@ -32,6 +32,8 @@ signal takeaway_created(order_id: int)
 signal takeaway_state_changed(order_id: int, new_state: int)
 signal takeaway_completed(order_id: int, revenue: int)
 signal takeaway_failed(order_id: int)
+## P7 特殊事件信号：开始（Toast/微波炉提示用）
+signal event_started(event_type: int)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 3  # P2: 最多同时 3 单（与 max_queue=3 对齐）
@@ -52,10 +54,51 @@ const PACKING_FEE := 2                  ## 打包费（外卖收入加成）
 const PLATFORM_SUBSIDY := 3             ## 平台补贴（外卖收入加成）
 const PLATFORM_CUT_RATE := 0.10         ## 平台扣点比例（外卖收入扣减）
 const TAKEOUT_FAIL_PENALTY := 5         ## 外卖超时罚款（计入当日成本）
-## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 多菜品时扩展）
+
+# ===== P7 多菜品 + 难度 + 招牌菜 + 特殊事件 =====
+## 菜品配置（id → 名称/等级/基础价；L2/L3 槽位预留，二期接入炒锅/现做流程）
+const DISHES := {
+	"kungpao": {"name": "宫保鸡丁", "level": 1, "price": 20},
+	"yuxiang": {"name": "鱼香肉丝", "level": 1, "price": 22},
+	"mapo": {"name": "麻婆豆腐", "level": 1, "price": 18},
+}
+const L1_DISHES: Array[String] = ["kungpao", "yuxiang", "mapo"]  ## 当前可点菜品池（L1）
+const SPECIALTY_PROF_PER_LEVEL := 3   ## 招牌菜熟练度升级档位（每 N 次售出 +1 档）
+const SPECIALTY_PRICE_BONUS := 0.20   ## 招牌菜基础价格加成
+const SPECIALTY_PROF_BONUS := 0.10    ## 招牌菜每档熟练度价格加成（上限 3 档）
+const SPECIALTY_PROF_MAX_LEVEL := 3   ## 熟练度档位上限
+## 7 天难度表（倍率作用于顾客间隔/耐心/外卖 ETA；第 7 天后封顶）
+const DIFFICULTY_TABLE: Array[Dictionary] = [
+	{"spawn": 1.00, "patience": 1.00, "eta": 1.00},
+	{"spawn": 0.92, "patience": 0.95, "eta": 0.96},
+	{"spawn": 0.85, "patience": 0.90, "eta": 0.92},
+	{"spawn": 0.78, "patience": 0.85, "eta": 0.88},
+	{"spawn": 0.72, "patience": 0.80, "eta": 0.84},
+	{"spawn": 0.66, "patience": 0.75, "eta": 0.80},
+	{"spawn": 0.60, "patience": 0.70, "eta": 0.76},
+]
+## 特殊事件类型（P7 简化：设备故障 / 恶劣天气）
+enum SpecialEvent { NONE, EQUIPMENT_BREAK, BAD_WEATHER }
+const EVENT_DURATION := {0: 0.0, 1: 8.0, 2: 15.0}  ## 事件时长（秒）
+const EVENT_TRIGGER_INTERVAL := 30.0  ## 事件判定间隔（秒）
+const EVENT_TRIGGER_CHANCE := 0.15    ## 每次判定触发概率
+
+## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 由 DISHES 驱动）
 const DISH_NAMES := {
 	"kungpao": "宫保鸡丁",
+	"yuxiang": "鱼香肉丝",
+	"mapo": "麻婆豆腐",
 }
+## 菜品视觉占位色调（P7：现有素材着色区分；AI 素材 013 批次后替换为真实纹理）
+const DISH_TINT := {
+	"kungpao": Color.WHITE,
+	"yuxiang": Color(1.0, 0.72, 0.68),
+	"mapo": Color(1.0, 0.86, 0.55),
+}
+
+## 菜品占位色调（未知菜品回退白色）
+func get_dish_tint(dish_type: String) -> Color:
+	return DISH_TINT.get(dish_type, Color.WHITE)
 
 # ==================== 枚举 ====================
 enum OrderState {
@@ -83,6 +126,14 @@ var active_orders: Array[Dictionary] = []
 ## 结构: [{ id: int, state: TakeoutState, dish_type: String, eta_left: float, eta_total: float, packed: bool }]
 var takeaway_orders: Array[Dictionary] = []
 var _takeaway_spawn_timer := TAKEOUT_ORDER_INTERVAL  ## 距离下一单外卖生成（秒）
+
+# ===== P7 多菜品/难度/招牌菜/事件状态 =====
+var specialty_dish := ""            ## 当日招牌菜（P7；打烊时可选，跨天保留至改选）
+var dish_proficiency := {}          ## dish_type → 累计售出数（招牌菜熟练度）
+var active_event := SpecialEvent.NONE  ## 当前特殊事件
+var _event_time_left := 0.0         ## 事件剩余时长
+var _event_timer := EVENT_TRIGGER_INTERVAL  ## 距下次事件判定
+var _dish_override := ""            ## 随机菜测试钩子（空 = 真随机）
 
 ## 累计营业额（跨天累加，交付成功累加；P3 保留作历史统计/兼容）
 var revenue := 0
@@ -200,17 +251,17 @@ func get_active_order_count() -> int:
 func get_dish_display_name(dish_type: String) -> String:
 	return DISH_NAMES.get(dish_type, dish_type)
 
-## 顾客耐心（P6：慢工出细活卡牌 +15s）
+## 顾客耐心（P6：慢工出细活卡牌 +15s；P7：难度递减）
 func get_patience_time() -> float:
-	return patience_time + CardManager.get_value("patience_bonus")
+	return (patience_time + CardManager.get_value("patience_bonus")) * get_difficulty()["patience"]
 
 ## 每单好评数（P6：会员日卡牌 2）
 func get_review_gain() -> int:
 	return 2 if CardManager.has_flag("double_review") else 1
 
-## 外卖骑手 ETA（P6：闪送合作卡牌 +15s）
+## 外卖骑手 ETA（P6：闪送合作卡牌 +15s；P7：难度递减）
 func get_takeout_eta() -> float:
-	return TAKEOUT_ETA + CardManager.get_value("takeout_eta_bonus")
+	return (TAKEOUT_ETA + CardManager.get_value("takeout_eta_bonus")) * get_difficulty()["eta"]
 
 ## 外卖超时罚款（P6：员工关怀卡牌减半）
 func get_fail_penalty() -> int:
@@ -225,8 +276,9 @@ func get_fail_penalty() -> int:
 func complete_order(order_id: int) -> bool:
 	for i in range(active_orders.size()):
 		if active_orders[i]["id"] == order_id:
+			var served_dish: String = active_orders[i]["dish_type"]
 			active_orders.remove_at(i)
-			var price := get_dish_price()
+			var price := get_dish_price(false, served_dish)
 			var gain := get_review_gain()
 			revenue += price
 			good_reviews += gain
@@ -235,6 +287,8 @@ func complete_order(order_id: int) -> bool:
 			day_cost_ingredients += INGREDIENT_COST_PER_ORDER
 			day_cost_consumables += CONSUMABLE_COST_PER_ORDER
 			day_good_reviews += gain
+			# P7：招牌菜熟练度
+			record_dish_served(served_dish)
 			order_completed.emit(order_id, price)
 			revenue_changed.emit(revenue)
 			reviews_changed.emit(good_reviews, bad_reviews)
@@ -269,6 +323,9 @@ func fail_order(order_id: int) -> bool:
 func create_takeaway_order() -> int:
 	if not is_shop_open:
 		return -1
+	# P7：恶劣天气外卖暂停（骑手不出车）
+	if active_event == SpecialEvent.BAD_WEATHER:
+		return -1
 	if takeaway_orders.size() >= TAKEOUT_MAX_CONCURRENT:
 		return -1
 	var order_id := _next_order_id
@@ -277,7 +334,7 @@ func create_takeaway_order() -> int:
 	var order := {
 		"id": order_id,
 		"state": TakeoutState.PACKING,
-		"dish_type": "kungpao",
+		"dish_type": get_random_dish(),
 		"eta_left": eta,
 		"eta_total": eta,
 		"packed": false,
@@ -354,7 +411,7 @@ func complete_takeaway(order_id: int) -> bool:
 	var order := get_takeaway(order_id)
 	if order.is_empty():
 		return false
-	var price := get_dish_price(true)
+	var price := get_dish_price(true, order["dish_type"])
 	var gain := get_review_gain()
 	revenue += price
 	good_reviews += gain
@@ -362,6 +419,8 @@ func complete_takeaway(order_id: int) -> bool:
 	day_cost_ingredients += INGREDIENT_COST_PER_ORDER
 	day_cost_consumables += CONSUMABLE_COST_PER_ORDER
 	day_good_reviews += gain
+	# P7：招牌菜熟练度
+	record_dish_served(order["dish_type"])
 	remove_takeaway(order_id)
 	takeaway_completed.emit(order_id, price)
 	revenue_changed.emit(revenue)
@@ -391,6 +450,36 @@ func fail_takeaway(order_id: int) -> bool:
 func clear_takeaways() -> void:
 	takeaway_orders.clear()
 	_takeaway_spawn_timer = TAKEOUT_ORDER_INTERVAL
+
+# ==================== P7 特殊事件 ====================
+
+## 推进特殊事件（运行模式由 _process 调用）：事件倒计时结束清除；空闲到点判定随机触发
+func tick_event(delta: float) -> void:
+	if active_event != SpecialEvent.NONE:
+		_event_time_left -= delta
+		if _event_time_left <= 0.0:
+			var ended := active_event
+			active_event = SpecialEvent.NONE
+			print_rich("[color=orange]Event ended: %s[/color]" % SpecialEvent.keys()[ended])
+		return
+	_event_timer -= delta
+	if _event_timer <= 0.0:
+		_event_timer = EVENT_TRIGGER_INTERVAL
+		if randf() < EVENT_TRIGGER_CHANCE:
+			_trigger_event()
+
+func _trigger_event() -> void:
+	var event_type := SpecialEvent.EQUIPMENT_BREAK if randi() % 2 == 0 else SpecialEvent.BAD_WEATHER
+	active_event = event_type
+	_event_time_left = EVENT_DURATION[event_type]
+	event_started.emit(event_type)
+	print_rich("[color=red]Event started: %s（%.0fs）[/color]" % [SpecialEvent.keys()[event_type], _event_time_left])
+
+## 手动触发事件（测试用；真实触发走 tick_event 随机判定）
+func force_event(event_type: int) -> void:
+	active_event = event_type
+	_event_time_left = EVENT_DURATION[event_type]
+	event_started.emit(event_type)
 
 # ==================== 耐心值（P2） ====================
 
@@ -424,6 +513,7 @@ func _process(delta: float) -> void:
 		return
 	tick_patience(delta)
 	tick_takeaway(delta)
+	tick_event(delta)
 	tick_business_time(delta)
 
 
@@ -431,12 +521,44 @@ func _process(delta: float) -> void:
 
 ## 每单收入：堂食 = 基础价；外卖 = 基础价 + 打包费 + 平台补贴 − 平台扣点（P4）
 ## P6 卡牌：platform_subsidy 外卖额外 +N；premium_price 全部价格 +X%
-func get_dish_price(is_takeout: bool = false) -> int:
-	var base := DISH_PRICE
+## P7：按菜品基础价（DISHES）；招牌菜价格加成（基础 20% + 熟练度每档 10%，上限 3 档）
+func get_dish_price(is_takeout: bool = false, dish_type: String = "kungpao") -> int:
+	var base: int = DISHES.get(dish_type, DISHES["kungpao"])["price"]
 	if is_takeout:
-		base = DISH_PRICE + PACKING_FEE + PLATFORM_SUBSIDY - int(round(DISH_PRICE * PLATFORM_CUT_RATE))
+		base = base + PACKING_FEE + PLATFORM_SUBSIDY - int(round(base * PLATFORM_CUT_RATE))
 		base += int(CardManager.get_value("takeout_extra"))
-	return int(round(base * (1.0 + CardManager.get_value("price_modifier"))))
+	base = int(round(base * (1.0 + CardManager.get_value("price_modifier"))))
+	if dish_type == specialty_dish and specialty_dish != "":
+		var prof_level := get_specialty_prof_level(dish_type)
+		base = int(round(base * (1.0 + SPECIALTY_PRICE_BONUS + SPECIALTY_PROF_BONUS * prof_level)))
+	return base
+
+## 随机一道可点菜（堂食/外卖下单用；P7 多菜品）
+## _dish_override 为测试钩子（冒烟测试固定菜品保证确定性；空串 = 真随机）
+func get_random_dish() -> String:
+	if _dish_override != "":
+		return _dish_override
+	return L1_DISHES[randi() % L1_DISHES.size()]
+
+## 当前难度档（按天数，第 7 天后封顶）
+func get_difficulty() -> Dictionary:
+	return DIFFICULTY_TABLE[clampi(day - 1, 0, DIFFICULTY_TABLE.size() - 1)]
+
+## 招牌菜熟练度档位（每 SPECIALTY_PROF_PER_LEVEL 次售出 +1 档，上限封顶）
+func get_specialty_prof_level(dish_type: String) -> int:
+	return mini(int(dish_proficiency.get(dish_type, 0)) / SPECIALTY_PROF_PER_LEVEL, SPECIALTY_PROF_MAX_LEVEL)
+
+## 记录菜品售出（招牌菜熟练度 +1；P7）
+func record_dish_served(dish_type: String) -> void:
+	dish_proficiency[dish_type] = int(dish_proficiency.get(dish_type, 0)) + 1
+
+## 设置当日招牌菜（打烊时选择次日生效；非法菜品置空）
+func set_specialty_dish(dish_type: String) -> void:
+	specialty_dish = dish_type if DISHES.has(dish_type) else ""
+
+## 特殊事件是否生效（微波炉/外卖系统查询）
+func is_event_active(event_type: int) -> bool:
+	return active_event == event_type
 
 ## 当日房租（P6：房东豁免卡牌减半）
 func get_day_rent() -> int:
