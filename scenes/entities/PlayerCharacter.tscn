@@ -40,17 +40,20 @@ shape = SubResource("CircleShape2D_interact")
 [node name="InteractionPrompt" type="CanvasLayer" parent="."]
 layer = 10
 
-[node name="PromptLabel" type="Label" parent="InteractionPrompt"]
+[node name="PromptPanel" type="PanelContainer" parent="InteractionPrompt"]
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -200.0
-offset_top = -90.0
+offset_top = -100.0
 offset_right = 200.0
-offset_bottom = -30.0
+offset_bottom = -40.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
+
+[node name="PromptLabel" type="Label" parent="InteractionPrompt/PromptPanel"]
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 8

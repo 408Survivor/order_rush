@@ -1,22 +1,24 @@
 ## 文件: scripts/ui/order_board.gd
 ## 职责: 订单队列面板——屏幕顶部集中显示所有活跃订单（菜品 + 耐心进度条 + 剩余秒数），
-##       随订单创建/完成/超时实时增删（issue #26）
-## 依赖: GameStateManager (autoload)；运行模式 _process 每帧刷新，测试/编辑器进程手动调 refresh()
-## 注意: @tool + 编辑器进程拦截自动刷新（与 tick_patience 同模式）；面板为纯显示无副作用
+##       随订单创建/完成/超时实时增删（issue #26；#30 升级：卡片质感/ProgressBar/增删动画）
+## 依赖: GameStateManager/UITheme (autoload)；运行模式 _process 每帧刷新，测试/编辑器进程手动调 refresh()
+## 注意: @tool + 编辑器进程拦截自动刷新与动画（冒烟测试手动 refresh 断言确定性）；
+##       _cards 结构 { panel, name_label, bar_fill(ProgressBar), seconds_label, bar_color }
 
 @tool
 extends CanvasLayer
 
 # ==================== 常量 ====================
 const BAR_WIDTH := 120.0   ## 耐心进度条宽度（像素）
-const BAR_HEIGHT := 12.0
+const BAR_HEIGHT := 14.0
 const MAX_CARDS := 6       ## 面板最大卡片数（布局队列容量 5 + 余量）
+const CARD_WIDTH := 170.0  ## 卡片最小宽度（#30 统一）
 
 # ==================== 节点引用 ====================
 var _container: HBoxContainer = null
 
 # ==================== 状态变量 ====================
-## order_id -> { panel, name_label, bar_fill, seconds_label }
+## order_id -> { panel, name_label, bar_fill, seconds_label, bar_color }
 var _cards: Dictionary = {}
 
 # ==================== 生命周期 ====================
@@ -74,26 +76,29 @@ func _update_card(order: Dictionary) -> void:
 		card = _cards[order_id]
 
 	var dish_name: String = GameStateManager.get_dish_display_name(str(order["dish_type"]))
-	card["name_label"].text = dish_name
+	card["name_label"].text = "🍛 %s" % dish_name
 
 	var total: float = order["patience_total"]
 	var left: float = order["patience_left"]
 	var ratio := 1.0 if total <= 0.0 else clampf(left / total, 0.0, 1.0)
-	var fill: ColorRect = card["bar_fill"]
-	fill.size.x = BAR_WIDTH * ratio
+	var bar: ProgressBar = card["bar_fill"]
+	bar.value = ratio * 100.0
 	# 耐心颜色：>50% 绿 / >20% 黄 / 否则红（与顾客头顶一致）
-	var color := Color(0.4, 0.9, 0.45)
+	var color := UITheme.COLOR_GREEN
 	if ratio <= 0.5 and ratio > 0.2:
-		color = Color(0.95, 0.8, 0.25)
+		color = UITheme.COLOR_YELLOW
 	elif ratio <= 0.2:
-		color = Color(0.95, 0.3, 0.3)
-	fill.color = color
+		color = UITheme.COLOR_RED
+	if card["bar_color"] != color:
+		card["bar_color"] = color
+		bar.add_theme_stylebox_override("fill", _bar_fill_style(color))
 	card["seconds_label"].text = "%ds" % int(ceil(left))
 
 ## 创建一张卡片（PanelContainer > Margin > VBox: 菜名 + HBox(进度条 + 秒)）
 func _create_card(order_id: int) -> Dictionary:
 	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", _card_stylebox())
+	panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(10, UITheme.COLOR_PANEL, Color(0.9, 0.85, 0.6, 0.4)))
+	panel.custom_minimum_size = Vector2(CARD_WIDTH, 0)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -106,7 +111,7 @@ func _create_card(order_id: int) -> Dictionary:
 
 	var name_label := Label.new()
 	name_label.add_theme_font_size_override("font_size", 22)
-	name_label.add_theme_color_override("font_color", Color(1, 0.92, 0.6))
+	name_label.add_theme_color_override("font_color", UITheme.COLOR_GOLD)
 	name_label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	name_label.add_theme_constant_override("outline_size", 4)
 	vbox.add_child(name_label)
@@ -115,23 +120,21 @@ func _create_card(order_id: int) -> Dictionary:
 	bar_row.add_theme_constant_override("separation", 6)
 	vbox.add_child(bar_row)
 
-	# 进度条：背景 + 前景填充
-	var bar_bg := ColorRect.new()
-	bar_bg.color = Color(0.15, 0.15, 0.15, 0.8)
-	bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	bar_bg.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	bar_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar_row.add_child(bar_bg)
-
-	var bar_fill := ColorRect.new()
-	bar_fill.color = Color(0.4, 0.9, 0.45)
-	bar_fill.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	bar_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar_bg.add_child(bar_fill)
+	# #30：ColorRect → ProgressBar（圆角轨道 + 填充，耐心三色）
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	bar.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	bar.max_value = 100.0
+	bar.value = 100.0
+	bar.show_percentage = false
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.add_theme_stylebox_override("background", _bar_bg_style())
+	bar.add_theme_stylebox_override("fill", _bar_fill_style(UITheme.COLOR_GREEN))
+	bar_row.add_child(bar)
 
 	var seconds_label := Label.new()
 	seconds_label.add_theme_font_size_override("font_size", 16)
-	seconds_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.9))
+	seconds_label.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
 	seconds_label.custom_minimum_size = Vector2(44, 0)
 	bar_row.add_child(seconds_label)
 
@@ -145,24 +148,50 @@ func _create_card(order_id: int) -> Dictionary:
 	var card := {
 		"panel": panel,
 		"name_label": name_label,
-		"bar_fill": bar_fill,
+		"bar_fill": bar,
 		"seconds_label": seconds_label,
+		"bar_color": UITheme.COLOR_GREEN,
 	}
 	_cards[order_id] = card
+	# #30：新卡片弹入动画（运行模式）
+	if not Engine.is_editor_hint():
+		panel.pivot_offset = panel.size / 2.0
+		panel.scale = Vector2(0.8, 0.8)
+		panel.modulate.a = 0.0
+		var tween := create_tween()
+		tween.tween_property(panel, "scale", Vector2.ONE, 0.18)
+		tween.parallel().tween_property(panel, "modulate:a", 1.0, 0.18)
 	return card
 
+## 移除卡片（运行模式先淡出再释放；编辑器进程直接释放保证断言确定性）
 func _remove_card(order_id: int) -> void:
 	if not _cards.has(order_id):
 		return
 	var card: Dictionary = _cards[order_id]
-	card["panel"].queue_free()
 	_cards.erase(order_id)
+	var panel: PanelContainer = card["panel"]
+	if Engine.is_editor_hint():
+		panel.queue_free()
+		return
+	var tween := create_tween()
+	tween.tween_property(panel, "modulate:a", 0.0, 0.15)
+	tween.tween_callback(func() -> void:
+		if is_instance_valid(panel):
+			panel.queue_free()
+	)
 
-## 统一卡片样式：半透明深色 + 圆角
-func _card_stylebox() -> StyleBoxFlat:
+# ==================== 样式 ====================
+
+## 进度条轨道样式（深色圆角）
+func _bar_bg_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0, 0, 0, 0.55)
-	sb.set_corner_radius_all(10)
-	sb.set_border_width_all(2)
-	sb.border_color = Color(0.9, 0.85, 0.6, 0.35)
+	sb.bg_color = Color(0.12, 0.14, 0.18, 0.9)
+	sb.set_corner_radius_all(7)
+	return sb
+
+## 进度条填充样式（耐心三色，圆角）
+func _bar_fill_style(color: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.set_corner_radius_all(7)
 	return sb

@@ -25,7 +25,8 @@ const ITEM_COLLISION_LAYER := 8     ## 物品初始碰撞层（Items，与 MealP
 @onready var interaction_ray: RayCast2D = $InteractionRay
 @onready var interact_area: Area2D = $InteractArea
 @onready var held_item_pivot: Marker2D = $HeldItemPivot
-@onready var prompt_label: Label = $InteractionPrompt/PromptLabel
+@onready var prompt_panel: PanelContainer = $InteractionPrompt/PromptPanel
+@onready var prompt_label: Label = $InteractionPrompt/PromptPanel/PromptLabel
 
 # ==================== 状态变量 ====================
 ## 当前手持物品（Node2D，如 MealPackage）
@@ -41,6 +42,9 @@ var _interaction_cooldown := 0.0
 
 func _ready() -> void:
 	add_to_group("player")
+
+	# #30：交互提示气泡样式（半透明深色圆角 + 暖金描边）
+	prompt_panel.add_theme_stylebox_override("panel", UITheme.make_panel_style(12, Color(0, 0, 0, 0.45), Color(0.95, 0.85, 0.6, 0.3)))
 
 	# 确保交互射线初始方向正确
 	interaction_ray.target_position = facing_direction * INTERACTION_DISTANCE
@@ -331,8 +335,8 @@ func _friendly_name(node: Node) -> String:
 
 func show_prompt(text: String) -> void:
 	prompt_label.text = text
-	prompt_label.visible = true
+	prompt_panel.visible = true
 
 func hide_prompt() -> void:
 	prompt_label.text = ""
-	prompt_label.visible = false
+	prompt_panel.visible = false
