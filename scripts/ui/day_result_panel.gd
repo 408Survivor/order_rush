@@ -1,25 +1,34 @@
 ## 文件: scripts/ui/day_result_panel.gd
 ## 职责: 日结算面板——打烊后居中显示当日收入/成本明细/利润/评分/累计金币，按钮进入下一天（P3）
-##       （#30 升级：弹出动画/按钮三态/统一调色板）
+##       （#30 弹出动画/按钮三态/统一调色板；#48 tscn 化：静态结构移入 scenes/ui/DayResultPanel.tscn，
+##        标题 44 号、主按钮立体纹理三态、次按钮描边样式写入 tscn）
 ## 依赖: GameStateManager/UITheme (autoload)；运行模式监听 shop_closed 自动弹出并暂停游戏
-## 注意: 结构全代码构建（DayResultPanel(CanvasLayer) > Overlay(ColorRect) > Center > Panel > Margin > VBox）
+## 注意: 场景结构 DayResultPanel(CanvasLayer) > Overlay(ColorRect) > CenterContainer > Panel > Margin > VBox
+##       （成本 5 行 Label 命名 cost_ingredients/cost_consumables/cost_utilities/cost_penalty/cost_rent，
+##        _ready 按名收集进 _cost_labels）
 ##       @tool：编辑器进程（冒烟测试）不连接信号/不暂停/无动画，手动 show_result() 断言文本（项目统一约定）
 ## #30: Overlay 及子树 process_mode=ALWAYS——打烊暂停后弹出动画仍推进（tween 归属本节点）
 
 @tool
 extends CanvasLayer
 
-# ==================== 节点引用 ====================
-var _overlay: ColorRect = null
-var _panel: PanelContainer = null
-var _title_label: Label = null
-var _revenue_label: Control = null
-var _cost_labels: Dictionary = {}   # key -> Label（食材/耗材/水电/房租）
-var _cost_total_label: Label = null
-var _profit_label: Label = null
-var _review_label: Label = null
-var _money_label: Control = null
-var _next_day_button: Button = null
+# ==================== 节点引用（tscn 绑定，变量名冒烟测试依赖） ====================
+@onready var _overlay: ColorRect = $Overlay
+@onready var _panel: PanelContainer = $Overlay/CenterContainer/Panel
+@onready var _title_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/TitleLabel
+@onready var _revenue_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/RevenueLabel
+var _cost_labels: Dictionary = {}   # key -> Label（食材/耗材/水电/罚款/房租，_ready 按名收集）
+@onready var _cost_total_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/CostPanel/Margin/VBox/CostTotalLabel
+@onready var _profit_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/ProfitLabel
+@onready var _review_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/ReviewLabel
+@onready var _money_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/MoneyLabel
+@onready var _next_day_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/NextDayButton
+@onready var _shop_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/ShopButton
+@onready var _draw_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/DrawButton
+@onready var _specialty_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/SpecialtyButton
+
+## 按钮信号/反馈只接一次（@tool 热重载幂等）
+var _wired := false
 
 # ==================== 生命周期 ====================
 
@@ -27,7 +36,29 @@ func _ready() -> void:
 	# #30：本面板在打烊暂停（get_tree().paused）期间仍需推进弹出动画（tween 归属本节点，
 	#       process_mode=ALWAYS 使暂停下 tween 继续；进入下一天按钮由 Control 输入驱动不受暂停影响）
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_panel()
+	# 纹理面板样式（奶黄金边；@tool 下同样生效，纯视觉无副作用）
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
+	# 成本明细标签按名收集（tscn 静态节点）
+	var cost_box: VBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/CostPanel/Margin/VBox
+	for key in ["cost_ingredients", "cost_consumables", "cost_utilities", "cost_penalty", "cost_rent"]:
+		_cost_labels[key] = cost_box.get_node(key)
+	# #48：主按钮三态换立体纹理（normal/hover/pressed）
+	var btn_styles := UITheme.make_button_texture_styles()
+	_next_day_button.add_theme_stylebox_override("normal", btn_styles["normal"])
+	_next_day_button.add_theme_stylebox_override("hover", btn_styles["hover"])
+	_next_day_button.add_theme_stylebox_override("pressed", btn_styles["pressed"])
+	_next_day_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	# 按钮信号与反馈（热重载防重；编辑器进程连接无副作用，按下不会触发）
+	if not _wired:
+		_wired = true
+		UITheme.style_button_feedback(_next_day_button)
+		UITheme.style_button_feedback(_shop_button)
+		UITheme.style_button_feedback(_draw_button)
+		UITheme.style_button_feedback(_specialty_button)
+		_next_day_button.pressed.connect(_on_next_day_pressed)
+		_shop_button.pressed.connect(_on_shop_pressed)
+		_draw_button.pressed.connect(_on_draw_pressed)
+		_specialty_button.pressed.connect(_on_specialty_pressed)
 	if Engine.is_editor_hint():
 		return
 	# 防重复连接（热重载/多实例 _ready）
@@ -38,124 +69,6 @@ func _ready() -> void:
 func _on_shop_closed(result: Dictionary) -> void:
 	show_result(result)
 	get_tree().paused = true
-
-# ==================== 面板构建 ====================
-
-func _build_panel() -> void:
-	# @tool 热重载幂等：变量在热重载时保留，已构建过则跳过（对比 main_scene._build_zones 的 has_node 防护）
-	if _overlay != null and is_instance_valid(_overlay):
-		return
-	# 全屏半透明遮罩（拦截点击，防止结算时操作场景）
-	_overlay = ColorRect.new()
-	_overlay.name = "Overlay"
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.55)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.visible = false
-	# #30：暂停时弹出动画仍推进（进入下一天按钮在暂停下由 Control 输入驱动，不受影响）
-	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(_overlay)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
-
-	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
-	center.add_child(_panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 28)
-	_panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(vbox)
-
-	# 标题 + 上下金色装饰线（#32 第③步 版式）
-	vbox.add_child(_make_rule())
-	_title_label = _make_label("", 40, UITheme.COLOR_GOLD)
-	vbox.add_child(_title_label)
-	vbox.add_child(_make_rule())
-
-	# 分隔线
-	var divider := HSeparator.new()
-	vbox.add_child(divider)
-
-	# 收入区（大字金色）
-	_revenue_label = _make_label("总收入：0", 26, UITheme.COLOR_GOLD, true)
-	vbox.add_child(_revenue_label)
-
-	# 成本明细区（内嵌淡色区块，与收入/利润分区更清晰）
-	var cost_panel := PanelContainer.new()
-	cost_panel.add_theme_stylebox_override("panel", _cost_section_style())
-	vbox.add_child(cost_panel)
-	var cost_margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		cost_margin.add_theme_constant_override("margin_" + side, 12)
-	cost_panel.add_child(cost_margin)
-	var cost_vbox := VBoxContainer.new()
-	cost_vbox.add_theme_constant_override("separation", 4)
-	cost_margin.add_child(cost_vbox)
-
-	var cost_specs := [
-		["cost_ingredients", "食材成本"],
-		["cost_consumables", "耗材成本"],
-		["cost_utilities", "水电成本"],
-		["cost_penalty", "超时罚款"],
-		["cost_rent", "房租"],
-	]
-	for spec in cost_specs:
-		var label := _make_label("%s：0" % spec[1], 20, UITheme.COLOR_TEXT)
-		cost_vbox.add_child(label)
-		_cost_labels[spec[0]] = label
-
-	_cost_total_label = _make_label("成本合计：0", 22, UITheme.COLOR_GOLD)
-	cost_vbox.add_child(_cost_total_label)
-
-	# 利润区（大字红绿）
-	_profit_label = _make_label("今日利润：0", 30, UITheme.COLOR_GREEN)
-	vbox.add_child(_profit_label)
-
-	# 评分 + 资金
-	_review_label = _make_label("好评 0 ｜ 差评 0", 20, UITheme.COLOR_TEXT)
-	vbox.add_child(_review_label)
-
-	_money_label = _make_label("现有资金：0", 22, UITheme.COLOR_GOLD, true)
-	vbox.add_child(_money_label)
-
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 6)
-	vbox.add_child(spacer)
-
-	# P5/P6/P7：升级商店 + 抽卡 + 招牌菜入口（次按钮，打烊暂停中打开）
-	var shop_button := _make_secondary_button("升级设备")
-	shop_button.pressed.connect(_on_shop_pressed)
-	vbox.add_child(shop_button)
-	var draw_button := _make_secondary_button("口碑抽卡")
-	draw_button.pressed.connect(_on_draw_pressed)
-	vbox.add_child(draw_button)
-	var specialty_button := _make_secondary_button("选招牌菜")
-	specialty_button.pressed.connect(_on_specialty_pressed)
-	vbox.add_child(specialty_button)
-
-	_next_day_button = Button.new()
-	_next_day_button.text = "进入下一天"
-	_next_day_button.custom_minimum_size = Vector2(220, 52)
-	_next_day_button.add_theme_font_size_override("font_size", 26)
-	# #30：按钮三态（normal/hover/pressed 金）
-	var btn_styles := UITheme.make_button_styles()
-	_next_day_button.add_theme_stylebox_override("normal", btn_styles["normal"])
-	_next_day_button.add_theme_stylebox_override("hover", btn_styles["hover"])
-	_next_day_button.add_theme_stylebox_override("pressed", btn_styles["pressed"])
-	_next_day_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_next_day_button.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
-	_next_day_button.add_theme_color_override("font_hover_color", Color.WHITE)
-	_next_day_button.pressed.connect(_on_next_day_pressed)
-	vbox.add_child(_next_day_button)
 
 # ==================== 展示与交互 ====================
 
@@ -229,69 +142,3 @@ func _on_specialty_pressed() -> void:
 func hide_panel() -> void:
 	if _overlay != null:
 		_overlay.visible = false
-
-# ==================== 样式辅助 ====================
-
-## 生成文本标签（统一居中）；rich=true 时返回 RichTextLabel（支持 [img] 内联图标，#32 第②步）
-func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:
-	if rich:
-		var rl := RichTextLabel.new()
-		rl.bbcode_enabled = true
-		rl.fit_content = true
-		# Godot 4.4+ typed enum：RichTextLabel.alignment 直接赋值 int 被拒，需经 set() 传 Variant（与 tscn 反序列化同路径）
-		rl.set("alignment", HorizontalAlignment.HORIZONTAL_ALIGNMENT_CENTER)
-		rl.text = text
-		rl.add_theme_font_size_override("normal_font_size", font_size)
-		rl.add_theme_color_override("default_color", color)
-		rl.add_theme_color_override("outline_color", Color(0, 0, 0, 0.9))
-		rl.add_theme_constant_override("outline_size", 5)
-		rl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		return rl
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	label.add_theme_constant_override("outline_size", 5)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
-
-## 次级按钮（描边金 + 透明底，区别于主按钮金色实底；P5 商店入口用）
-func _make_secondary_button(text: String) -> Button:
-	var btn := Button.new()
-	btn.text = text
-	btn.custom_minimum_size = Vector2(160, 40)
-	btn.add_theme_font_size_override("font_size", 20)
-	var normal := StyleBoxFlat.new()
-	normal.bg_color = Color(1, 1, 1, 0.7)
-	normal.set_corner_radius_all(10)
-	normal.set_border_width_all(2)
-	normal.border_color = UITheme.COLOR_GOLD_DARK
-	normal.set_content_margin_all(8)
-	var hover := normal.duplicate()
-	hover.bg_color = Color(1, 1, 1, 0.9)
-	var pressed := normal.duplicate()
-	pressed.bg_color = Color(0.9, 0.85, 0.75, 0.95)
-	btn.add_theme_stylebox_override("normal", normal)
-	btn.add_theme_stylebox_override("hover", hover)
-	btn.add_theme_stylebox_override("pressed", pressed)
-	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	btn.add_theme_color_override("font_color", UITheme.COLOR_GOLD)
-	return btn
-
-## 金色装饰线（标题上下，#32 第③步 版式）
-func _make_rule() -> ColorRect:
-	var rule := ColorRect.new()
-	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
-	rule.custom_minimum_size = Vector2(140, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rule
-
-## 成本明细区底（浅棕内嵌区块，奶油白面板上清晰）
-func _cost_section_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.93, 0.88, 0.80, 0.45)
-	sb.set_corner_radius_all(8)
-	return sb

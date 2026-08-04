@@ -47,10 +47,58 @@ const ICON_BAD := "res://assets/art/ui/icons/bad.svg"           ## 差评
 const ICON_CHECK := "res://assets/art/ui/icons/check.svg"       ## 成功（Toast）
 const ICON_CROSS := "res://assets/art/ui/icons/cross.svg"       ## 失败（Toast）
 const ICON_ORDER := "res://assets/art/ui/icons/order.svg"       ## 新订单（Toast）
+## #48：耐心表情（订单卡片）+ 打包（外卖面板）+ 菜品图标（俯视盘贴纸风）
+const ICON_MOOD_HAPPY := "res://assets/art/ui/icons/mood_happy.svg"
+const ICON_MOOD_NEUTRAL := "res://assets/art/ui/icons/mood_neutral.svg"
+const ICON_MOOD_ANGRY := "res://assets/art/ui/icons/mood_angry.svg"
+const ICON_PACK := "res://assets/art/ui/icons/pack.svg"
+const ICON_DISH_KUNGPAO := "res://assets/art/ui/icons/dish_kungpao.svg"
+const ICON_DISH_YUXIANG := "res://assets/art/ui/icons/dish_yuxiang.svg"
+const ICON_DISH_MAPO := "res://assets/art/ui/icons/dish_mapo.svg"
+
+## #48：dish_type → 菜品图标路径（未知菜品回退通用餐盘）
+static func dish_icon_path(dish_type: String) -> String:
+	match dish_type:
+		"kungpao":
+			return ICON_DISH_KUNGPAO
+		"yuxiang":
+			return ICON_DISH_YUXIANG
+		"mapo":
+			return ICON_DISH_MAPO
+	return ICON_PLATE
+
+## #48：耐心比例 → 表情图标路径（>50% 满意 / >20% 一般 / ≤20% 不耐烦）
+static func mood_icon_path(ratio: float) -> String:
+	if ratio > 0.5:
+		return ICON_MOOD_HAPPY
+	if ratio > 0.2:
+		return ICON_MOOD_NEUTRAL
+	return ICON_MOOD_ANGRY
 
 ## 生成 RichTextLabel 内联图标 BBCode：[img width=h height=h]path[/img]（默认 22px 匹配正文）
 static func icon(icon_path: String, size: int = 22) -> String:
 	return "[img width=%d height=%d]%s[/img]" % [size, size, icon_path]
+
+# ==================== 交互反馈（P9 Polish） ====================
+
+## 为按钮附加点击音效（编辑器进程/音频缺失静默）
+static func attach_click(button: Button) -> void:
+	button.pressed.connect(func() -> void: AudioManager.play_sfx("click"))
+
+## 为按钮附加按下/释放缩放反馈（短促弹性）
+static func attach_scale_feedback(button: Button) -> void:
+	button.button_down.connect(func() -> void:
+		button.pivot_offset = button.size / 2.0
+		button.scale = Vector2(0.94, 0.94)
+	)
+	button.button_up.connect(func() -> void:
+		button.scale = Vector2.ONE
+	)
+
+## 一键接入：点击音效 + 缩放反馈
+static func style_button_feedback(button: Button) -> void:
+	attach_click(button)
+	attach_scale_feedback(button)
 
 ## 加载的字体（缓存；null = 加载失败回退系统字体）
 var font: Font = null
@@ -84,14 +132,22 @@ static func make_panel_style(corner_radius: int = 10, bg: Color = COLOR_PANEL, b
 	return sb
 
 # ==================== 面板纹理（#32 第③步：StyleBoxTexture 九宫格） ====================
-const PANEL_TEX_PATH := "res://assets/art/ui/panels/panel_bg.svg"       ## 暖深棕金边圆角
-const PANEL_DARK_TEX_PATH := "res://assets/art/ui/panels/panel_dark.svg" ## 深咖啡金边圆角（结算等强调面板）
+const PANEL_TEX_PATH := "res://assets/art/ui/panels/panel_bg.svg"       ## 奶油白深棕边圆角（#48 重绘：高光/内阴影/角点）
+const PANEL_DARK_TEX_PATH := "res://assets/art/ui/panels/panel_dark.svg" ## 奶黄金边圆角（结算等强调面板）
+const PANEL_CARD_TEX_PATH := "res://assets/art/ui/panels/panel_card.svg" ## #48：亮奶白紧凑卡片（订单卡/Toast）
 const PANEL_TEX_MARGIN := 18  ## 九宫格 patch 边距 = 圆角 16 + 金边 3
 
-## 纹理面板样式（九宫格拉伸，角/边不变形）；dark=true 用深咖啡底
+## 纹理面板样式（九宫格拉伸，角/边不变形）；dark=true 用奶黄金边
 static func make_panel_texture_style(dark: bool = false) -> StyleBoxTexture:
+	return _make_tex_style(PANEL_DARK_TEX_PATH if dark else PANEL_TEX_PATH)
+
+## #48：卡片面板样式（订单卡/Toast，紧凑圆角）
+static func make_card_style() -> StyleBoxTexture:
+	return _make_tex_style(PANEL_CARD_TEX_PATH)
+
+static func _make_tex_style(tex_path: String) -> StyleBoxTexture:
 	var sb := StyleBoxTexture.new()
-	var tex: Texture2D = load(PANEL_DARK_TEX_PATH if dark else PANEL_TEX_PATH)
+	var tex: Texture2D = load(tex_path)
 	if tex != null:
 		sb.texture = tex
 	sb.texture_margin_left = PANEL_TEX_MARGIN
@@ -102,6 +158,62 @@ static func make_panel_texture_style(dark: bool = false) -> StyleBoxTexture:
 	sb.content_margin_right = 10
 	sb.content_margin_top = 8
 	sb.content_margin_bottom = 8
+	return sb
+
+# ==================== 按钮纹理（#48：立体糖果按钮九宫格） ====================
+const BTN_NORMAL_TEX_PATH := "res://assets/art/ui/panels/btn_normal.svg"
+const BTN_HOVER_TEX_PATH := "res://assets/art/ui/panels/btn_hover.svg"
+const BTN_PRESSED_TEX_PATH := "res://assets/art/ui/panels/btn_pressed.svg"
+const BTN_TEX_MARGIN := 16
+
+## 纹理版按钮三态（normal/hover/pressed 立体糖果按钮；内容边距适配厚度边）
+static func make_button_texture_styles() -> Dictionary:
+	var out := {}
+	for key in ["normal", "hover", "pressed"]:
+		var path: String = BTN_NORMAL_TEX_PATH
+		if key == "hover":
+			path = BTN_HOVER_TEX_PATH
+		elif key == "pressed":
+			path = BTN_PRESSED_TEX_PATH
+		var sb := StyleBoxTexture.new()
+		var tex: Texture2D = load(path)
+		if tex != null:
+			sb.texture = tex
+		sb.texture_margin_left = BTN_TEX_MARGIN
+		sb.texture_margin_right = BTN_TEX_MARGIN
+		sb.texture_margin_top = BTN_TEX_MARGIN
+		sb.texture_margin_bottom = BTN_TEX_MARGIN
+		sb.set_content_margin_all(10)
+		out[key] = sb
+	return out
+
+# ==================== 进度条纹理（#48：轨道 + 四色高光填充，取代纯色 StyleBoxFlat） ====================
+const BAR_BG_TEX_PATH := "res://assets/art/ui/panels/bar_bg.svg"
+const BAR_FILL_TEX := {
+	"green": "res://assets/art/ui/panels/bar_fill_green.svg",
+	"yellow": "res://assets/art/ui/panels/bar_fill_yellow.svg",
+	"red": "res://assets/art/ui/panels/bar_fill_red.svg",
+	"blue": "res://assets/art/ui/panels/bar_fill_blue.svg",
+}
+const BAR_TEX_MARGIN := 7
+
+## 进度条轨道样式
+static func make_bar_bg_style() -> StyleBoxTexture:
+	return _make_bar_tex(BAR_BG_TEX_PATH)
+
+## 进度条填充样式（color_name: green/yellow/red/blue）
+static func make_bar_fill_style(color_name: String) -> StyleBoxTexture:
+	return _make_bar_tex(BAR_FILL_TEX.get(color_name, BAR_FILL_TEX["green"]))
+
+static func _make_bar_tex(tex_path: String) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	var tex: Texture2D = load(tex_path)
+	if tex != null:
+		sb.texture = tex
+	sb.texture_margin_left = BAR_TEX_MARGIN
+	sb.texture_margin_right = BAR_TEX_MARGIN
+	sb.texture_margin_top = BAR_TEX_MARGIN
+	sb.texture_margin_bottom = BAR_TEX_MARGIN
 	return sb
 
 ## 金色按钮样式（normal/hover/pressed 三态）

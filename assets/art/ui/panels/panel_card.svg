@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 卡片面板（#48 新增）：订单卡/Toast 用，亮奶白底 + 紧凑圆角 + 浅棕描边（九宫格 margin 18） -->
+<rect x="2" y="2" width="124" height="124" rx="12" fill="#FFFBF3"/>
+<path d="M8 96 Q64 106 120 96 L120 112 Q120 120 112 120 L16 120 Q8 120 8 112 Z" fill="#F4EAD2" fill-opacity="0.7"/>
+<path d="M18 6 Q64 1 110 6" fill="none" stroke="#FFFFFF" stroke-opacity="0.95" stroke-width="3" stroke-linecap="round"/>
+<rect x="2" y="2" width="124" height="124" rx="12" fill="none" stroke="#D9C9AE" stroke-width="3"/>
+</svg>

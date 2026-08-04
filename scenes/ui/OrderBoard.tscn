@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/order_board.gd" id="1_board"]
+
+; ===== 订单队列面板（issue #26 / #48 tscn 化） =====
+; 顶部居中卡片流；卡片由脚本实例化 scenes/ui/OrderCard.tscn 挂到 Margin/Cards 下
+
+[node name="OrderBoard" type="CanvasLayer"]
+script = ExtResource("1_board")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = -16.0
+offset_bottom = 100.0
+mouse_filter = 2
+
+[node name="Cards" type="HBoxContainer" parent="Margin"]
+alignment = 1
+theme_override_constants/separation = 12

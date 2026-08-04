@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 菜品图标·鱼香肉丝（#48 新增）：俯视盘 + 橙亮肉丝 + 青椒丝 + 胡萝卜丝，贴纸风 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="46" fill="#FFF6E5"/>
+  <circle cx="64" cy="64" r="33" fill="#FFF3E2" stroke="#E8D5B5" stroke-width="3"/>
+  <rect x="40" y="52" width="48" height="9" rx="4.5" fill="#F2994A" transform="rotate(-18 64 56)"/>
+  <rect x="42" y="66" width="46" height="9" rx="4.5" fill="#E8893A" transform="rotate(8 64 70)"/>
+  <rect x="46" y="44" width="40" height="8" rx="4" fill="#F2994A" transform="rotate(-40 66 48)"/>
+  <rect x="44" y="60" width="34" height="6" rx="3" fill="#6FCE96" transform="rotate(-30 60 63)"/>
+  <rect x="56" y="72" width="32" height="6" rx="3" fill="#6FCE96" transform="rotate(20 72 75)"/>
+  <rect x="50" y="78" width="28" height="5" rx="2.5" fill="#E8590C" transform="rotate(-10 64 80)"/>
+</g>
+<circle cx="94" cy="30" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
+</svg>

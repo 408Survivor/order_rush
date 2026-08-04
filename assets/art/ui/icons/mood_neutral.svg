@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 耐心表情·一般（#48 新增）：奶黄圆脸 + 圆眼 + 平嘴，贴纸风 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="42" fill="#FFE9A8"/>
+  <circle cx="50" cy="58" r="4.5" fill="#4A3728" stroke="none"/>
+  <circle cx="78" cy="58" r="4.5" fill="#4A3728" stroke="none"/>
+  <path d="M50 80 L78 80" fill="none" stroke-width="5" stroke-linecap="round"/>
+</g>
+<circle cx="88" cy="34" r="5" fill="#FFFFFF" fill-opacity="0.8"/>
+</svg>

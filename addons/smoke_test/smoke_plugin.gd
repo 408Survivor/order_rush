@@ -154,6 +154,10 @@ func _run() -> void:
 	_check(gsm.get_active_order_count() == 3, "3 名顾客就位后订单队列应有 3 单（P2 多单并发）")
 	board.call("refresh")
 	_check(board.get("_cards").size() == 3, "订单面板显示 3 张卡片")
+	# #48：订单卡片图标——菜品贴纸 + 满耐心笑脸（第一张卡 = c1，dish_override=kungpao）
+	var first_card: Dictionary = board.get("_cards").values()[0]
+	_check(str(first_card["dish_icon"].texture.resource_path).contains("dish_kungpao.svg"), "订单卡片菜品图标为宫保鸡丁贴纸（#48）")
+	_check(str(first_card["mood_icon"].texture.resource_path).contains("mood_happy.svg"), "满耐心表情为笑脸（#48）")
 	_check(c1.get("order_id") != -1 and c2.get("order_id") != -1 and c3.get("order_id") != -1, "每名顾客均绑定订单 id")
 	var order1: Dictionary = gsm.get_order(c1.get("order_id"))
 	_check(not order1.is_empty() and order1["dish_type"] == "kungpao", "订单菜品为宫保鸡丁")
@@ -166,6 +170,12 @@ func _run() -> void:
 	gsm.tick_patience(5.0)
 	_check(gsm.get_order(c1.get("order_id"))["patience_left"] < gsm.patience_time, "耐心倒计时随 tick 递减")
 	_check(gsm.get_active_order_count() == 3, "耐心未耗尽，订单仍在队列")
+
+	# #48：低耐心（剩余 ≤20% 但未超时：30 → 5.5s，ratio≈0.18）→ 表情切换怒脸
+	gsm.tick_patience(19.5)
+	board.call("refresh")
+	var low_card: Dictionary = board.get("_cards").values()[0]
+	_check(str(low_card["mood_icon"].texture.resource_path).contains("mood_angry.svg"), "低耐心表情切换为怒脸（#48）")
 
 	# 第一轮交付：手持成品菜交付 c1 → 好评 +1
 	_check(player.call("_interact_with_customer", c1), "手持成品菜交付 c1 成功")
@@ -260,11 +270,14 @@ func _run() -> void:
 	var time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/TimeLabel").text
 	_check(day_text.contains("第 1 天") and day_text.contains("calendar.svg"), "HUD 天数行（图标化）")
 	_check(time_text.contains("营业剩余 90s") and time_text.contains("timer.svg"), "HUD 倒计时行（图标化）")
+	_check(scene.get_node_or_null("RevenueHUD/Panel/Margin/VBox/TimeBar") != null, "HUD 时间进度条节点存在（#48）")
 
 	# 倒计时推进（未到点不触发打烊）
 	gsm.tick_business_time(10.0)
 	_check(absf(gsm.business_time_left - (gsm.BUSINESS_TIME_PER_DAY - 10.0)) < 0.01, "营业倒计时随 tick 递减")
 	_check(gsm.is_shop_open, "未到点仍营业")
+	scene.get_node("RevenueHUD").call("_update_all")
+	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/TimeBar").value < 100.0, "HUD 时间条随倒计时减少（#48）")
 
 	# 倒计时耗尽 → 自动打烊：停止营业、作废订单、结算利润
 	# 打烊前造一笔未完成订单（P2 超时段已把订单清空），真实覆盖“打烊作废订单”分支
@@ -283,6 +296,7 @@ func _run() -> void:
 	_check(not settlement.is_empty() and settlement["day"] == 1, "结算结果已生成（含天数）")
 	day_result_panel.call("show_result", settlement)
 	_check(day_result_panel.get("_overlay").visible, "结算面板弹出")
+	_check(day_result_panel.get("_next_day_button") != null, "结算面板主按钮已绑定（#48）")
 	_check(day_result_panel.get("_title_label").text == "第 1 天 结算", "结算面板标题含天数")
 	_check(day_result_panel.get("_revenue_label").text.contains("总收入：60"), "结算面板收入正确（图标化）")
 	_check(day_result_panel.get("_cost_total_label").text == "成本合计：57", "结算面板成本合计正确")
@@ -319,6 +333,7 @@ func _run() -> void:
 	var takeaway_board: CanvasLayer = scene.get_node("TakeawayBoard")
 	takeaway_board.call("refresh")
 	_check(takeaway_board.get("_list").get_child_count() == 1, "外卖面板显示 1 行订单")
+	_check(takeaway_board.get_node_or_null("Panel/Margin/VBox/Title") != null, "外卖面板标题节点存在（#48）")
 
 	_check(gsm.pack_takeaway(takeout_id), "打包外卖成功（PACKING→READY）")
 	_check(gsm.order_is_packed(takeout_id), "打包后标记已打包")
@@ -467,6 +482,17 @@ func _run() -> void:
 	_check(absf(CharacterManager.get_heat_multiplier() - 0.85) < 0.01, "快手主厨加热乘数 ×0.85")
 	# 微波炉即时生效：P5 加热加速(2.2s) × 卡牌(无，已重置) × 快手主厨(0.85) = 1.87
 	_check(absf(microwave.heat_time - (2.2 * 0.85)) < 0.01, "微波炉加热角色技能生效（2.2 → 1.87s）")
+
+	# ===== P9 Polish =====
+	_check(load("res://assets/audio/sfx/deliver.wav") != null, "交付音效文件存在")
+	_check(load("res://assets/audio/sfx/timeout.wav") != null, "超时音效文件存在")
+	_check(load("res://assets/audio/sfx/new_order.wav") != null, "新订单音效文件存在")
+	_check(load("res://assets/audio/sfx/pickup.wav") != null, "拾取音效文件存在")
+	var audio_mgr = scene.get_node_or_null("/root/AudioManager")
+	_check(audio_mgr != null, "AudioManager autoload 可访问")
+	audio_mgr.call("play_sfx", "click")
+	_check(load("res://scripts/systems/particle_fx.gd") != null, "ParticleFX 工具脚本存在")
+	_check(FileAccess.file_exists("res://docs/发布指南.md"), "发布指南文档存在")
 
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"

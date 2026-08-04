@@ -1,8 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-<g fill="#FFE9A8" stroke="#4A3728" stroke-width="2.2" stroke-linejoin="round">
-  <rect x="14" y="12" width="36" height="40" rx="5" fill="#FFF6E5" fill-opacity="0.95"/>
-  <rect x="14" y="12" width="36" height="10" rx="4" fill="#D9A62E"/>
-  <path d="M20 33 L44 33" stroke="#D9A62E" stroke-width="3"/>
-  <path d="M20 41 L36 41" stroke="#D9A62E" stroke-width="3"/>
+<!-- 订单小票图标（#48 重绘：修正居中，奶白小票 + 金顶带 + 金行线） -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <rect x="30" y="22" width="68" height="84" rx="9" fill="#FFF6E5"/>
+  <path d="M30 31 Q30 22 39 22 L89 22 Q98 22 98 31 L98 40 L30 40 Z" fill="#D9A62E"/>
+  <path d="M42 60 L86 60" fill="none" stroke="#D9A62E" stroke-width="5" stroke-linecap="round"/>
+  <path d="M42 74 L86 74" fill="none" stroke="#D9A62E" stroke-width="5" stroke-linecap="round"/>
+  <path d="M42 88 L70 88" fill="none" stroke="#D9A62E" stroke-width="5" stroke-linecap="round"/>
 </g>
+<circle cx="94" cy="28" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
 </svg>

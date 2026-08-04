@@ -1,0 +1,28 @@
+# 013 BGM（issue #46 / P9 Polish）
+日期: 2026-08-02
+平台: SunoAI（外部生成，待开发者手动执行）
+状态: audio_manager.play_bgm 接口已就绪（assets/audio/bgm/ 无文件时静默跳过）
+
+## 用途
+游戏背景音乐：营业中 + 打烊 2 首（开发手册 Week 15-16 要求）。
+
+## 需要的 2 首
+1. bgm_shop.ogg —— 营业中（温馨忙碌的奶茶店氛围，节奏轻快循环）
+2. bgm_close.ogg —— 打烊/结算（舒缓放松，结算面板场景）
+
+## 有效提示词结构（SunoAI v3/v4）
+`[风格] cozy cafe lo-fi loop, [乐器] soft ukulele + light percussion, [情绪] warm busy friendly, [速度] moderate tempo, no vocals, 60s instrumental loop`
+
+示例（bgm_shop）：
+`cozy boba tea shop lo-fi loop, ukulele and soft bells, warm busy friendly mood, moderate tempo, cheerful, no vocals, clean instrumental loop`
+示例（bgm_close）：
+`relaxing closing time piano piece, soft warm slow, gentle evening mood, calm, no vocals, 60s`
+
+## 规格
+- 导入路径 assets/audio/bgm/（bgm_shop.ogg / bgm_close.ogg）
+- 循环：Godot 导入后需在 audio_manager 播放时 loop（AudioStreamOggVorbis.loop = true，后续接入）
+- 文件命名 snake_case 与接口 play_bgm("bgm_shop.ogg") 一致
+
+## 备注
+- 音效（SFX）已程序化生成 12 个（assets/audio/sfx/，本批次不涉及）
+- 若 SunoAI 不便，可换 freeesound（CC0）下载替换

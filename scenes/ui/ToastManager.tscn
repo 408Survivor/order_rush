@@ -1,0 +1,23 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/toast_manager.gd" id="1_toast"]
+
+; ===== Toast 堆叠容器（issue #26 / #48 tscn 化） =====
+; 左下角；Toast 条目由脚本 show_toast() 动态挂到 Margin/List 下
+
+[node name="ToastManager" type="CanvasLayer"]
+script = ExtResource("1_toast")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -140.0
+offset_right = 360.0
+offset_bottom = -16.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="List" type="VBoxContainer" parent="Margin"]
+theme_override_constants/separation = 6

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 菜品图标·麻婆豆腐（#48 新增）：俯视盘 + 红亮酱汁 + 白玉豆腐块 + 葱花，贴纸风 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="46" fill="#FFF6E5"/>
+  <circle cx="64" cy="64" r="33" fill="#C0392B" stroke="#8F2A1E" stroke-width="3"/>
+  <rect x="44" y="44" width="17" height="15" rx="3" fill="#FFFBF0"/>
+  <rect x="65" y="42" width="16" height="15" rx="3" fill="#FFF3E0"/>
+  <rect x="48" y="63" width="16" height="15" rx="3" fill="#FFFBF0"/>
+  <rect x="68" y="62" width="17" height="15" rx="3" fill="#FFF3E0"/>
+  <rect x="57" y="78" width="14" height="12" rx="3" fill="#FFFBF0"/>
+  <circle cx="52" cy="56" r="2.6" fill="#6FCE96" stroke="none"/>
+  <circle cx="76" cy="54" r="2.6" fill="#6FCE96" stroke="none"/>
+  <circle cx="62" cy="70" r="2.6" fill="#6FCE96" stroke="none"/>
+  <circle cx="80" cy="76" r="2.6" fill="#6FCE96" stroke="none"/>
+</g>
+<circle cx="94" cy="30" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
+</svg>

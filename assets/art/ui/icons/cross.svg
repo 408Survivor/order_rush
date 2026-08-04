@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-<g fill="#E04A3A" stroke="#4A3728" stroke-width="2.2" stroke-linejoin="round">
-  <circle cx="32" cy="32" r="21" fill="#FFF6E5" fill-opacity="0.9"/>
-  <path d="M23 23 L41 41 M41 23 L23 41" stroke="#FFF6E5" stroke-width="5"/>
+<!-- 失败叉图标（#48 重绘：修正居中，红底奶白叉） -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="42" fill="#E04A3A"/>
+  <path d="M46 46 L82 82 M82 46 L46 82" fill="none" stroke="#FFF6E5" stroke-width="9" stroke-linecap="round"/>
 </g>
+<circle cx="90" cy="32" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
 </svg>

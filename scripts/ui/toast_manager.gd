@@ -1,7 +1,8 @@
 ## 文件: scripts/ui/toast_manager.gd
 ## 职责: 操作反馈提示——左下角堆叠 Toast（新订单/交付成功/超时差评/加热完成），自动淡出
-##       （issue #26；#30 升级：左侧类型色带 + 图标）
-## 依赖: GameStateManager/UITheme (autoload)；运行模式自动监听订单信号，测试/编辑器进程手动调 show_toast()
+##       （issue #26；#30 左侧类型色带 + 图标；#48 tscn 化 + 卡片样式 + 弹入动画）
+## 依赖: GameStateManager/UITheme (autoload)；容器结构在 scenes/ui/ToastManager.tscn；
+##       运行模式自动监听订单信号，测试/编辑器进程手动调 show_toast()
 ## 注意: @tool + 编辑器进程不连接信号（测试手动触发）；纯显示无副作用
 
 @tool
@@ -15,12 +16,11 @@ const FADE_TIME := 0.4       ## 淡出时长（秒）
 # ==================== 状态变量 ====================
 ## { label: Label, bg: PanelContainer }
 var _toasts: Array[Dictionary] = []
-var _container: VBoxContainer = null
+@onready var _container: VBoxContainer = $Margin/List
 
 # ==================== 生命周期 ====================
 
 func _ready() -> void:
-	_build_container()
 	if Engine.is_editor_hint():
 		return
 	# 监听订单信号 → 反馈提示（命名方法 + is_connected 防热重载/多实例重复连接）
@@ -46,20 +46,6 @@ func _on_order_completed(order_id: int, revenue: int) -> void:
 
 func _on_order_failed(order_id: int) -> void:
 	show_toast("%s 订单超时！差评 -1" % UITheme.icon(UITheme.ICON_CROSS), UITheme.COLOR_RED)
-
-func _build_container() -> void:
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	margin.offset_left = 16.0
-	margin.offset_bottom = -16.0
-	margin.offset_top = -140.0
-	margin.offset_right = 360.0
-	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(margin)
-
-	_container = VBoxContainer.new()
-	_container.add_theme_constant_override("separation", 6)
-	margin.add_child(_container)
 
 # ==================== Toast API ====================
 
@@ -90,6 +76,13 @@ func show_toast(text: String, color: Color = Color.WHITE, duration: float = TOAS
 	label.add_theme_constant_override("outline_size", 5)
 	row.add_child(label)
 	_container.add_child(bg)
+
+	# #48：弹入动画（运行模式：0.8→1 回弹；编辑器进程跳过保证断言确定性）
+	if not Engine.is_editor_hint():
+		bg.pivot_offset = bg.size / 2.0
+		bg.scale = Vector2(0.8, 0.8)
+		var pop := create_tween()
+		pop.tween_property(bg, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 	var entry := {"bg": bg, "label": label, "fade": false}
 	_toasts.append(entry)
@@ -146,6 +139,6 @@ func _destroy_toast(entry: Dictionary) -> void:
 		entry["bg"].queue_free()
 	_toasts.erase(entry)
 
-## 统一 Toast 样式：纹理面板（#32 第③步 九宫格金边圆角）
+## 统一 Toast 样式：紧凑卡片纹理（#48 九宫格卡片，取代通用面板纹理）
 func _toast_stylebox() -> StyleBoxTexture:
-	return UITheme.make_panel_texture_style()
+	return UITheme.make_card_style()

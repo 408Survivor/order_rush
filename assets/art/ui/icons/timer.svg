@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-<g fill="#6FCE96" stroke="#4A3728" stroke-width="2.2" stroke-linejoin="round">
-  <circle cx="32" cy="34" r="19" fill="#FFF6E5" fill-opacity="0.9"/>
-  <path d="M32 15 L32 19" stroke="#FFF6E5" stroke-width="3"/>
-  <path d="M32 34 L41 29" stroke="#FFF6E5" stroke-width="3"/>
+<!-- 计时器图标（#48 重绘：修正居中，薄荷绿表盘 + 奶白内盘 + 指针） -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <rect x="56" y="14" width="16" height="12" rx="5" fill="#6FCE96"/>
+  <circle cx="64" cy="68" r="40" fill="#6FCE96"/>
+  <circle cx="64" cy="68" r="28" fill="#FFF6E5"/>
+  <path d="M64 68 L64 50" fill="none" stroke-width="5" stroke-linecap="round"/>
+  <path d="M64 68 L78 74" fill="none" stroke-width="5" stroke-linecap="round"/>
 </g>
+<circle cx="90" cy="34" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
 </svg>

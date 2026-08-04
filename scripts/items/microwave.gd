@@ -24,6 +24,7 @@ enum MicrowaveState {
 }
 
 # ==================== 常量 ====================
+const ParticleFX := preload("res://scripts/systems/particle_fx.gd")
 const FINISHED_DISH_SCENE := preload("res://scenes/items/FinishedDish.tscn")
 const HEAT_TIME := 3.0    ## 基础加热时长（秒）
 const HEAT_TIME_UPGRADED := 2.2  ## 加热加速后时长（P5 升级 heat_level>=1）
@@ -174,6 +175,9 @@ func clear_contents() -> void:
 func _on_heat_timer_timeout() -> void:
 	if current_state != MicrowaveState.HEATING:
 		return
+	# P9：加热完成蒸汽粒子 + 音效
+	ParticleFX.burst(self, Vector2(0, -60), Color(0.95, 0.95, 0.9, 0.8), 10, Vector2(0, -200), 120.0, 0.8)
+	AudioManager.play_sfx("heat_done")
 
 	# 销毁料理包，生成成品菜（P7：成品菜继承料理包的 dish_type）
 	if contained_item != null:

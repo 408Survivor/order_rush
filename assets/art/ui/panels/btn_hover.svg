@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<!-- 立体糖果按钮 hover（#48 新增）：亮金底 + 厚度边（九宫格 margin 16） -->
+<rect x="3" y="9" width="58" height="52" rx="12" fill="#B8860B"/>
+<rect x="3" y="3" width="58" height="52" rx="12" fill="#F2C14E"/>
+<path d="M13 12 Q32 6 51 12" fill="none" stroke="#FFF6E5" stroke-opacity="0.9" stroke-width="4" stroke-linecap="round"/>
+<rect x="3" y="3" width="58" height="52" rx="12" fill="none" stroke="#4A3728" stroke-opacity="0.35" stroke-width="2.5"/>
+</svg>

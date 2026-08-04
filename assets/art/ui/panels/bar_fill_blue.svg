@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 16" width="32" height="16">
+<!-- 进度条填充·蓝（#48 新增） -->
+<rect x="0.5" y="0.5" width="31" height="15" rx="7" fill="#4A8FCE"/>
+<rect x="3" y="2.5" width="26" height="4.5" rx="2.2" fill="#FFFFFF" fill-opacity="0.35"/>
+<rect x="3" y="11" width="26" height="3" rx="1.5" fill="#2F5E8F" fill-opacity="0.5"/>
+</svg>

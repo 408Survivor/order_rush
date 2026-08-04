@@ -1,0 +1,82 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/upgrade_shop.gd" id="1_shop"]
+
+; ===== 设备升级商店（P5 / #48 tscn 化） =====
+; Overlay process_mode=ALWAYS（打烊暂停中可交互）；升级行由脚本 refresh() 动态重建到 List 下
+
+[node name="UpgradeShop" type="CanvasLayer"]
+script = ExtResource("1_shop")
+
+[node name="Overlay" type="ColorRect" parent="."]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.6)
+visible = false
+
+[node name="CenterContainer" type="CenterContainer" parent="Overlay"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Panel" type="PanelContainer" parent="Overlay/CenterContainer"]
+custom_minimum_size = Vector2(420, 0)
+
+[node name="Margin" type="MarginContainer" parent="Overlay/CenterContainer/Panel"]
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Overlay/CenterContainer/Panel/Margin"]
+theme_override_constants/separation = 10
+
+[node name="RuleTop" type="ColorRect" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(140, 2)
+mouse_filter = 2
+size_flags_horizontal = 4
+color = Color(0.721569, 0.52549, 0.0431373, 0.8)
+
+[node name="Title" type="Label" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.85098, 0.65098, 0.180392, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 32
+text = "设备升级商店"
+horizontal_alignment = 1
+
+[node name="RuleBottom" type="ColorRect" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(140, 2)
+mouse_filter = 2
+size_flags_horizontal = 4
+color = Color(0.721569, 0.52549, 0.0431373, 0.8)
+
+[node name="MoneyLabel" type="RichTextLabel" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/normal_font_size = 20
+
+[node name="HSeparator" type="HSeparator" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+
+[node name="List" type="VBoxContainer" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+theme_override_constants/separation = 8
+
+[node name="BackButton" type="Button" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(160, 44)
+theme_override_colors/font_color = Color(0.290196, 0.215686, 0.156863, 1)
+theme_override_font_sizes/font_size = 22
+text = "返回"

@@ -7,6 +7,7 @@
 extends Node2D
 
 # ==================== 常量 ====================
+const ParticleFX := preload("res://scripts/systems/particle_fx.gd")
 const CUSTOMER_SCENE := preload("res://scenes/entities/Customer.tscn")
 
 # ==================== 导出变量 ====================
@@ -155,6 +156,8 @@ func _on_order_failed(order_id: int) -> void:
 			customer.clear_order_label()
 			remove_customer(customer)
 			customer.leave(_spawn_point.global_position)
+			# P9：超时警示粒子
+			ParticleFX.burst(customer, Vector2(0, -50), Color(1.0, 0.35, 0.3), 8, Vector2(0, -200), 160.0, 0.5)
 			_shift_queue()
 			print_rich("[color=red]Customer %s left due to failed order #%d[/color]" % [customer.name, order_id])
 			return

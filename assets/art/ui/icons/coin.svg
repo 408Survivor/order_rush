@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-<g fill="#F2C14E" stroke="#4A3728" stroke-width="2.2" stroke-linejoin="round">
-  <circle cx="32" cy="32" r="21"/>
-  <rect x="26" y="26" width="12" height="12" rx="2" fill="#FFF6E5"/>
-  <path d="M32 20 L34 24 L32 28 L30 24 Z" fill="#FFF6E5"/>
+<!-- 金币图标（#48 重绘：修正居中，加粗贴纸描边） -->
+<g fill="#F2C14E" stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="42"/>
+  <rect x="52" y="52" width="24" height="24" rx="4" fill="#FFF6E5"/>
+  <path d="M64 40 L68 48 L64 56 L60 48 Z" fill="#FFF6E5"/>
 </g>
+<circle cx="90" cy="32" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
 </svg>

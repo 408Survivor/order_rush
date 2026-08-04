@@ -1,57 +1,25 @@
 ## 文件: scripts/ui/takeaway_board.gd
-## 职责: 外卖订单面板（P4）——屏幕右侧列出外卖订单：菜品 + 骑手 ETA 进度条（红黄绿蓝时间裕度）+ 打包状态
+## 职责: 外卖订单面板（P4）——屏幕右侧列出外卖订单：菜品图标 + 骑手 ETA 进度条（红黄绿蓝时间裕度）+ 打包状态
+##       （#48 tscn 化：静态面板结构移入 scenes/ui/TakeawayBoard.tscn，菜品/打包图标 + bar 纹理）
 ## 依赖: GameStateManager/UITheme (autoload)；运行模式 _process 每帧刷新，测试/编辑器进程手动调 refresh()
-## 注意: @tool + 编辑器进程拦截自动刷新（冒烟测试手动 refresh 断言确定性），与 order_board 同模式
+## 注意: @tool + 编辑器进程拦截自动刷新（冒烟测试手动 refresh 断言确定性），与 order_board 同模式；
+##       _list 绑定 tscn 的 Panel/Margin/VBox/List（变量名保留，冒烟测试依赖）
 
 @tool
 extends CanvasLayer
 
-const BAR_WIDTH := 88.0   ## ETA 进度条宽度（像素）
-const BAR_HEIGHT := 12.0
-
-var _list: VBoxContainer = null
+# ==================== 节点引用 ====================
+@onready var _panel: PanelContainer = $Panel
+@onready var _list: VBoxContainer = $Panel/Margin/VBox/List
 
 func _ready() -> void:
-	_build_panel()
+	# 纹理九宫格面板样式（@tool 下同样生效，纯视觉无副作用）
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
 
 func _process(_delta: float) -> void:
 	if Engine.is_editor_hint():
 		return
 	refresh()
-
-## 构建右侧面板（纹理九宫格 + 标题 + 订单列表）
-func _build_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
-	panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	panel.position = Vector2(-16 - 240, 118)  # 经营面板（右上）下方
-	panel.custom_minimum_size = Vector2(240, 0)
-	add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 6)
-	margin.add_child(vbox)
-
-	var title := RichTextLabel.new()
-	title.bbcode_enabled = true
-	title.fit_content = true
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title.add_theme_font_size_override("normal_font_size", 18)
-	title.add_theme_color_override("default_color", UITheme.COLOR_GOLD)
-	title.text = "外卖订单"
-	vbox.add_child(title)
-
-	var sep := HSeparator.new()
-	vbox.add_child(sep)
-
-	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 4)
-	vbox.add_child(_list)
 
 ## 与 GameStateManager.takeaway_orders 同步重建订单行（订单最多 3 单，重建成本可忽略）
 func refresh() -> void:
@@ -76,7 +44,8 @@ func _make_row(order: Dictionary) -> Control:
 	dish.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dish.add_theme_font_size_override("normal_font_size", 16)
 	dish.add_theme_color_override("default_color", UITheme.COLOR_TEXT)
-	dish.text = "%s %s" % [UITheme.icon(UITheme.ICON_PLATE, 16), GameStateManager.get_dish_display_name(order["dish_type"])]
+	# #48：菜品贴纸图标（替换原通用餐盘）
+	dish.text = "%s %s" % [UITheme.icon(UITheme.dish_icon_path(str(order["dish_type"])), 20), GameStateManager.get_dish_display_name(str(order["dish_type"]))]
 	dish.custom_minimum_size = Vector2(86, 0)
 	row.add_child(dish)
 
@@ -85,14 +54,14 @@ func _make_row(order: Dictionary) -> Control:
 	var ratio := 1.0 if total <= 0.0 else clampf(eta / total, 0.0, 1.0)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	bar.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	bar.custom_minimum_size = Vector2(88, 12)
 	bar.max_value = 100.0
 	bar.value = ratio * 100.0
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_stylebox_override("background", _bar_bg_style())
-	bar.add_theme_stylebox_override("fill", _bar_fill_style(_eta_color(ratio)))
+	# #48：bar 纹理（轨道 + 四色高光填充）
+	bar.add_theme_stylebox_override("background", UITheme.make_bar_bg_style())
+	bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style(_eta_color(ratio)))
 	row.add_child(bar)
 
 	var seconds := _make_label("%ds" % int(ceil(eta)), UITheme.COLOR_TEXT, 14)
@@ -100,20 +69,22 @@ func _make_row(order: Dictionary) -> Control:
 	row.add_child(seconds)
 
 	var packed: bool = order["packed"]
-	var state := _make_label("待打包" if not packed else "已打包", UITheme.COLOR_YELLOW if not packed else UITheme.COLOR_GOLD, 14)
+	# #48：打包状态前内联打包图标
+	var state_text := "%s %s" % [UITheme.icon(UITheme.ICON_PACK, 14), "已打包" if packed else "待打包"]
+	var state := _make_label(state_text, UITheme.COLOR_GOLD if packed else UITheme.COLOR_YELLOW, 14)
 	row.add_child(state)
 
 	return row
 
-## 时间裕度四色（P4）：ETA 剩余比例 >75% 蓝 / >50% 绿 / >25% 黄 / ≤25% 红
-func _eta_color(ratio: float) -> Color:
+## 时间裕度四色（P4）：ETA 剩余比例 >75% 蓝 / >50% 绿 / >25% 黄 / ≤25% 红（#48 返回颜色名供 bar 纹理）
+func _eta_color(ratio: float) -> String:
 	if ratio > 0.75:
-		return UITheme.COLOR_BLUE
+		return "blue"
 	if ratio > 0.5:
-		return UITheme.COLOR_GREEN
+		return "green"
 	if ratio > 0.25:
-		return UITheme.COLOR_YELLOW
-	return UITheme.COLOR_RED
+		return "yellow"
+	return "red"
 
 ## 简洁富文本标签
 func _make_label(text: String, color: Color, font_size: int) -> RichTextLabel:
@@ -125,15 +96,3 @@ func _make_label(text: String, color: Color, font_size: int) -> RichTextLabel:
 	label.add_theme_font_size_override("normal_font_size", font_size)
 	label.add_theme_color_override("default_color", color)
 	return label
-
-func _bar_bg_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.92, 0.88, 0.82, 0.9)
-	sb.set_corner_radius_all(6)
-	return sb
-
-func _bar_fill_style(color: Color) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = color
-	sb.set_corner_radius_all(6)
-	return sb
