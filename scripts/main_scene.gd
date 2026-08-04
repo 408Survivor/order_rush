@@ -192,7 +192,7 @@ func _build_walls() -> void:
 ## 3 段吧台摆前台区上缘 y=452：左让入口通道（x<180）、右让外卖口（x>1620），不压 y≥480 顾客队列区
 func _build_counter() -> void:
 	for i in 3:
-		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 480, 452), Vector2.ONE)
+		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 455, 452), Vector2.ONE)  # #63：段间叠 25px 消白边接缝，读作一整条
 	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + Vector2(0, -80), Vector2.ONE)
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
 	# 只覆盖正面厚度（y 500..532）——台面视觉可重叠，俯视角下头压桌面是正常观感；
