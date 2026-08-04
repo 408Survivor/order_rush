@@ -1,0 +1,9 @@
+批次: 016
+日期: 2026-08-05
+工具: Kimi image_generation 插件（即梦系，透明底 1K 直出）
+素材: 环境道具 ×10 + 地板 ×1（wall_top / wall_side / door / table / chair / rug / plant / trash_bin / floor_mat / crate + floor_tile 不透明）
+参数: 1K / 透明背景（地板为 opaque 满铺）/ 比例按物体形态
+提示词版本: v1 美术二期统一风格
+选中: wall_top_v2 / wall_side_v2 / door_v1 / table_v2 / chair_v1 / rug_v1 / plant_v1 / trash_bin_v1 / floor_mat_v1 / crate_v1 / floor_tile_v1
+选中原因: 8 张 v1 一次通过；table_v1 AI 自摆餐具菜品（游戏需空桌待客）→ v2 强调 empty/no food 通过；wall_top/side_v1 画成完整咖啡馆场景（带家具菜单灯）→ v2 强调 plain wall only/no furniture 通过
+备注: 地板不透明图水印压图面，无法透明擦除 → 裁掉底部 10%+左缘后 resize 1024；门生成自带雨棚+WELCOME 垫，效果可爱保留
