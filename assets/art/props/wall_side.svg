@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 480" width="120" height="480">
+<!-- 侧墙段（#51）：奶油砖墙 + 木质护墙板（右侧），可垂直平铺（480px 一段） -->
+<g>
+  <rect x="0" y="0" width="120" height="480" fill="#F7EBD5"/>
+  <g stroke="#E8D5B5" stroke-width="3">
+    <path d="M30 0 L30 480 M60 0 L60 480 M90 0 L90 480" fill="none"/>
+    <path d="M0 60 L30 60 M0 180 L30 180 M0 300 L30 300 M0 420 L30 420" fill="none"/>
+    <path d="M30 120 L60 120 M30 240 L60 240 M30 360 L60 360" fill="none"/>
+    <path d="M60 60 L90 60 M60 180 L90 180 M60 300 L90 300 M60 420 L90 420" fill="none"/>
+  </g>
+  <!-- 护墙板（内侧右缘） -->
+  <rect x="96" y="0" width="24" height="480" fill="#B07D4E"/>
+  <path d="M100 0 L100 480" stroke="#8F6510" stroke-width="3"/>
+  <path d="M96 0 L96 480" stroke="#4A3728" stroke-width="4"/>
+</g>
+</svg>

@@ -2,7 +2,7 @@
 ## 职责: 货箱堆（#50 两段式补给）——冷库区批发仓，空手按 E 无限取出对应菜品货箱
 ## 依赖: GameStateManager (autoload，菜品显示名/色调)；Crate.tscn（取箱时实例化）
 ## 注意: 挂在 Area2D 上；批发仓无限库存，堆本身不消耗；
-##       占位视觉 = 两张错位叠加的料理包图（菜品色调），正式素材见 issue #51
+##       视觉 = crate_stack.svg 单品（#51），整堆 modulate 按菜品染色
 
 @tool
 extends Area2D
@@ -23,7 +23,7 @@ func _ready() -> void:
 	add_to_group("crate_stack")
 	apply_dish_visual()
 
-## 按 dish_type 应用名称/色调（整堆 modulate，两张叠加 Sprite 一起着色）
+## 按 dish_type 应用名称/色调（整堆 modulate，Sprite2D 一起着色）
 func apply_dish_visual() -> void:
 	display_name = "%s货箱堆" % GameStateManager.get_dish_display_name(dish_type)
 	modulate = GameStateManager.get_dish_tint(dish_type)

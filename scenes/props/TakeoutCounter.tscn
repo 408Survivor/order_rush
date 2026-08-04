@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/props/takeout_counter.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/art/props/takeout_window.svg" id="2_tex"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_takeout"]
 size = Vector2(140, 80)
@@ -10,26 +11,15 @@ collision_layer = 5
 ; collision_layer=5 = World(1)+Interactables(4)：既阻挡玩家移动，又被 InteractionRay(层3) 检测到
 script = ExtResource("1_script")
 
-[node name="Border" type="ColorRect" parent="."]
-offset_left = -74.0
-offset_top = -44.0
-offset_right = 74.0
-offset_bottom = 44.0
-color = Color(0.95, 0.85, 0.6, 0.55)
-z_index = -1
-
-[node name="Counter" type="ColorRect" parent="."]
-offset_left = -70.0
-offset_top = -40.0
-offset_right = 70.0
-offset_bottom = 40.0
-color = Color(0.36, 0.25, 0.15, 1)
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("2_tex")
 
 [node name="Label" type="Label" parent="."]
 offset_left = -60.0
-offset_top = -20.0
+offset_top = 62.0
 offset_right = 60.0
-offset_bottom = 20.0
+offset_bottom = 92.0
 theme_override_colors/font_color = Color(0.29, 0.22, 0.16, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 4

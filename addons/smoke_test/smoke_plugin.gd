@@ -552,6 +552,24 @@ func _run() -> void:
 	await get_tree().process_frame  # 等 deferred sync 补包
 	_check(scene.get_node_or_null("Items/MealPackage3") != null, "库存有余 → 台面补下一个麻婆包（#50）")
 
+	# ===== #51 场景陈设素材（手绘 SVG 换肤 + 纯视觉陈设） =====
+	_check(load("res://assets/art/props/microwave.svg") != null, "微波炉素材文件存在（#51）")
+	_check(load("res://assets/art/props/freezer.svg") != null, "冰柜素材文件存在（#51）")
+	_check(load("res://assets/art/props/table.svg") != null, "餐桌素材文件存在（#51）")
+	_check(load("res://assets/art/props/counter_bar.svg") != null, "吧台素材文件存在（#51）")
+	_check(load("res://assets/art/props/wall_top.svg") != null, "墙体素材文件存在（#51）")
+	var mw_sprite: Sprite2D = microwave.get_node_or_null("Sprite2D")
+	_check(mw_sprite != null and mw_sprite.texture != null \
+		and str(mw_sprite.texture.resource_path).contains("props/microwave.svg"), "微波炉 Sprite2D 换用手绘素材（#51）")
+	var tables_ok := true
+	for i in 4:
+		var t: Node = scene.get_node_or_null("Table%d" % (i + 1))
+		if t == null or not (t is Sprite2D):
+			tables_ok = false
+	_check(tables_ok, "餐桌 Table1..Table4 存在且为 Sprite2D（#51）")
+	_check(scene.get_node_or_null("CounterBar1") != null and scene.get_node_or_null("Cashier") != null, "吧台与收银机已陈设（#51）")
+	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))

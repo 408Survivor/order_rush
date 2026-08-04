@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 200" width="220" height="200">
+<!-- 微波炉正式版（#51，解决 issue #1）：俯视——炭黑机身 + 玻璃炉门 + 右侧控制条，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <rect x="8" y="8" width="204" height="184" rx="16" fill="#55504B"/>
+  <!-- 炉门玻璃 -->
+  <rect x="24" y="24" width="130" height="152" rx="10" fill="#2A2725"/>
+  <!-- 玻璃高光 -->
+  <path d="M38 40 Q70 30 120 36" fill="none" stroke="#8A94A6" stroke-opacity="0.7" stroke-width="6" stroke-linecap="round"/>
+  <path d="M40 150 Q80 162 132 152" fill="none" stroke="#8A94A6" stroke-opacity="0.35" stroke-width="5" stroke-linecap="round"/>
+  <!-- 炉门边框线 -->
+  <rect x="24" y="24" width="130" height="152" rx="10" fill="none" stroke="#3B3733" stroke-width="3"/>
+  <!-- 控制条 -->
+  <rect x="164" y="24" width="32" height="152" rx="8" fill="#3B3733"/>
+  <rect x="170" y="34" width="20" height="16" rx="3" fill="#6FCE96" stroke="none"/>
+  <circle cx="180" cy="66" r="7" fill="#C6CEDA"/>
+  <circle cx="180" cy="88" r="7" fill="#C6CEDA"/>
+  <circle cx="180" cy="110" r="7" fill="#C6CEDA"/>
+  <rect x="170" y="126" width="20" height="10" rx="5" fill="#D9A62E"/>
+  <rect x="170" y="146" width="20" height="10" rx="5" fill="#E04A3A"/>
+</g>
+</svg>

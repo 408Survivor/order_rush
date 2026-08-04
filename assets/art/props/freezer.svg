@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+<!-- 卧式冰柜（#51）：俯视——白机身 + 浅蓝玻璃盖 + 拉手，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <rect x="8" y="8" width="184" height="184" rx="18" fill="#F4FAFD"/>
+  <rect x="24" y="24" width="152" height="152" rx="12" fill="#CFE8F5"/>
+  <!-- 玻璃高光 -->
+  <path d="M40 40 Q70 30 110 34" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="5" stroke-linecap="round"/>
+  <path d="M40 56 Q60 50 84 52" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="4" stroke-linecap="round"/>
+  <!-- 内部雪糕/料理包隐约可见 -->
+  <rect x="52" y="96" width="40" height="30" rx="6" fill="#FFF6E5" fill-opacity="0.85"/>
+  <rect x="104" y="100" width="40" height="30" rx="6" fill="#FFE9A8" fill-opacity="0.85"/>
+  <rect x="66" y="136" width="56" height="26" rx="6" fill="#FFEDE0" fill-opacity="0.85"/>
+  <!-- 拉手 -->
+  <rect x="60" y="14" width="80" height="12" rx="6" fill="#7FB8E8"/>
+</g>
+</svg>

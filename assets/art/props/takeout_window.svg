@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 140" width="200" height="140">
+<!-- 外卖取餐口（#51）：俯视——小窗台 + 糖果条纹雨棚 + 取餐垫，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <!-- 雨棚条纹 -->
+  <path d="M10 10 L190 10 L180 44 L20 44 Z" fill="#FFF6E5"/>
+  <path d="M36 10 L32 44 L64 44 L66 10 Z" fill="#FF8A80" stroke="none"/>
+  <path d="M98 10 L98 44 L130 44 L132 10 Z" fill="#FF8A80" stroke="none"/>
+  <path d="M162 10 L166 44 L180 44 L190 10 Z" fill="#FF8A80" stroke="none"/>
+  <path d="M10 10 L190 10 L180 44 L20 44 Z" fill="none"/>
+  <!-- 窗台 -->
+  <rect x="16" y="52" width="168" height="76" rx="10" fill="#B07D4E"/>
+  <rect x="28" y="62" width="144" height="40" rx="8" fill="#E8C898"/>
+  <!-- 取餐垫 -->
+  <rect x="70" y="68" width="60" height="28" rx="6" fill="#6FCE96"/>
+  <path d="M80 82 L120 82" stroke="#2E9E5B" stroke-width="4"/>
+</g>
+</svg>

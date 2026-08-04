@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+<!-- 餐桌（#51）：俯视圆桌——木圈 + 奶油桌布 + 餐垫点缀，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="80" cy="80" r="74" fill="#B07D4E"/>
+  <circle cx="80" cy="80" r="58" fill="#FFF6E5"/>
+  <circle cx="80" cy="80" r="58" fill="none" stroke="#E8D5B5" stroke-width="3"/>
+  <!-- 餐垫/餐具点缀 -->
+  <circle cx="56" cy="64" r="10" fill="#FFE9A8" stroke-width="3"/>
+  <circle cx="104" cy="64" r="10" fill="#FFE9A8" stroke-width="3"/>
+  <circle cx="80" cy="106" r="10" fill="#FFE9A8" stroke-width="3"/>
+  <path d="M44 40 Q64 30 92 34" fill="none" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="4" stroke-linecap="round"/>
+</g>
+</svg>
