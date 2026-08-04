@@ -51,7 +51,8 @@ const CHAIR_TEX := preload("res://assets/art/props/chair.svg")
 const PLANT_TEX := preload("res://assets/art/props/plant.svg")
 const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.svg")
 const RUG_TEX := preload("res://assets/art/props/rug.svg")
-const SHELF_CRATES_TEX := preload("res://assets/art/props/shelf_crates.svg")
+const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.svg")  ## #61 立式四层冷冻柜
+const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.svg")          ## #61 厨房操作长桌
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -209,13 +210,15 @@ func _build_counter() -> void:
 		add_child(body)
 		body.position = Vector2(960, 516)
 
-## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + 冷库货架（z=-1 作货箱堆背景，不遮箱堆交互视觉）
+## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
 func _build_decorations() -> void:
 	_add_prop_sprite("Rug", RUG_TEX, Vector2(975, 810), Vector2(2.6, 1.9), -9)
 	_add_prop_sprite("Plant1", PLANT_TEX, Vector2(140, 960), Vector2.ONE)
 	_add_prop_sprite("Plant2", PLANT_TEX, Vector2(1790, 700), Vector2.ONE)
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, Vector2(1790, 560), Vector2.ONE)
-	_add_prop_sprite("ColdShelf", SHELF_CRATES_TEX, Vector2(300, 140), Vector2(0.9, 0.9), -1)
+	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）+ 操作长桌（垫冰柜/微波炉一排之下，右缘收在经营面板左侧）
+	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, Vector2(300, 218), Vector2.ONE, -1)
+	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, Vector2(1300, 190), Vector2(0.72, 1.0), -1)
 
 # ==================== 冰柜 + 货箱堆（#50 两段式补给；#54 四格取货） ====================
 

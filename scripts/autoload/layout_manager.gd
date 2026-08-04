@@ -32,12 +32,14 @@ const QUEUE_SPACING := 200.0
 const QUEUE_CAPACITY := 5
 
 # ==================== 设备/货架/餐桌槽位 ====================
-## 微波炉位（第 1 位当前使用，第 2 位 P5 设备升级解锁；间距 260 > 矩形碰撞 250）
-const MICROWAVE_SLOTS: Array[Vector2] = [Vector2(1700, 180), Vector2(1440, 180)]
-## 冰柜位（#50：移至厨房区、微波炉左侧抱团；#54：四格展示库存，J/K/L/空格 取货）
-const FREEZER_SLOT := Vector2(1150, 180)
+## 微波炉位（第 1 位当前使用，第 2 位 P5 设备升级解锁；间距 190 > 矩形碰撞 250 在 x 向投影）
+## #61：整排左移腾出右缘——原 (1700,180) 被右上经营面板（x≥1620）遮住，现设备排右缘 ≤1610
+const MICROWAVE_SLOTS: Array[Vector2] = [Vector2(1500, 180), Vector2(1310, 180)]
+## 冰柜位（#50：移至厨房区、微波炉左侧抱团；#54：四格展示库存，J/K/L/空格 取货；#61 随设备排左移）
+const FREEZER_SLOT := Vector2(1065, 180)
 ## 货箱堆位（#50：冷库区 3 堆，对应 L1_DISHES 3 道菜；批发仓无限库存）
-const CRATE_SLOTS: Array[Vector2] = [Vector2(150, 200), Vector2(320, 200), Vector2(490, 200)]
+## #61：货箱上架立式冷冻柜——竖排 3 层（柜体层中心 136/204/272），第 4 层 (300,340) 预留 L2
+const CRATE_SLOTS: Array[Vector2] = [Vector2(300, 136), Vector2(300, 204), Vector2(300, 272)]
 ## 餐桌位（当前使用前 2 位，P4+ 扩展至 4）
 const TABLE_SLOTS: Array[Vector2] = [
 	Vector2(450, 800), Vector2(800, 800), Vector2(1150, 800), Vector2(1500, 800),

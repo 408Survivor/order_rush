@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 170" width="900" height="170">
+<!-- 厨房不锈钢操作长桌（#61）：冰柜/微波炉等设备摆台面上，后续扩展设备同排 -->
+<g stroke-linejoin="round">
+  <!-- 台面 -->
+  <rect x="4" y="4" width="892" height="60" rx="10" fill="#E4EAEE" stroke="#4A3728" stroke-width="5"/>
+  <rect x="18" y="14" width="864" height="12" rx="6" fill="#FFFFFF" opacity="0.65"/>
+  <!-- 正面挡板 -->
+  <rect x="4" y="64" width="892" height="102" rx="10" fill="#B9C6CE" stroke="#4A3728" stroke-width="5"/>
+  <!-- 立板分缝 -->
+  <path d="M154 72 L154 158 M304 72 L304 158 M454 72 L454 158 M604 72 L604 158 M754 72 L754 158" stroke="#9FB0BA" stroke-width="5"/>
+  <!-- 底部厚度影 -->
+  <rect x="14" y="146" width="872" height="12" rx="6" fill="#8A99A3"/>
+</g>
+</svg>
