@@ -6,6 +6,8 @@
 ## 注意: 编辑器进程会运行 @tool 节点的 _physics_process（玩家/顾客脚本含 is_editor_hint 分支）；
 ##       顾客在编辑器进程用直接位移（物理不步进），运行模式走 move_and_slide 真实碰撞
 ## P2: GameStateManager._process 在编辑器进程被拦截，耐心倒计时由测试手动 tick_patience 推进
+## #54: 世界不再常备台面料理包——测试直接设 freezer.stock 并瞬移玩家到冰柜旁，
+##       经 player.try_take_from_freezer(N)（J/K/L/空格 格位）确定性取包
 
 @tool
 extends EditorPlugin
@@ -37,7 +39,7 @@ func _run() -> void:
 
 	var player = scene.get_node("PlayerCharacter")
 	var microwave = scene.get_node("Microwave")
-	var meal = scene.get_node("Items/MealPackage")
+	var freezer = scene.get_node("Freezer")
 
 	# P7 测试钩子：固定随机菜为宫保鸡丁（保证既有断言确定性；P7 段再解除验证随机）
 	scene.get_node("/root/GameStateManager").set("_dish_override", "kungpao")
@@ -50,7 +52,14 @@ func _run() -> void:
 	# ===== 场景要素就位 =====
 	_check(player != null, "PlayerCharacter 存在于 MainScene")
 	_check(microwave != null, "Microwave 存在于 MainScene")
-	_check(meal != null, "MealPackage 存在于 MainScene")
+	_check(freezer != null, "Freezer 存在于 MainScene（#54）")
+	# #54：冰柜初始空 + 取货输入注册 + freezer 组
+	_check(int(freezer.stock["kungpao"]) == 0 and int(freezer.stock["yuxiang"]) == 0 \
+		and int(freezer.stock["mapo"]) == 0, "冰柜初始库存全 0（#54）")
+	# 注意：编辑器进程 InputMap 只含内建 ui_*，项目自定义 action 用 ProjectSettings 断言
+	_check(ProjectSettings.has_setting("input/take_slot_1") and ProjectSettings.has_setting("input/take_slot_2") \
+		and ProjectSettings.has_setting("input/take_slot_3") and ProjectSettings.has_setting("input/take_slot_4"), "take_slot_1..4 输入已注册（#54）")
+	_check(freezer.is_in_group("freezer"), "冰柜在 freezer 组（玩家取货查找，#54）")
 
 	# ===== 0.5 布局系统（issue #24）：LayoutManager 配置驱动摆放 =====
 	# 放在交互测试之前：此时节点未被移动/销毁，可断言初始摆放
@@ -68,7 +77,7 @@ func _run() -> void:
 	_check(counter.global_position == layout.COUNTER_POINT, "柜台位于布局配置点位")
 	_check(scene.get_node("SpawnPoint").global_position == layout.ENTRANCE_POINT, "顾客入口位于布局配置点位")
 	_check(microwave.global_position == layout.get_slot_position(layout.MICROWAVE_SLOTS, 0), "微波炉位于设备槽位 0")
-	_check(meal.global_position == layout.get_slot_position(layout.MEAL_SLOTS, 0), "料理包位于货架槽位 0")
+	_check(freezer.global_position == layout.FREEZER_SLOT, "冰柜位于 FREEZER_SLOT（#54）")
 	_check(scene.get_node("Table1").position == layout.TABLE_SLOTS[0], "餐桌位于就餐区槽位 0")
 	_check(layout.QUEUE_SPACING == 200.0 and manager.get("queue_spacing") == 200.0, "队列间距接入布局系统（200）")
 
@@ -79,12 +88,24 @@ func _run() -> void:
 	_check(toast != null, "ToastManager 存在")
 	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel") != null, "经营面板节点结构就位")
 
-	# ===== 1. 空手靠近料理包 → 拾取 =====
-	_face_and_ray(player, meal, Vector2.UP)
-	_check(player.call("try_interact"), "空手面对料理包按 E 应成功拾取")
-	_check(player.get("held_item") == meal, "拾取后 held_item 应为该料理包")
+	# ===== 1. 冰柜四格取货（#54）：设库存 → 瞬移冰柜旁 → 格 1（J）取包 =====
+	freezer.stock["kungpao"] = 5
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1), "冰柜旁按格取货成功（#54）")
+	var meal = player.get("held_item")
+	_check(meal != null and meal.is_in_group("meal_package"), "取到的是料理包（#54）")
+	_check(meal.get("dish_type") == "kungpao", "格 1 料理包为宫保（#54）")
 	_check(_picked_up_count == 1, "item_picked_up 信号应发出 1 次")
 	_check(meal.get_parent() == player.get_node("HeldItemPivot"), "料理包应挂到 HeldItemPivot 下")
+	_check(int(freezer.stock["kungpao"]) == 4, "取货扣库存 5 → 4（#54）")
+	_check(str(meal.get_node("Sprite2D").texture.resource_path).contains("meal_pack_kungpao.svg"), "料理包纹理按 dish_type 区分（#54）")
+	_check(str(freezer.call("take_hint")) != "", "冰柜取货提示文本非空（#54）")
+	_check(freezer.call("take_from_slot", 3) == null, "格 4 预留位取货返回 null（#54）")
+	# 取货边界：距离 >340 失败；手持时失败
+	player.global_position = freezer.global_position + Vector2(0, 500)
+	_check(player.call("try_take_from_freezer", 1) == false, "距离 >340 取货失败（#54）")
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1) == false, "手持时取货失败（#54）")
 
 	# ===== 1.5 中途放下（issue #22）：Q 放下 → 恢复可拾取 → 再拾取 =====
 	_check(player.call("drop_held_item"), "手持时按 Q 放下应成功")
@@ -92,8 +113,7 @@ func _run() -> void:
 	_check(meal.get_parent() == scene.get_node("Items"), "料理包挂回场景 Items 容器")
 	_check(abs(meal.global_position.distance_to(player.global_position) - 50.0) < 1.0, "放下位置为玩家身前约 50px")
 	_check(meal.collision_layer == 8 and meal.collision_mask == 0, "放下后恢复可拾取碰撞（layer=8）")
-	# 编辑器进程物理不步进：物品重挂场景后需等一帧注册到物理服务器，射线查询才命中；
-	# #50：同一帧也让冰柜 deferred sync 跑完（拾取扣库存后补货会把掉落台面包回收重摆到取包位），再面向其最新位置
+	# 编辑器进程物理不步进：物品重挂场景后需等一帧注册到物理服务器，射线查询才命中
 	await get_tree().process_frame
 	_face_and_ray(player, meal, Vector2.UP)
 	_check(player.call("try_interact"), "放下后可再次拾取")
@@ -199,25 +219,23 @@ func _run() -> void:
 	_check(manager.call("get_front_customer") == c2, "补位后队首为 c2")
 	_check(gsm.get_active_order_count() == 2, "补位顾客已有订单，不重复下单（count=2）")
 
-	# 第二轮：加热（料理包2）→ 交付 c2 → 好评 +2
-	# #50：台面包按菜区分（MealPackage2=鱼香），而订单 override 全为宫保——测试钩子对齐菜品，库存账不变
-	var meal2 = scene.get_node("Items/MealPackage2")
-	player.call("_interact_with_pickable", meal2)
-	meal2.set("dish_type", "kungpao")
+	# 第二轮：冰柜取包 → 加热 → 交付 c2 → 好评 +2（#54：格 1 取宫保包，库存 4 → 3）
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1), "第二轮取包成功（#54）")
 	player.call("_interact_with_appliance", microwave)
 	await get_tree().create_timer(3.5).timeout
 	player.call("_interact_with_appliance", microwave)
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "第二轮取出成品菜")
+	_check(str(player.get("held_item").get_node("Sprite2D").texture.resource_path).contains("dish_kungpao.svg"), "成品菜纹理按 dish_type 区分（#54）")
 	_check(player.call("_interact_with_customer", c2), "第二轮交付 c2 成功")
 	_check(gsm.revenue == 40, "营业额累加至 40")
 	_check(gsm.good_reviews == 2, "好评累加至 2")
 	await get_tree().create_timer(2.0).timeout
 	_check(manager.call("get_front_customer") == c3, "补位后队首为 c3")
 
-	# 第三轮：加热（料理包3）→ 交付 c3 → 队列清空 → 无状态残留（#50：同上对齐菜品）
-	var meal3 = scene.get_node("Items/MealPackage3")
-	player.call("_interact_with_pickable", meal3)
-	meal3.set("dish_type", "kungpao")
+	# 第三轮：冰柜取包 → 加热 → 交付 c3 → 队列清空 → 无状态残留（#54：库存 3 → 2）
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1), "第三轮取包成功（#54）")
 	player.call("_interact_with_appliance", microwave)
 	await get_tree().create_timer(3.5).timeout
 	player.call("_interact_with_appliance", microwave)
@@ -308,6 +326,7 @@ func _run() -> void:
 	_check(day_result_panel.get("_money_label").text.contains("现有资金：3"), "结算面板累计金币正确（图标化）")
 
 	# 进入下一天：天数 +1、当日清零、累计保留、场景清场重建
+	var stock_before := int(freezer.stock["kungpao"])  # #54：清场前记录冰柜库存，验证跨天保留
 	gsm.start_next_day()
 	_check(gsm.day == 2, "天数 +1 → 第 2 天")
 	_check(gsm.is_shop_open, "新一天恢复营业")
@@ -318,13 +337,10 @@ func _run() -> void:
 	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时重置")
 	_check(gsm.revenue == 60 and gsm.good_reviews == 3 and gsm.bad_reviews == 3, "累计营业额/评分跨天保留")
 
-	# 场景清场（main_scene 监听 day_started）：顾客清空、玩家复位；#50 起台面料理包按冰柜库存重摆
-	# 库存账：初始每菜 3（INITIAL_STOCK）；本流程消耗 kungpao 2 次（第 1 段拾取 + 1.5 段放下再拾取）、
-	# yuxiang 1 次（第二轮）、mapo 1 次（第三轮）→ 清场时库存 1/2/2 均 >0，sync 必补包，同名断言自洽
+	# 场景清场（main_scene 监听 day_started）：顾客清空、玩家复位；#54 起冰柜库存跨天保留、四格计数刷新
 	_check(manager.call("get_queue_count") == 0, "新一天顾客队列清空")
-	_check(scene.get_node_or_null("Items/MealPackage") != null \
-		and scene.get_node_or_null("Items/MealPackage2") != null \
-		and scene.get_node_or_null("Items/MealPackage3") != null, "被消费的料理包已按库存补货（3 个，#50）")
+	_check(int(freezer.stock["kungpao"]) == stock_before, "冰柜库存跨天保留（#54）")
+	_check(freezer.get_node("Slots/Slot1/CountLabel").text == "×%d" % stock_before, "四格计数随库存刷新（#54）")
 	_check(player.global_position == layout.SPAWN_POINT, "玩家复位出生点")
 
 	# ===== P4 外卖系统（第 2 天营业中） =====
@@ -462,10 +478,12 @@ func _run() -> void:
 	_check(gsm.get_dish_price(false, "kungpao") == 20, "非招牌菜不受加成")
 
 	# 特殊事件：设备故障 → 微波炉停用；恶劣天气 → 外卖暂停
-	var meal_rebuilt = scene.get_node("Items/MealPackage")  # 新一天重建后的料理包
+	# #54：世界里不再常备台面料理包，直接构造料理包验证故障拒收
+	var meal_rebuilt: Node2D = (load("res://scenes/items/MealPackage.tscn") as PackedScene).instantiate()
 	gsm.force_event(GameStateManager.SpecialEvent.EQUIPMENT_BREAK)
 	_check(microwave.is_broken(), "设备故障事件中微波炉停用")
 	_check(not microwave.can_accept_item(meal_rebuilt), "故障期间拒绝放入料理包")
+	meal_rebuilt.free()
 	gsm.tick_event(100.0)
 	_check(not microwave.is_broken(), "事件结束微波炉恢复")
 	gsm.force_event(GameStateManager.SpecialEvent.BAD_WEATHER)
@@ -501,9 +519,8 @@ func _run() -> void:
 	_check(load("res://scripts/systems/particle_fx.gd") != null, "ParticleFX 工具脚本存在")
 	_check(FileAccess.file_exists("res://docs/发布指南.md"), "发布指南文档存在")
 
-	# ===== #50 两段式补给（货箱 → 冰柜 → 台面料理包） =====
+	# ===== #50 两段式补给（货箱 → 冰柜） =====
 	# 本段直接操作 freezer.stock 保证确定性，不依赖前面流程的消耗账
-	var freezer = scene.get_node_or_null("Freezer")
 	_check(freezer != null, "冰柜已实例化（#50）")
 	_check(freezer.global_position == layout.FREEZER_SLOT, "冰柜位于厨房区 FREEZER_SLOT（#50）")
 	var stacks: Array = []
@@ -534,23 +551,24 @@ func _run() -> void:
 	_check(not freezer.call("can_accept_item", player.get("held_item")), "满仓时冰柜拒收货箱（#50）")
 	player.call("discard_held_item")
 
-	# 台面镜像：库存 0 → 撤包；库存 >0 → 补包
+	# 四格展示（#54）：库存 0 → 格图标隐藏/计数 ×0；库存 >0 → 图标显示/计数 ×N
+	var slot2_icon: Sprite2D = freezer.get_node("Slots/Slot2/Icon")
+	var slot2_count: Label = freezer.get_node("Slots/Slot2/CountLabel")
 	freezer.stock["yuxiang"] = 0
-	freezer.call("sync_packages")
-	await get_tree().process_frame  # 撤包走 queue_free，等一帧真正删除后再断言缺席
-	_check(scene.get_node_or_null("Items/MealPackage2") == null, "鱼香库存 0 → 台面无 MealPackage2（#50）")
+	freezer.call("_refresh_slots")
+	_check(not slot2_icon.visible, "鱼香库存 0 → 格 2 图标隐藏（#54）")
+	_check(slot2_count.text == "×0", "鱼香库存 0 → 格 2 计数 ×0（#54）")
 	freezer.stock["yuxiang"] = 2
-	freezer.call("sync_packages")
-	_check(scene.get_node_or_null("Items/MealPackage2") != null, "鱼香补货后台面恢复 MealPackage2（#50）")
+	freezer.call("_refresh_slots")
+	_check(slot2_icon.visible, "鱼香补货 → 格 2 图标显示（#54）")
+	_check(slot2_count.text == "×2", "鱼香补货 → 格 2 计数 ×2（#54）")
 
-	# 拾取台面包 → 库存 -1（经 player.item_picked_up 信号），库存有余 → 补下一个上台面
+	# take_from_slot 扣库存（#54）：格 3 取麻婆包 3 → 2
 	freezer.stock["mapo"] = 3
-	freezer.call("sync_packages")
-	player.call("_interact_with_pickable", scene.get_node("Items/MealPackage3"))
-	_check(freezer.stock["mapo"] == 2, "拾取台面包扣库存 3 → 2（#50）")
-	player.call("discard_held_item")
-	await get_tree().process_frame  # 等 deferred sync 补包
-	_check(scene.get_node_or_null("Items/MealPackage3") != null, "库存有余 → 台面补下一个麻婆包（#50）")
+	var pkg_taken: Node2D = freezer.call("take_from_slot", 2)
+	_check(pkg_taken != null and pkg_taken.get("dish_type") == "mapo", "格 3 取货返回麻婆料理包（#54）")
+	_check(int(freezer.stock["mapo"]) == 2, "take_from_slot 扣库存 3 → 2（#54）")
+	pkg_taken.free()
 
 	# ===== #51 场景陈设素材（手绘 SVG 换肤 + 纯视觉陈设） =====
 	_check(load("res://assets/art/props/microwave.svg") != null, "微波炉素材文件存在（#51）")

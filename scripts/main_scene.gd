@@ -18,10 +18,9 @@ extends Node2D
 @onready var order_board: CanvasLayer = $OrderBoard
 @onready var toast_manager: CanvasLayer = $ToastManager
 
-## 料理包台面的单一权威 = Freezer.sync_packages（#50，本脚本不再直接摆料理包）
 ## 微波炉场景（P5：第二台升级后实例化）
 const MICROWAVE_SCENE := preload("res://scenes/props/Microwave.tscn")
-## 冰柜场景（#50 两段式补给：库存 + 台面料理包镜像）
+## 冰柜场景（#54：四格展示库存 + J/K/L/空格 取货）
 const FREEZER_SCENE := preload("res://scenes/props/Freezer.tscn")
 ## 货箱堆场景（#50：冷库区批发仓，按 CRATE_SLOTS 生成 3 个）
 const CRATE_STACK_SCENE := preload("res://scenes/props/CrateStack.tscn")
@@ -107,7 +106,7 @@ func _on_day_started(_day: int) -> void:
 		customer_manager.start_serving()
 	_reset_shop_items()
 
-## 新一天重置：销毁手持/微波炉内/散落物品，台面料理包由冰柜按库存重摆（#50：库存跨天保留，不再每天免费刷新）
+## 新一天重置：销毁手持/微波炉内/散落物品（#54：冰柜库存跨天保留，四格展示无需重建）
 func _reset_shop_items() -> void:
 	# 玩家手持物品销毁（跨天不保留）
 	if player.has_method("discard_held_item"):
@@ -116,17 +115,9 @@ func _reset_shop_items() -> void:
 	for mw: Node in [microwave, get_node_or_null("Microwave2")]:
 		if mw != null and mw.has_method("clear_contents"):
 			mw.clear_contents()
-	# 清理散落物品（成品菜/货箱/Q 放下的残留）；台面在架的料理包保留，由下方 sync 按库存统一重摆
-	var freezer := get_node_or_null("Freezer")
-	var counter_packages: Array = []
-	if freezer != null:
-		counter_packages = freezer.get("_packages").values()
+	# 清理散落物品（成品菜/货箱/Q 放下的料理包等全部清空；#54 起冰柜不再镜像台面包）
 	for child in items_root.get_children():
-		if child not in counter_packages:
-			child.queue_free()
-	# 冰柜按库存同步台面料理包（有货补摆/缺货撤下/重摆取包位）
-	if freezer != null and freezer.has_method("sync_packages"):
-		freezer.sync_packages()
+		child.queue_free()
 	# 玩家复位出生点
 	player.global_position = LayoutManager.SPAWN_POINT
 
@@ -218,17 +209,15 @@ func _build_decorations() -> void:
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, Vector2(1790, 560), Vector2.ONE)
 	_add_prop_sprite("ColdShelf", SHELF_CRATES_TEX, Vector2(300, 140), Vector2(0.9, 0.9), -1)
 
-# ==================== 冰柜 + 货箱堆（#50 两段式补给） ====================
+# ==================== 冰柜 + 货箱堆（#50 两段式补给；#54 四格取货） ====================
 
-## 实例化冰柜并摆到布局槽位（动态生成幂等）；初始台面 sync 在此显式调用（不依赖 freezer._ready 的父节点时序）
+## 实例化冰柜并摆到布局槽位（动态生成幂等）
 func _build_freezer() -> void:
 	if not has_node("Freezer"):
 		var freezer: Node2D = FREEZER_SCENE.instantiate()
 		freezer.name = "Freezer"
 		add_child(freezer)
 	$Freezer.global_position = LayoutManager.FREEZER_SLOT
-	if $Freezer.has_method("sync_packages"):
-		$Freezer.sync_packages()
 
 ## 按 CRATE_SLOTS + L1_DISHES 生成 3 个货箱堆（冷库区批发仓，动态生成幂等）
 func _build_crate_stacks() -> void:
@@ -314,7 +303,7 @@ func _apply_upgrades() -> void:
 		add_child(mw2)
 	$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
 
-## 升级购买后：应用设备效果 + 重置物品（清场后冰柜按库存重摆台面）
+## 升级购买后：应用设备效果 + 重置物品（清场；冰柜库存不受升级影响）
 func _on_upgrades_changed() -> void:
 	_apply_upgrades()
 	_reset_shop_items()

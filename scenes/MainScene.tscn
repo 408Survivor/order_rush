@@ -1,8 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://daj3okb8q64jh"]
+[gd_scene load_steps=9 format=3 uid="uid://daj3okb8q64jh"]
 
 [ext_resource type="PackedScene" uid="uid://db624ccgigcb3" path="res://scenes/entities/PlayerCharacter.tscn" id="2_ibiss"]
 [ext_resource type="Texture2D" uid="uid://x3fq32rmh0tf" path="res://assets/art/environment/floor_tile.png" id="3_floor"]
-[ext_resource type="PackedScene" path="res://scenes/items/MealPackage.tscn" id="4_meal"]
 [ext_resource type="PackedScene" path="res://scenes/props/Microwave.tscn" id="5_mw"]
 [ext_resource type="PackedScene" path="res://scenes/systems/CustomerManager.tscn" id="6_cm"]
 [ext_resource type="PackedScene" path="res://scenes/ui/RevenueHUD.tscn" id="7_hud"]
@@ -31,15 +30,6 @@ z_index = -10
 ; ===== 功能节点 =====
 
 [node name="Items" type="Node2D" parent="."]
-
-[node name="MealPackage" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(150, 150)
-
-[node name="MealPackage2" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(300, 150)
-
-[node name="MealPackage3" parent="Items" instance=ExtResource("4_meal")]
-position = Vector2(450, 150)
 
 [node name="Microwave" parent="." instance=ExtResource("5_mw")]
 position = Vector2(1700, 180)

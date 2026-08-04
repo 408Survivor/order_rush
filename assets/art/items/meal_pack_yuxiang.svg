@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 料理包·鱼香肉丝（#53）：预制菜铝箔袋——橙亮袋身 + 肉丝条纹，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <!-- 袋身 -->
+  <rect x="22" y="18" width="84" height="96" rx="10" fill="#F2994A"/>
+  <!-- 顶部压边 -->
+  <rect x="22" y="18" width="84" height="14" rx="7" fill="#D97B2E"/>
+  <path d="M30 25 L98 25" stroke="#B05F1F" stroke-width="3" stroke-dasharray="5 4"/>
+  <!-- 标签 -->
+  <rect x="36" y="46" width="56" height="48" rx="8" fill="#FFF6E5"/>
+  <!-- 鱼香：肉丝条纹 + 青椒丝 -->
+  <path d="M44 58 L84 54" stroke="#E8893A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M44 68 L82 64" stroke="#F2994A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M46 78 L84 74" stroke="#E8893A" stroke-width="6" stroke-linecap="round"/>
+  <path d="M50 86 L72 84" stroke="#6FCE96" stroke-width="5" stroke-linecap="round"/>
+  <!-- 袋身高光 -->
+  <path d="M30 40 Q34 90 30 106" fill="none" stroke="#FFF6E5" stroke-opacity="0.35" stroke-width="4" stroke-linecap="round"/>
+</g>
+</svg>

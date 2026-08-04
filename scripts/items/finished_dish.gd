@@ -1,10 +1,19 @@
 ## 文件: scripts/items/finished_dish.gd
-## 职责: 成品菜（宫保鸡丁）——微波炉加热产物，可拾取、可交付给顾客
-## 依赖: 无
-## 注意: 挂在 Area2D 上；交付判定看 is_in_group("dish")，菜品类型看 dish_type（P2 校验）
+## 职责: 成品菜——微波炉加热产物，可拾取、可交付给顾客
+## 依赖: GameStateManager (autoload，菜品显示名)
+## 注意: 挂在 Area2D 上；交付判定看 is_in_group("dish")，菜品类型看 dish_type（P2 校验）；
+##       #54 起按 dish_type 换带盘菜图标（dish_*.svg），不再整图 tint
 
 @tool
 extends Area2D
+
+# ==================== 常量 ====================
+## 各菜成品菜纹理（#54：带盘菜图标，替代占位 PNG + tint）
+const DISH_TEXTURES := {
+	"kungpao": preload("res://assets/art/ui/icons/dish_kungpao.svg"),
+	"yuxiang": preload("res://assets/art/ui/icons/dish_yuxiang.svg"),
+	"mapo": preload("res://assets/art/ui/icons/dish_mapo.svg"),
+}
 
 # ==================== 导出变量 ====================
 ## 显示名称（用于交互提示）
@@ -20,7 +29,10 @@ func _ready() -> void:
 	add_to_group("dish")
 	apply_dish_visual()
 
-## P7：按 dish_type 应用名称/色调（占位视觉——现有素材着色区分，AI 素材 013 批次后替换）
+## P7/#54：按 dish_type 应用名称/纹理（带盘菜图标，不再整图 tint）
 func apply_dish_visual() -> void:
 	display_name = GameStateManager.get_dish_display_name(dish_type)
-	modulate = GameStateManager.get_dish_tint(dish_type)
+	modulate = Color.WHITE  # 防御：清除旧的整图 tint
+	var tex: Texture2D = DISH_TEXTURES.get(dish_type)
+	if tex != null:
+		$Sprite2D.texture = tex
