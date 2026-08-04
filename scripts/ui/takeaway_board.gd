@@ -42,11 +42,12 @@ func _make_row(order: Dictionary) -> Control:
 	dish.bbcode_enabled = true
 	dish.fit_content = true
 	dish.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dish.add_theme_font_size_override("normal_font_size", 16)
+	# #50：字号/图标放大（F5 实测反馈太小）
+	dish.add_theme_font_size_override("normal_font_size", 20)
 	dish.add_theme_color_override("default_color", UITheme.COLOR_TEXT)
 	# #48：菜品贴纸图标（替换原通用餐盘）
-	dish.text = "%s %s" % [UITheme.icon(UITheme.dish_icon_path(str(order["dish_type"])), 20), GameStateManager.get_dish_display_name(str(order["dish_type"]))]
-	dish.custom_minimum_size = Vector2(86, 0)
+	dish.text = "%s %s" % [UITheme.icon(UITheme.dish_icon_path(str(order["dish_type"])), 28), GameStateManager.get_dish_display_name(str(order["dish_type"]))]
+	dish.custom_minimum_size = Vector2(118, 0)
 	row.add_child(dish)
 
 	var eta: float = order["eta_left"]
@@ -54,7 +55,7 @@ func _make_row(order: Dictionary) -> Control:
 	var ratio := 1.0 if total <= 0.0 else clampf(eta / total, 0.0, 1.0)
 
 	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(88, 12)
+	bar.custom_minimum_size = Vector2(96, 16)
 	bar.max_value = 100.0
 	bar.value = ratio * 100.0
 	bar.show_percentage = false
@@ -64,14 +65,14 @@ func _make_row(order: Dictionary) -> Control:
 	bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style(_eta_color(ratio)))
 	row.add_child(bar)
 
-	var seconds := _make_label("%ds" % int(ceil(eta)), UITheme.COLOR_TEXT, 14)
-	seconds.custom_minimum_size = Vector2(30, 0)
+	var seconds := _make_label("%ds" % int(ceil(eta)), UITheme.COLOR_TEXT, 16)
+	seconds.custom_minimum_size = Vector2(36, 0)
 	row.add_child(seconds)
 
 	var packed: bool = order["packed"]
 	# #48：打包状态前内联打包图标
-	var state_text := "%s %s" % [UITheme.icon(UITheme.ICON_PACK, 14), "已打包" if packed else "待打包"]
-	var state := _make_label(state_text, UITheme.COLOR_GOLD if packed else UITheme.COLOR_YELLOW, 14)
+	var state_text := "%s %s" % [UITheme.icon(UITheme.ICON_PACK, 18), "已打包" if packed else "待打包"]
+	var state := _make_label(state_text, UITheme.COLOR_GOLD if packed else UITheme.COLOR_YELLOW, 16)
 	row.add_child(state)
 
 	return row

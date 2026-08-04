@@ -1,0 +1,44 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/freezer.gd" id="1_script"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_freezer"]
+size = Vector2(140, 140)
+
+[node name="Freezer" type="Area2D"]
+collision_layer = 5
+; collision_layer=5 = World(1)+Interactables(4)：既阻挡玩家移动，又被 InteractionRay 检测到
+; 碰撞 140x140（y 110..250）：避开台面取包位（y≥274）与玩家出生点 (960,300)（半径 117 → 右缘 1077）
+script = ExtResource("1_script")
+
+[node name="Body" type="ColorRect" parent="."]
+offset_left = -80.0
+offset_top = -100.0
+offset_right = 80.0
+offset_bottom = 90.0
+color = Color(0.82, 0.9, 0.97, 1)
+
+[node name="Title" type="Label" parent="."]
+offset_left = -70.0
+offset_top = -92.0
+offset_right = 70.0
+offset_bottom = -62.0
+theme_override_colors/font_color = Color(0.2, 0.35, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+text = "冰柜"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StockLabel" type="Label" parent="."]
+offset_left = -75.0
+offset_top = -55.0
+offset_right = 75.0
+offset_bottom = 85.0
+theme_override_colors/font_color = Color(0.25, 0.4, 0.55, 1)
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_freezer")

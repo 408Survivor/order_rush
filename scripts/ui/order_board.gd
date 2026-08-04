@@ -94,11 +94,11 @@ func _create_card(order_id: int) -> Dictionary:
 	# #48：卡片样式（紧凑圆角卡片纹理，脚本设置与旧版一致）
 	panel.add_theme_stylebox_override("panel", UITheme.make_card_style())
 
-	var name_label: RichTextLabel = panel.get_node("Margin/VBox/TopRow/NameLabel")
-	var dish_icon: TextureRect = panel.get_node("Margin/VBox/TopRow/DishIcon")
-	var bar: ProgressBar = panel.get_node("Margin/VBox/BottomRow/Bar")
-	var seconds_label: Label = panel.get_node("Margin/VBox/BottomRow/SecondsLabel")
-	var mood_icon: TextureRect = panel.get_node("Margin/VBox/BottomRow/MoodIcon")
+	var name_label: RichTextLabel = panel.get_node("Margin/HBox/Right/TopRow/NameLabel")
+	var dish_icon: TextureRect = panel.get_node("Margin/HBox/DishIcon")
+	var bar: ProgressBar = panel.get_node("Margin/HBox/Right/BottomRow/Bar")
+	var seconds_label: Label = panel.get_node("Margin/HBox/Right/BottomRow/SecondsLabel")
+	var mood_icon: TextureRect = panel.get_node("Margin/HBox/Right/BottomRow/MoodIcon")
 	# #48：进度条轨道纹理（填充色随耐心三色切换，见 _update_card）
 	bar.add_theme_stylebox_override("background", UITheme.make_bar_bg_style())
 	bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style("green"))
