@@ -2,7 +2,7 @@
 
 > **本文件由开发者每次会话结束时发起，由 Kimi 更新。**
 > **新会话开始时，请优先阅读此文件，以快速加载项目上下文。**
-> 最后更新：2026-08-02（Session 10：P0-P8 + 浅色主题全部完成合并；下一步：P9 Polish 或 P7 二期 L2/L3）
+> 最后更新：2026-08-04（Session 11：UI 观感翻新 #48 合并；P9 内容随 #49 一并合入 main；下一步：开发者 F5 实测新 UI / P7 二期 L2/L3）
 
 ---
 
@@ -27,7 +27,8 @@
 | P6 | 🃏 卡牌系统 | ✅ **完成** | 口碑抽卡 3 选 1 + 10 卡 Modifier 流派构筑（#38） |
 | P7 | 🍲 多菜品+难度 | ✅ **一期完成** | 3 种 L1 菜品/招牌菜熟练度/7 天难度/特殊事件（#40）；二期 L2 炒锅/L3 现做 |
 | P8 | 👤 角色系统 | ✅ **完成** | 角色选择界面 + 主厨/快手主厨（加热 ×0.85）+ JSON 存档（#44） |
-| P9 | ✨ Polish | 🔄 **下一个** | 音效/粒子/UI 动画/itch 构建（开 issue 挂上） |
+| P9 | ✨ Polish | ✅ **完成** | 程序化音效×12/audio_manager/粒子反馈/按钮动画/itch 配置（#46，内容随 PR #49 合入） |
+| — | 🎨 UI 观感翻新 | ✅ **完成** | 9 面板 tscn 化 + 贴纸图标/立体按钮/纹理进度条/订单卡重设计（#48，PR #49）；冒烟 229 断言 |
 
 ---
 
@@ -63,8 +64,10 @@
 | #40 | [P7 一期] 多菜品+难度：3 种 L1 菜品/招牌菜/7 天难度/特殊事件 | ✅ 已完成（PR #41） |
 | #42 | [风格] 浅色主题：杯杯倒满式奶油白底 + 糖果色 + 贴纸图标 | ✅ 已完成（PR #43） |
 | #44 | [P8] 角色系统：角色选择界面 + 2 角色 + 技能生效 + 存档 | ✅ 已完成（PR #45） |
-| — | [P9] Polish：音效/粒子/UI 动画/itch 构建 | **下一个开工**（开 issue 挂上） |
-| — | [P7 二期] L2 炒锅 / L3 现做流程（2 L2 + 1 L3） | 待办（可并入 P9 后） |
+| #46 | [P9] Polish：程序化音效 + 音频系统 + 粒子 + UI 动画 + itch 配置 | ✅ 已完成（原 PR #47 分支被 #48 作基点，内容随 PR #49 squash 一并合入；#47 已关闭） |
+| #48 | [风格] UI 观感翻新：9 面板 tscn 化 + 图标/按钮/进度条/卡片重设计 | ✅ 已完成（PR #49） |
+| — | [反馈层] 世界坐标飘字（+20/差评）/金币飞行动画/结算 count-up | 待办（可开 issue，并入后续 Polish） |
+| — | [P7 二期] L2 炒锅 / L3 现做流程（2 L2 + 1 L3） | 待办（可开 issue） |
 
 ---
 
@@ -118,6 +121,16 @@ archive/generations/001-chef_front_view/
 ---
 
 ## 6. 历次会话关键决策与发现
+
+**2026-08-04 Session 11（UI 观感翻新 #48 + P9 合入厘清）**
+
+| 事件 | 详情 |
+|------|------|
+| ✅ issue #48 UI 观感翻新（PR #49） | **9 面板全部 tscn 化**（`scenes/ui/`：RevenueHUD/OrderBoard/OrderCard/TakeawayBoard/ToastManager/DayResultPanel/UpgradeShop/CardDraw/SpecialtyPanel/CharacterSelect），静态结构进场景、脚本只留动态逻辑（@onready 绑定，变量名/方法签名/文本格式全兼容）；**视觉资源**：panel_bg/panel_dark 重绘多层（高光+内阴影+四角金点）+ 新增 panel_card/btn 立体三态/bar 轨道+四色高光填充；**新图标**：菜品×3（dish_kungpao/yuxiang/mapo）+ 耐心表情×3（mood_happy/neutral/angry）+ pack；**修复原 10 图标只画在 viewBox 左上 1/4 的偏心 bug**（全部重绘居中加粗）；**UITheme 新 API**：`dish_icon_path`/`mood_icon_path`/`make_card_style`/`make_button_texture_styles`/`make_bar_bg_style`/`make_bar_fill_style`；**HUD**：新增营业时间进度条 TimeBar（绿→红）+ 营业额收钱弹跳；**订单卡重设计**：菜品大图标 + 纹理耐心条 + 表情随耐心切换（>50%/>20%/≤20%）+ 低耐心红色脉冲；main_scene.gd 5 处 `SCRIPT.new()` → tscn `instantiate()`；冒烟 **229 断言**（+7 条 #48 断言）PASS |
+| ⚠️ P9 合入路径厘清 | Session 10.5 的 P9 工作（PR #47，分支 feature/46-polish-audio，commit 8c54e2b）**未合入 main**，而 #48 分支以 8c54e2b 为基点 → PR #49 squash 时 P9 全部内容一并进入 main。处理：PR #47 关闭删分支 + issue #46 关闭（均已留言说明）。**教训：开新分支前先确认基点 commit 已在 origin/main** |
+| 💡 `--quit-after N` 是帧数不是秒 | 900 帧≈15s 导致冒烟跑一半被终止（无 RESULT 输出，易误判崩溃）；冒烟用 `--quit-after 12000`（插件自身 quit 先触发，约 80s 跑完） |
+| 💡 新 SVG 首轮加载失败 | 新资源无 .import 时编辑器首轮 `load()` 报 Failed loading（UITheme null 容错不崩但断言挂）；首轮跑完生成 .import 后第二轮即绿——**新增资源后冒烟跑两轮** |
+| 📌 冒烟断言数 | 229（#48 新增 7 条：菜品图标/表情切换/TimeBar/外卖标题/下一天按钮） |
 
 **2026-08-02 Session 10（P3 经济系统 + UI 全面升级合并）**
 
