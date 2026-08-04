@@ -18,7 +18,7 @@ theme_override_constants/margin_bottom = 10
 theme_override_constants/separation = 10
 
 [node name="DishIcon" type="TextureRect" parent="Margin/HBox"]
-custom_minimum_size = Vector2(60, 60)
+custom_minimum_size = Vector2(76, 76)
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
