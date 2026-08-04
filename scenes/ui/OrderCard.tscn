@@ -18,7 +18,7 @@ theme_override_constants/margin_bottom = 10
 theme_override_constants/separation = 10
 
 [node name="DishIcon" type="TextureRect" parent="Margin/HBox"]
-custom_minimum_size = Vector2(60, 60)
+custom_minimum_size = Vector2(76, 76)
 mouse_filter = 2
 expand_mode = 1
 stretch_mode = 5
@@ -33,6 +33,7 @@ theme_override_constants/separation = 6
 [node name="NameLabel" type="RichTextLabel" parent="Margin/HBox/Right/TopRow"]
 bbcode_enabled = true
 fit_content = true
+autowrap_mode = 0
 mouse_filter = 2
 theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
 theme_override_colors/outline_color = Color(0, 0, 0, 0.8)

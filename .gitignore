@@ -32,3 +32,6 @@ project.binary
 # Reasonix 工具
 .reasonix/
 reasonix.toml
+
+# 调试截图（#56）
+debug_shots/

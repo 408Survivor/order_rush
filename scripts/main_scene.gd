@@ -1,5 +1,5 @@
 ## 文件: scripts/main_scene.gd
-## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块+标签）、#51 场景陈设（墙/吧台/桌椅/装饰）并摆放全部节点；
+## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块，#56 起无标签）、#51 场景陈设（墙/吧台/桌椅/装饰）并摆放全部节点；
 ##       P3 日循环清场（打烊清顾客/新一天重置物品与玩家）
 ## 依赖: LayoutManager/GameStateManager (autoload)；场景节点结构见 MainScene.tscn（节点位置以本脚本为准）
 ## 注意: @tool 使编辑器进程打开场景即按配置摆放（位置单一权威 = LayoutManager，issue #24）
@@ -57,11 +57,12 @@ const SHELF_CRATES_TEX := preload("res://assets/art/props/shelf_crates.svg")
 var _zone_defs: Array = []
 
 func _ready() -> void:
+	_init_debug_screenshot()
 	_zone_defs = [
-		["ZoneStorage", "冷库区", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.10)],
-		["ZoneKitchen", "厨房区", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.10)],
-		["ZoneFront", "前台", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.10)],
-		["ZoneDining", "就餐区", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.10)],
+		["ZoneStorage", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.06)],
+		["ZoneKitchen", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.06)],
+		["ZoneFront", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.06)],
+		["ZoneDining", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.06)],
 	]
 	_build_zones()
 	# #51 场景陈设：墙体/门/吧台/装饰先于功能道具生成（同 z 时功能道具后画在上层）
@@ -123,15 +124,15 @@ func _reset_shop_items() -> void:
 
 # ==================== 区域视觉 ====================
 
-## 按配置生成区域色块 + 标签（幂等：已存在则跳过，防编辑器热重载重复）
+## 按配置生成区域色块（幂等：已存在则跳过，防编辑器热重载重复）
+## #56：区域 Label 删除（陈设已定义分区），色块 alpha 降到 0.06 仅留极淡分区感
 func _build_zones() -> void:
 	for def in _zone_defs:
 		var zone_name: String = def[0]
 		if has_node(zone_name):
 			continue
-		var label_text: String = def[1]
-		var rect: Rect2 = def[2]
-		var color: Color = def[3]
+		var rect: Rect2 = def[1]
+		var color: Color = def[2]
 
 		var zone := ColorRect.new()
 		zone.name = zone_name
@@ -140,20 +141,6 @@ func _build_zones() -> void:
 		zone.color = color
 		zone.z_index = -5
 		add_child(zone)
-
-		var label := Label.new()
-		label.name = zone_name + "Label"
-		label.position = rect.position + Vector2(12, 8)
-		label.z_index = -4
-		# #51：色块 alpha 降到 0.10 后标签独立保证可读性
-		var label_color: Color = color.lightened(0.55)
-		label_color.a = 0.75
-		label.add_theme_color_override("font_color", label_color)
-		label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 0.6))
-		label.add_theme_constant_override("outline_size", 4)
-		label.add_theme_font_size_override("font_size", 22)
-		label.text = label_text
-		add_child(label)
 
 # ==================== 餐桌 ====================
 
@@ -307,6 +294,73 @@ func _apply_upgrades() -> void:
 func _on_upgrades_changed() -> void:
 	_apply_upgrades()
 	_reset_shop_items()
+
+# ==================== 调试截图（#56） ====================
+
+## 自动截图帧计数（-1 = 关闭；>=0 时到点截图并退出，供终端核验运行画面）
+var _debug_shot_frame := -1
+## 自动截图触发帧（~25s：顾客/订单/外卖骑手已上屏，画面最具代表性）
+const DEBUG_SHOT_AT_FRAME := 1500
+## 截图输出目录（已 gitignore）
+const DEBUG_SHOT_DIR := "res://debug_shots"
+
+## 启动时检测 --debug-screenshot[=帧数] 用户参数：开启自动截图，并跳过角色选择面板（不落存档）
+func _init_debug_screenshot() -> void:
+	if Engine.is_editor_hint():
+		return
+	var frame := DEBUG_SHOT_AT_FRAME
+	var found := false
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--debug-screenshot":
+			found = true
+		elif arg.begins_with("--debug-screenshot="):
+			found = true
+			frame = int(arg.get_slice("=", 1))
+	if not found:
+		return
+	_debug_shot_frame = DEBUG_SHOT_AT_FRAME - frame  # 计数复用：到 DEBUG_SHOT_AT_FRAME 触发
+	if not CharacterManager.has_selected():
+		CharacterManager.current_character = "chef"
+
+## F12 手动截图（运行模式）
+func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F12:
+		print("DEBUG_SHOT_SAVED %s" % save_debug_screenshot())
+
+func _process(_delta: float) -> void:
+	if _debug_shot_frame < 0:
+		return
+	_debug_shot_frame += 1
+	if _debug_shot_frame == DEBUG_SHOT_AT_FRAME:
+		print("DEBUG_SHOT_SAVED %s" % save_debug_screenshot())
+		_dump_ui_tree()
+		get_tree().quit()
+
+## 保存当前视口为 PNG，返回绝对路径（macOS 下绕过 TCC 屏幕录制权限——Godot 已有完全磁盘访问）
+func save_debug_screenshot() -> String:
+	DirAccess.make_dir_recursive_absolute(DEBUG_SHOT_DIR)
+	var file := "%s/shot_%s.png" % [DEBUG_SHOT_DIR, Time.get_datetime_string_from_system().replace(":", "-")]
+	get_viewport().get_texture().get_image().save_png(file)
+	return ProjectSettings.globalize_path(file)
+
+## 打印可见 UI 树（定位莫名面板用；只列实际参与绘制的节点）
+func _dump_ui_tree(node: Node = null, depth: int = 0) -> void:
+	if node == null:
+		node = get_tree().root
+		if toast_manager != null:
+			print("UI_DUMP toasts=%d" % toast_manager.get("_toasts").size())
+			for t in toast_manager.get("_toasts"):
+				print("UI_DUMP toast bg=%s text=%s" % [(t["bg"] as Control).get_global_rect(), (t["label"] as RichTextLabel).text])
+	if node is Control:
+		var ctl := node as Control
+		if ctl.is_visible_in_tree():
+			print("UI_DUMP %s%s grect=%s" % ["-".repeat(depth * 2), ctl.name, ctl.get_global_rect()])
+	elif node is CanvasLayer:
+		print("UI_DUMP %s[%s]" % ["-".repeat(depth * 2), node.name])
+	for child in node.get_children():
+		_dump_ui_tree(child, depth + 1)
 
 # ==================== 节点摆放 ====================
 
