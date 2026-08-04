@@ -3,8 +3,8 @@
 ## 依赖: 无
 ## 注意: 所有布局坐标集中于此——MainScene 按此生成区域视觉并摆放节点，
 ##       CustomerManager 按此计算队列槽位。新增设备/区域/货位只改本文件（issue #24）。
-##       #50 布局动线重构：冷库区放货箱堆（CRATE_SLOTS），冰柜移至厨房区微波炉左侧，
-##       料理包台面前移到冰柜前（MEAL_SLOTS），外卖口右移至柜台旁。
+##       #50 布局动线重构：冷库区放货箱堆（CRATE_SLOTS），冰柜移至厨房区微波炉左侧，外卖口右移至柜台旁；
+##       #54 冰柜四格取货：台面前取包位（MEAL_SLOTS）删除，料理包经 J/K/L/空格 从冰柜直接取货。
 
 @tool
 extends Node
@@ -34,14 +34,10 @@ const QUEUE_CAPACITY := 5
 # ==================== 设备/货架/餐桌槽位 ====================
 ## 微波炉位（第 1 位当前使用，第 2 位 P5 设备升级解锁；间距 260 > 矩形碰撞 250）
 const MICROWAVE_SLOTS: Array[Vector2] = [Vector2(1700, 180), Vector2(1440, 180)]
-## 冰柜位（#50：移至厨房区、微波炉左侧抱团；两段式补给——货箱入库、台面前取包）
+## 冰柜位（#50：移至厨房区、微波炉左侧抱团；#54：四格展示库存，J/K/L/空格 取货）
 const FREEZER_SLOT := Vector2(1150, 180)
 ## 货箱堆位（#50：冷库区 3 堆，对应 L1_DISHES 3 道菜；批发仓无限库存）
 const CRATE_SLOTS: Array[Vector2] = [Vector2(150, 200), Vector2(320, 200), Vector2(490, 200)]
-## 冰柜前取包位（#50 语义变更：由"货架摆位"改为"冰柜台面取包位"，3 位对应 L1_DISHES）
-const MEAL_SLOTS: Array[Vector2] = [
-	Vector2(1050, 300), Vector2(1150, 300), Vector2(1250, 300),
-]
 ## 餐桌位（当前使用前 2 位，P4+ 扩展至 4）
 const TABLE_SLOTS: Array[Vector2] = [
 	Vector2(450, 800), Vector2(800, 800), Vector2(1150, 800), Vector2(1500, 800),

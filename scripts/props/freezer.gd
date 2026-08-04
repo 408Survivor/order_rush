@@ -1,49 +1,42 @@
 ## 文件: scripts/props/freezer.gd
-## 职责: 冰柜（#50 两段式补给核心）——按菜管理料理包库存：收货箱补库存（每箱 CRATE_SIZE），
-##       台面料理包镜像库存（有货则摆到冰柜前取包位，被拾取扣库存并自动补下一个）
-## 依赖: GameStateManager/UpgradeManager/LayoutManager (autoload)；MealPackage.tscn（台面镜像实例化）
+## 职责: 冰柜（#54 四格取货）——按菜管理料理包库存：收货箱补库存（每箱 CRATE_SIZE），
+##       盖面四格展示各菜库存（图标 + 计数 + 按键提示），玩家按 J/K/L/空格 直接取包（取货扣库存）
+## 依赖: GameStateManager/UpgradeManager (autoload)；MealPackage.tscn（取货实例化）
 ## 注意: 挂 Area2D，加入 appliance 组复用玩家设备交互分支（can_accept_item/accept_item/give_item/is_done）；
-##       命名保持 legacy：kungpao="MealPackage"、yuxiang="MealPackage2"、mapo="MealPackage3"（冒烟测试路径依赖）；
-##       编辑器进程也连接玩家 item_picked_up（冒烟测试在编辑器进程验证扣库存）
+##       加入 freezer 组供玩家 J/K/L/空格 取货查找；SLOT_DISHES 第 4 格为预留空位
 
 @tool
 extends Area2D
 
 # ==================== 常量 ====================
 const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
-const INITIAL_STOCK := 3  ## 各菜初始库存（冒烟测试全流程每菜消耗 ≤2，留 1 余量保证跨天台面有包）
+const INITIAL_STOCK := 0  ## 各菜初始库存（#54：冰柜初始空，全靠货箱补给）
 const CRATE_SIZE := 4     ## 每个货箱补充的库存数
-## 台面包 legacy 命名（与冒烟测试 Items/MealPackage(2/3) 路径绑定，顺序对应 L1_DISHES）
-const PACKAGE_NAMES := {
-	"kungpao": "MealPackage",
-	"yuxiang": "MealPackage2",
-	"mapo": "MealPackage3",
-}
+## 四格菜品（2×2 排布在机身盖面；格 4 预留空）
+const SLOT_DISHES: Array[String] = ["kungpao", "yuxiang", "mapo", ""]
+## 四格按键提示（与 project.godot take_slot_1..4 对应：J/K/L/空格）
+const SLOT_KEY_HINTS: Array[String] = ["[J]", "[K]", "[L]", "[空格]"]
+## 四格短菜名（取货提示用）
+const SLOT_SHORT_NAMES: Array[String] = ["宫保", "鱼香", "麻婆", "预留"]
 
 # ==================== 导出变量 ====================
 ## 显示名称（用于交互提示）
 @export var display_name := "冰柜"
 
 # ==================== 节点引用 ====================
-@onready var stock_label: Label = $StockLabel
+@onready var _slots: Array[Node2D] = [$Slots/Slot1, $Slots/Slot2, $Slots/Slot3, $Slots/Slot4]
 
 # ==================== 状态变量 ====================
-## 各菜料理包库存（跨天保留，不再每天免费刷新；#50 起由货箱补充）
+## 各菜料理包库存（跨天保留，不再每天免费刷新；#50 起由货箱补充，#54 起初始为空）
 var stock := {"kungpao": INITIAL_STOCK, "yuxiang": INITIAL_STOCK, "mapo": INITIAL_STOCK}
-## 台面料理包镜像：dish_type → 台面上的包节点（被手持/消耗时为 null）
-var _packages: Dictionary = {}
 
 # ==================== 生命周期 ====================
 
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("appliance")
-	_update_stock_label()
-	# 监听玩家拾取：台面包被拿走 → 扣库存并补下一个（编辑器进程也连，冒烟测试依赖）
-	var player := get_parent().get_node_or_null("PlayerCharacter")
-	if player != null and player.has_signal("item_picked_up"):
-		if not player.item_picked_up.is_connected(_on_player_item_picked_up):
-			player.item_picked_up.connect(_on_player_item_picked_up)
+	add_to_group("freezer")  # 玩家 J/K/L/空格 取货按组查找（#54）
+	_refresh_slots()
 
 # ==================== 库存 ====================
 
@@ -59,19 +52,18 @@ func can_accept_item(item: Node2D) -> bool:
 		return false
 	return int(stock.get(str(item.get("dish_type")), 0)) < capacity()
 
-## 收入货箱：对应菜品库存 +CRATE_SIZE（不超容量），货箱消耗，刷新台面
+## 收入货箱：对应菜品库存 +CRATE_SIZE（不超容量），货箱消耗，刷新四格
 func accept_item(item: Node2D) -> bool:
 	if not can_accept_item(item):
 		return false
 	var dish: String = str(item.get("dish_type"))
 	stock[dish] = mini(capacity(), int(stock.get(dish, 0)) + CRATE_SIZE)
 	item.queue_free()
-	sync_packages()
-	_update_stock_label()
+	_refresh_slots()
 	print_rich("[color=cyan]Freezer: crate stored (%s → %d)[/color]" % [dish, stock[dish]])
 	return true
 
-## 空手按 E 无操作（料理包从台面直接拾取，不经由此接口）
+## 空手按 E 无操作（料理包经 J/K/L/空格 四格取货，不经由此接口）
 func give_item() -> Node2D:
 	return null
 
@@ -79,59 +71,58 @@ func give_item() -> Node2D:
 func is_done() -> bool:
 	return false
 
-# ==================== 台面料理包镜像 ====================
+# ==================== 四格取货（#54） ====================
 
-## 按库存同步台面料理包：有货且无包 → 摆到冰柜前取包位；无货且包在台面（未被手持）→ 撤下
-## 幂等：可被 main_scene 初始摆放/日循环清场/入库/拾取后重复调用
-func sync_packages() -> void:
-	var items := get_parent().get_node_or_null("Items")
-	if items == null:
-		return
-	for i in GameStateManager.L1_DISHES.size():
-		var dish: String = GameStateManager.L1_DISHES[i]
-		var pkg_name: String = PACKAGE_NAMES.get(dish, "MealPackage")
-		var pkg: Node2D = _packages.get(dish)
-		if pkg == null or not is_instance_valid(pkg) or pkg.is_queued_for_deletion():
-			pkg = null
-		if pkg == null:
-			# 回收同名节点（Q 放下回 Items 的台面包），避免同帧重名冲突
-			var found := items.get_node_or_null(pkg_name)
-			if found != null and not found.is_queued_for_deletion():
-				pkg = found
-		if int(stock.get(dish, 0)) > 0:
-			if pkg == null:
-				pkg = MEAL_PACKAGE_SCENE.instantiate()
-				pkg.name = pkg_name
-				items.add_child(pkg)
-			pkg.set("dish_type", dish)
-			if pkg.has_method("apply_dish_visual"):
-				pkg.apply_dish_visual()
-			pkg.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
-			_packages[dish] = pkg
+## 从指定格取货：slot_index 0..3；预留空位/无库存 → 返回 null；
+## 否则库存 -1、实例化料理包（设好 dish_type 与视觉）并返回（不挂场景，调用方接手）
+func take_from_slot(slot_index: int) -> Node2D:
+	if slot_index < 0 or slot_index >= SLOT_DISHES.size():
+		return null
+	var dish: String = SLOT_DISHES[slot_index]
+	if dish == "" or int(stock.get(dish, 0)) <= 0:
+		return null
+	stock[dish] = int(stock[dish]) - 1
+	var pkg: Node2D = MEAL_PACKAGE_SCENE.instantiate()
+	pkg.set("dish_type", dish)
+	if pkg.has_method("apply_dish_visual"):
+		pkg.apply_dish_visual()
+	_refresh_slots()
+	print_rich("[color=cyan]Freezer: slot %d taken (%s → %d)[/color]" % [slot_index + 1, dish, stock[dish]])
+	return pkg
+
+## 玩家空手面对冰柜时的取货提示："[J]宫保×N [K]鱼香×N [L]麻婆×N [空格]预留"
+func take_hint() -> String:
+	var parts: Array[String] = []
+	for i in SLOT_DISHES.size():
+		var dish: String = SLOT_DISHES[i]
+		if dish == "":
+			parts.append("%s%s" % [SLOT_KEY_HINTS[i], SLOT_SHORT_NAMES[i]])
 		else:
-			if pkg != null and pkg.get_parent() == items:
-				pkg.queue_free()
-			_packages[dish] = null
-
-# ==================== 信号响应 ====================
-
-## 台面包被拾取 → 对应菜品库存 -1，补下一个上台面（deferred，等拾取重挂完成后同步）
-func _on_player_item_picked_up(item: Node2D) -> void:
-	for dish in _packages:
-		if _packages[dish] == item:
-			stock[dish] = maxi(0, int(stock.get(dish, 0)) - 1)
-			_packages[dish] = null
-			_update_stock_label()
-			call_deferred("sync_packages")
-			return
+			parts.append("%s%s×%d" % [SLOT_KEY_HINTS[i], SLOT_SHORT_NAMES[i], int(stock.get(dish, 0))])
+	return " ".join(parts)
 
 # ==================== 视觉辅助 ====================
 
-## 机身库存标签（机身视觉 = freezer.svg，#51）
-func _update_stock_label() -> void:
-	if stock_label == null:
+## 刷新四格展示：库存 >0 → 图标显示、计数 ×N；=0 → 图标隐藏、计数 ×0 调暗；预留格只显示按键提示
+func _refresh_slots() -> void:
+	if _slots == null:
 		return
-	var parts: Array[String] = []
-	for dish in GameStateManager.L1_DISHES:
-		parts.append("%s×%d" % [GameStateManager.get_dish_display_name(dish), int(stock.get(dish, 0))])
-	stock_label.text = "\n".join(parts)
+	for i in SLOT_DISHES.size():
+		var slot := _slots[i]
+		if slot == null:
+			continue
+		var dish: String = SLOT_DISHES[i]
+		var icon: Sprite2D = slot.get_node_or_null("Icon")
+		var count_label: Label = slot.get_node_or_null("CountLabel")
+		if dish == "":
+			if icon != null:
+				icon.visible = false
+			if count_label != null:
+				count_label.text = ""
+			continue
+		var count := int(stock.get(dish, 0))
+		if icon != null:
+			icon.visible = count > 0
+		if count_label != null:
+			count_label.text = "×%d" % count
+			count_label.modulate = Color(1, 1, 1, 1) if count > 0 else Color(1, 1, 1, 0.4)

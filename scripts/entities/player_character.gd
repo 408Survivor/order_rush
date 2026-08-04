@@ -18,6 +18,7 @@ const INTERACTION_DISTANCE := 280.0 ## 交互检测距离（像素，覆盖贴�
 const INTERACTION_COOLDOWN := 0.25  ## 交互冷却（秒），防止连按
 const INTERACT_FOV_DOT := 0.7       ## 交互扇区：cos(45°)，仅身前 ±45° 内可交互
 const DROP_OFFSET := 50.0           ## 放下物品与玩家的距离（像素，沿面向方向）
+const FREEZER_TAKE_DISTANCE := 340.0 ## 冰柜四格取货的最大距离（像素，#54；无朝向要求）
 const ITEM_COLLISION_LAYER := 8     ## 物品初始碰撞层（Items，与 MealPackage/FinishedDish 场景一致）
 
 # ==================== 节点引用 ====================
@@ -81,12 +82,51 @@ func _input(event: InputEvent) -> void:
 	# @tool：编辑器进程不响应游戏输入（防止编辑场景时触发交互改变场景）
 	if Engine.is_editor_hint():
 		return
-	# E / Space 触发交互
+	# E 触发交互（#54：Space 已从 interact 移除，改作冰柜格 4 取货）
 	if event.is_action_pressed("interact"):
 		try_interact()
 	# Q 放下手持物品（中途放下，issue #22）
 	elif event.is_action_pressed("drop_item"):
 		drop_held_item()
+	# J/K/L/空格 从冰柜四格取货（#54）
+	elif event.is_action_pressed("take_slot_1"):
+		try_take_from_freezer(1)
+	elif event.is_action_pressed("take_slot_2"):
+		try_take_from_freezer(2)
+	elif event.is_action_pressed("take_slot_3"):
+		try_take_from_freezer(3)
+	elif event.is_action_pressed("take_slot_4"):
+		try_take_from_freezer(4)
+
+	# ==================== 冰柜四格取货（#54） ====================
+
+## 从冰柜第 N 格（1..4）取料理包：空手 + 距冰柜 ≤FREEZER_TAKE_DISTANCE（无朝向要求）
+## 输出: bool（是否取到）；public 供冒烟测试直接调用
+func try_take_from_freezer(slot_number: int) -> bool:
+	if held_item != null:
+		return false
+	var freezer := _find_freezer()
+	if freezer == null:
+		return false
+	if global_position.distance_to(freezer.global_position) > FREEZER_TAKE_DISTANCE:
+		return false
+	var pkg: Node2D = freezer.take_from_slot(slot_number - 1)
+	if pkg == null:
+		return false
+	_pick_up_item(pkg)
+	return true
+
+## 从 freezer 组取冰柜节点（四格取货目标）
+## 注意：限定与玩家同一场景分支——编辑器进程会同时开着场景页签（同组两个 Freezer），
+##       不加过滤会拿到页签里那台（库存对不上）
+func _find_freezer() -> Node2D:
+	var home := get_parent()
+	for node in get_tree().get_nodes_in_group("freezer"):
+		if not node.has_method("take_from_slot"):
+			continue
+		if home != null and home.is_ancestor_of(node):
+			return node
+	return null
 
 # ==================== 交互系统 ====================
 
@@ -350,8 +390,10 @@ func _update_prompt() -> void:
 		if text == "":
 			text = "[Q] 放下"
 	else:
-		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出；货箱堆 → 提示拿取
-		if target.is_in_group("pickable"):
+		# 空手：冰柜 → 四格取货提示（#54）；可拾取 → 提示拾取；设备加热完成 → 提示取出；货箱堆 → 提示拿取
+		if target.is_in_group("freezer"):
+			text = target.take_hint()
+		elif target.is_in_group("pickable"):
 			text = "[E] 拾取%s" % _friendly_name(target)
 		elif target.is_in_group("appliance") and target.is_done():
 			text = "[E] 取出%s" % _friendly_name(target)
