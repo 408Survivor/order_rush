@@ -24,18 +24,18 @@ const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
 const MICROWAVE_SCENE := preload("res://scenes/props/Microwave.tscn")
 ## 外卖口场景（P4，动态实例化）
 const TAKEOUT_COUNTER_SCENE := preload("res://scenes/props/TakeoutCounter.tscn")
-## 外卖订单面板脚本（P4，动态实例化 CanvasLayer）
-const TAKEOUT_BOARD_SCRIPT := preload("res://scripts/ui/takeaway_board.gd")
+## 外卖订单面板场景（P4，动态实例化 CanvasLayer；#48 起为 tscn）
+const TAKEAWAY_BOARD_SCENE := preload("res://scenes/ui/TakeawayBoard.tscn")
 ## 骑手视觉管理器脚本（P4）
 const TAKEOUT_RIDER_SCRIPT := preload("res://scripts/systems/takeaway_rider.gd")
-## 升级商店脚本（P5，动态实例化 CanvasLayer）
-const UPGRADE_SHOP_SCRIPT := preload("res://scripts/ui/upgrade_shop.gd")
-## 抽卡面板脚本（P6，动态实例化 CanvasLayer）
-const CARD_DRAW_SCRIPT := preload("res://scripts/ui/card_draw.gd")
-## 招牌菜面板脚本（P7，动态实例化 CanvasLayer）
-const SPECIALTY_PANEL_SCRIPT := preload("res://scripts/ui/specialty_panel.gd")
-## 角色选择面板脚本（P8，动态实例化 CanvasLayer）
-const CHARACTER_SELECT_SCRIPT := preload("res://scripts/ui/character_select.gd")
+## 升级商店场景（P5，动态实例化 CanvasLayer；#48 起为 tscn）
+const UPGRADE_SHOP_SCENE := preload("res://scenes/ui/UpgradeShop.tscn")
+## 抽卡面板场景（P6，动态实例化 CanvasLayer；#48 起为 tscn）
+const CARD_DRAW_SCENE := preload("res://scenes/ui/CardDraw.tscn")
+## 招牌菜面板场景（P7，动态实例化 CanvasLayer；#48 起为 tscn）
+const SPECIALTY_PANEL_SCENE := preload("res://scenes/ui/SpecialtyPanel.tscn")
+## 角色选择面板场景（P8，动态实例化 CanvasLayer；#48 起为 tscn）
+const CHARACTER_SELECT_SCENE := preload("res://scenes/ui/CharacterSelect.tscn")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -182,7 +182,7 @@ func _build_takeout_counter() -> void:
 ## 实例化外卖 UI：订单面板 + 骑手视觉（动态生成幂等）
 func _build_takeaway_ui() -> void:
 	if not has_node("TakeawayBoard"):
-		var board: CanvasLayer = TAKEOUT_BOARD_SCRIPT.new()
+		var board: CanvasLayer = TAKEAWAY_BOARD_SCENE.instantiate()
 		board.name = "TakeawayBoard"
 		add_child(board)
 	if not has_node("TakeawayRider"):
@@ -193,28 +193,28 @@ func _build_takeaway_ui() -> void:
 ## 实例化升级商店（P5；打烊暂停中由日结算面板按钮打开，动态生成幂等）
 func _build_upgrade_shop() -> void:
 	if not has_node("UpgradeShop"):
-		var shop: CanvasLayer = UPGRADE_SHOP_SCRIPT.new()
+		var shop: CanvasLayer = UPGRADE_SHOP_SCENE.instantiate()
 		shop.name = "UpgradeShop"
 		add_child(shop)
 
 ## 实例化抽卡面板（P6；打烊暂停中由日结算面板按钮打开，动态生成幂等）
 func _build_card_draw() -> void:
 	if not has_node("CardDraw"):
-		var draw: CanvasLayer = CARD_DRAW_SCRIPT.new()
+		var draw: CanvasLayer = CARD_DRAW_SCENE.instantiate()
 		draw.name = "CardDraw"
 		add_child(draw)
 
 ## 实例化招牌菜面板（P7；打烊暂停中由日结算面板按钮打开，动态生成幂等）
 func _build_specialty_panel() -> void:
 	if not has_node("SpecialtyPanel"):
-		var panel: CanvasLayer = SPECIALTY_PANEL_SCRIPT.new()
+		var panel: CanvasLayer = SPECIALTY_PANEL_SCENE.instantiate()
 		panel.name = "SpecialtyPanel"
 		add_child(panel)
 
 ## 实例化角色选择面板（P8；未选角色时启动弹出，动态生成幂等）
 func _build_character_select() -> void:
 	if not has_node("CharacterSelect"):
-		var select: CanvasLayer = CHARACTER_SELECT_SCRIPT.new()
+		var select: CanvasLayer = CHARACTER_SELECT_SCENE.instantiate()
 		select.name = "CharacterSelect"
 		add_child(select)
 	# 未选角色 → 开店前弹出选择（暂停中；选择后恢复开始营业）

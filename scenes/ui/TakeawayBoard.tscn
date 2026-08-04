@@ -1,0 +1,42 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/takeaway_board.gd" id="1_board"]
+
+; ===== 外卖订单面板（P4 / #48 tscn 化） =====
+; 屏幕右侧（经营面板下方）；订单行由脚本 refresh() 动态重建到 Panel/Margin/VBox/List 下
+
+[node name="TakeawayBoard" type="CanvasLayer"]
+script = ExtResource("1_board")
+
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(240, 0)
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -256.0
+offset_top = 118.0
+offset_right = -16.0
+offset_bottom = 118.0
+grow_horizontal = 0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+theme_override_constants/separation = 6
+
+[node name="Title" type="RichTextLabel" parent="Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
+theme_override_font_sizes/normal_font_size = 18
+text = "[img width=18 height=18]res://assets/art/ui/icons/pack.svg[/img] 外卖订单"
+
+[node name="HSeparator" type="HSeparator" parent="Panel/Margin/VBox"]
+
+[node name="List" type="VBoxContainer" parent="Panel/Margin/VBox"]
+theme_override_constants/separation = 4

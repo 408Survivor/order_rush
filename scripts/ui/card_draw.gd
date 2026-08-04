@@ -1,78 +1,34 @@
 ## 文件: scripts/ui/card_draw.gd
 ## 职责: 卡牌抽卡界面（P6）——打烊后 3 选 1 抽卡（消耗口碑），选中卡入构筑影响次日经营
+##       （#48 tscn 化：静态结构移入 scenes/ui/CardDraw.tscn，返回按钮换立体纹理三态）
 ## 依赖: GameStateManager/UITheme/CardManager (autoload)
 ## 注意: process_mode=ALWAYS（打烊暂停期间可交互，同升级商店）；@tool 编辑器进程不自动刷新
 
 @tool
 extends CanvasLayer
 
-var _overlay: ColorRect = null
-var _reputation_label: RichTextLabel = null
-var _cards_row: HBoxContainer = null
+@onready var _overlay: ColorRect = $Overlay
+@onready var _panel: PanelContainer = $Overlay/CenterContainer/Panel
+@onready var _reputation_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/ReputationLabel
+@onready var _cards_row: HBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/CardsRow
+@onready var _back_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/BackButton
+
+## 返回按钮信号/反馈只接一次（@tool 热重载幂等）
+var _wired := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_panel()
-
-func _build_panel() -> void:
-	if _overlay != null and is_instance_valid(_overlay):
-		return
-	_overlay = ColorRect.new()
-	_overlay.name = "Overlay"
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.6)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	_overlay.visible = false
-	add_child(_overlay)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
-	panel.custom_minimum_size = Vector2(560, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(vbox)
-
-	# 标题 + 口碑行
-	vbox.add_child(_make_rule())
-	var title := _make_label("口碑抽卡", 30, UITheme.COLOR_GOLD)
-	vbox.add_child(title)
-	vbox.add_child(_make_rule())
-
-	_reputation_label = _make_label("", 20, UITheme.COLOR_GOLD, true)
-	vbox.add_child(_reputation_label)
-
-	_cards_row = HBoxContainer.new()
-	_cards_row.add_theme_constant_override("separation", 12)
-	_cards_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(_cards_row)
-
-	# 返回按钮
-	var back := Button.new()
-	back.text = "返回"
-	back.custom_minimum_size = Vector2(140, 40)
-	back.add_theme_font_size_override("font_size", 20)
-	var btn_styles := UITheme.make_button_styles()
-	back.add_theme_stylebox_override("normal", btn_styles["normal"])
-	back.add_theme_stylebox_override("hover", btn_styles["hover"])
-	back.add_theme_stylebox_override("pressed", btn_styles["pressed"])
-	back.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	back.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
-	UITheme.style_button_feedback(back)
-	back.pressed.connect(_on_back_pressed)
-	vbox.add_child(back)
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
+	# #48：返回按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
+	_back_button.add_theme_stylebox_override("normal", btn_styles["normal"])
+	_back_button.add_theme_stylebox_override("hover", btn_styles["hover"])
+	_back_button.add_theme_stylebox_override("pressed", btn_styles["pressed"])
+	_back_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if not _wired:
+		_wired = true
+		UITheme.style_button_feedback(_back_button)
+		_back_button.pressed.connect(_on_back_pressed)
 
 # ==================== 展示 ====================
 
@@ -134,14 +90,6 @@ func _on_card_pressed(card_id: String) -> void:
 		hide_draw()
 
 # ==================== 样式辅助 ====================
-
-func _make_rule() -> ColorRect:
-	var rule := ColorRect.new()
-	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
-	rule.custom_minimum_size = Vector2(140, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rule
 
 ## 文本标签（rich=true 支持 [img] 内联图标；居中由调用处设置）
 func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:

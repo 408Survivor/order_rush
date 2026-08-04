@@ -1,5 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 强调面板（#48 重绘）：奶黄底 + 金边 + 顶部高光 + 底部内阴影 + 四角深棕点（结算/弹窗用，九宫格 margin 18） -->
 <rect x="2" y="2" width="124" height="124" rx="16" fill="#FFE9A8"/>
-<rect x="2" y="2" width="124" height="124" rx="16" fill="none" stroke="#D9A62E" stroke-opacity="0.8" stroke-width="3"/>
-<path d="M22 6 Q64 1 106 6" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round"/>
+<path d="M8 92 Q64 104 120 92 L120 110 Q120 120 110 120 L18 120 Q8 120 8 110 Z" fill="#F0D48A" fill-opacity="0.85"/>
+<rect x="11" y="11" width="106" height="106" rx="9" fill="none" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="2"/>
+<path d="M20 7 Q64 1 108 7" fill="none" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="3" stroke-linecap="round"/>
+<rect x="2" y="2" width="124" height="124" rx="16" fill="none" stroke="#D9A62E" stroke-width="3.5"/>
+<circle cx="13" cy="13" r="2.6" fill="#8F6510"/>
+<circle cx="115" cy="13" r="2.6" fill="#8F6510"/>
+<circle cx="13" cy="115" r="2.6" fill="#8F6510"/>
+<circle cx="115" cy="115" r="2.6" fill="#8F6510"/>
 </svg>

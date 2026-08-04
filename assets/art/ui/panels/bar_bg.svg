@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 16" width="32" height="16">
+<!-- 进度条轨道（#48 新增）：浅棕底 + 顶部内阴影（九宫格 margin 7） -->
+<rect x="0.5" y="0.5" width="31" height="15" rx="7" fill="#EDE3D0"/>
+<rect x="0.5" y="0.5" width="31" height="15" rx="7" fill="none" stroke="#D9C9AE" stroke-width="1"/>
+<path d="M4 3.5 Q16 1.5 28 3.5" fill="none" stroke="#C9B48F" stroke-opacity="0.6" stroke-width="2" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 菜品图标·宫保鸡丁（#48 新增）：俯视盘 + 红亮鸡丁 + 花生 + 葱段，贴纸风 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <circle cx="64" cy="64" r="46" fill="#FFF6E5"/>
+  <circle cx="64" cy="64" r="33" fill="#FFEDE0" stroke="#E8D5B5" stroke-width="3"/>
+  <rect x="42" y="44" width="20" height="18" rx="6" fill="#D94F3D"/>
+  <rect x="66" y="40" width="19" height="17" rx="6" fill="#C94A38"/>
+  <rect x="50" y="66" width="20" height="18" rx="6" fill="#D94F3D"/>
+  <rect x="72" y="64" width="17" height="16" rx="6" fill="#C94A38"/>
+  <circle cx="46" cy="72" r="5" fill="#F2C14E" stroke-width="3"/>
+  <circle cx="82" cy="52" r="5" fill="#F2C14E" stroke-width="3"/>
+  <circle cx="64" cy="86" r="4.5" fill="#F2C14E" stroke-width="3"/>
+  <rect x="58" y="52" width="12" height="5" rx="2.5" fill="#6FCE96" stroke-width="2.5"/>
+  <rect x="66" y="74" width="12" height="5" rx="2.5" fill="#6FCE96" stroke-width="2.5"/>
+</g>
+<circle cx="94" cy="30" r="4" fill="#FFFFFF" fill-opacity="0.9"/>
+</svg>

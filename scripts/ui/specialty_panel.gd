@@ -1,76 +1,33 @@
 ## 文件: scripts/ui/specialty_panel.gd
 ## 职责: 招牌菜选择面板（P7）——打烊后从日结算面板打开，选择次日招牌菜（价格加成 + 熟练度成长）
+##       （#48 tscn 化：静态结构移入 scenes/ui/SpecialtyPanel.tscn，按钮换立体纹理三态）
 ## 依赖: GameStateManager/UITheme (autoload)；process_mode=ALWAYS（打烊暂停期间可交互，同商店模式）
 
 @tool
 extends CanvasLayer
 
-var _overlay: ColorRect = null
-var _current_label: RichTextLabel = null
-var _list: VBoxContainer = null
+@onready var _overlay: ColorRect = $Overlay
+@onready var _panel: PanelContainer = $Overlay/CenterContainer/Panel
+@onready var _current_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/CurrentLabel
+@onready var _list: VBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/List
+@onready var _back_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/BackButton
+
+## 返回按钮信号/反馈只接一次（@tool 热重载幂等）
+var _wired := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_panel()
-
-func _build_panel() -> void:
-	if _overlay != null and is_instance_valid(_overlay):
-		return
-	_overlay = ColorRect.new()
-	_overlay.name = "Overlay"
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.6)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	_overlay.visible = false
-	add_child(_overlay)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
-	panel.custom_minimum_size = Vector2(360, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	margin.add_child(vbox)
-
-	vbox.add_child(_make_rule())
-	vbox.add_child(_make_label("招牌菜", 30, UITheme.COLOR_GOLD))
-	vbox.add_child(_make_rule())
-
-	_current_label = _make_label("", 18, UITheme.COLOR_TEXT_DIM, true)
-	vbox.add_child(_current_label)
-
-	var sep := HSeparator.new()
-	vbox.add_child(sep)
-
-	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
-	vbox.add_child(_list)
-
-	var back := Button.new()
-	back.text = "返回"
-	back.custom_minimum_size = Vector2(140, 40)
-	back.add_theme_font_size_override("font_size", 20)
-	var btn_styles := UITheme.make_button_styles()
-	back.add_theme_stylebox_override("normal", btn_styles["normal"])
-	back.add_theme_stylebox_override("hover", btn_styles["hover"])
-	back.add_theme_stylebox_override("pressed", btn_styles["pressed"])
-	back.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	back.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
-	UITheme.style_button_feedback(back)
-	back.pressed.connect(_on_back_pressed)
-	vbox.add_child(back)
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
+	# #48：返回按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
+	_back_button.add_theme_stylebox_override("normal", btn_styles["normal"])
+	_back_button.add_theme_stylebox_override("hover", btn_styles["hover"])
+	_back_button.add_theme_stylebox_override("pressed", btn_styles["pressed"])
+	_back_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if not _wired:
+		_wired = true
+		UITheme.style_button_feedback(_back_button)
+		_back_button.pressed.connect(_on_back_pressed)
 
 # ==================== 展示 ====================
 
@@ -117,7 +74,8 @@ func _make_dish_row(dish_id: String, def: Dictionary) -> Control:
 	btn.disabled = is_current
 	btn.custom_minimum_size = Vector2(110, 36)
 	btn.add_theme_font_size_override("font_size", 18)
-	var btn_styles := UITheme.make_button_styles()
+	# #48：按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
 	btn.add_theme_stylebox_override("normal", btn_styles["normal"])
 	btn.add_theme_stylebox_override("hover", btn_styles["hover"])
 	btn.add_theme_stylebox_override("pressed", btn_styles["pressed"])
@@ -134,14 +92,6 @@ func _on_select(dish_id: String) -> void:
 	refresh()
 
 # ==================== 样式辅助 ====================
-
-func _make_rule() -> ColorRect:
-	var rule := ColorRect.new()
-	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
-	rule.custom_minimum_size = Vector2(140, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rule
 
 func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:
 	if rich:

@@ -1,0 +1,59 @@
+[gd_scene format=3]
+
+; ===== 订单卡片（#48） =====
+; 由 order_board.gd 实例化并绑定节点（无独立脚本）：
+; OrderCard > Margin > VBox > TopRow(DishIcon + NameLabel) / BottomRow(Bar + SecondsLabel + MoodIcon)
+; 面板样式 UITheme.make_card_style() 与进度条/图标纹理由 order_board.gd 在创建/刷新时设置
+
+[node name="OrderCard" type="PanelContainer"]
+custom_minimum_size = Vector2(190, 0)
+
+[node name="Margin" type="MarginContainer" parent="."]
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+theme_override_constants/separation = 4
+
+[node name="TopRow" type="HBoxContainer" parent="Margin/VBox"]
+theme_override_constants/separation = 6
+
+[node name="DishIcon" type="TextureRect" parent="Margin/VBox/TopRow"]
+custom_minimum_size = Vector2(28, 28)
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="NameLabel" type="RichTextLabel" parent="Margin/VBox/TopRow"]
+bbcode_enabled = true
+fit_content = true
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/normal_font_size = 22
+text = "菜品"
+
+[node name="BottomRow" type="HBoxContainer" parent="Margin/VBox"]
+theme_override_constants/separation = 6
+
+[node name="Bar" type="ProgressBar" parent="Margin/VBox/BottomRow"]
+custom_minimum_size = Vector2(130, 14)
+mouse_filter = 2
+max_value = 100.0
+value = 100.0
+show_percentage = false
+
+[node name="SecondsLabel" type="Label" parent="Margin/VBox/BottomRow"]
+custom_minimum_size = Vector2(36, 0)
+theme_override_colors/font_color = Color(0.290196, 0.215686, 0.156863, 1)
+theme_override_font_sizes/font_size = 16
+text = "90s"
+
+[node name="MoodIcon" type="TextureRect" parent="Margin/VBox/BottomRow"]
+custom_minimum_size = Vector2(22, 22)
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

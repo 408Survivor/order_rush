@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<!-- 立体糖果按钮 pressed（#48 新增）：深金扁平，无厚度边（按下陷入感，九宫格 margin 16） -->
+<rect x="3" y="6" width="58" height="52" rx="12" fill="#8F6510"/>
+<path d="M13 14 Q32 9 51 14" fill="none" stroke="#B8860B" stroke-opacity="0.8" stroke-width="4" stroke-linecap="round"/>
+<rect x="3" y="6" width="58" height="52" rx="12" fill="none" stroke="#4A3728" stroke-opacity="0.35" stroke-width="2.5"/>
+</svg>

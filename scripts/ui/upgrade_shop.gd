@@ -1,81 +1,34 @@
 ## 文件: scripts/ui/upgrade_shop.gd
 ## 职责: 设备升级商店（P5）——打烊后从日结算面板打开（暂停中可交互），用累计金币购买设备升级
+##       （#48 tscn 化：静态结构移入 scenes/ui/UpgradeShop.tscn，按钮换立体纹理三态）
 ## 依赖: GameStateManager/UITheme/UpgradeManager (autoload)
 ## 注意: process_mode=ALWAYS（打烊暂停期间按钮仍可点，同日结算面板）；@tool 编辑器进程不自动刷新
 
 @tool
 extends CanvasLayer
 
-var _overlay: ColorRect = null
-var _money_label: RichTextLabel = null
-var _list: VBoxContainer = null
+@onready var _overlay: ColorRect = $Overlay
+@onready var _panel: PanelContainer = $Overlay/CenterContainer/Panel
+@onready var _money_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/MoneyLabel
+@onready var _list: VBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/List
+@onready var _back_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/BackButton
+
+## 返回按钮信号/反馈只接一次（@tool 热重载幂等）
+var _wired := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_panel()
-
-func _build_panel() -> void:
-	if _overlay != null and is_instance_valid(_overlay):
-		return
-	# 全屏遮罩（拦截点击，防止商店打开时操作场景）
-	_overlay = ColorRect.new()
-	_overlay.name = "Overlay"
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.6)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	_overlay.visible = false
-	add_child(_overlay)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
-	panel.custom_minimum_size = Vector2(420, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
-	margin.add_child(vbox)
-
-	# 标题 + 上下金线装饰
-	vbox.add_child(_make_rule())
-	var title := _make_label("设备升级商店", 32, UITheme.COLOR_GOLD)
-	vbox.add_child(title)
-	vbox.add_child(_make_rule())
-
-	_money_label = _make_label("", 20, UITheme.COLOR_GOLD, true)
-	vbox.add_child(_money_label)
-
-	var sep := HSeparator.new()
-	vbox.add_child(sep)
-
-	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
-	vbox.add_child(_list)
-
-	# 返回按钮
-	var back := Button.new()
-	back.text = "返回"
-	back.custom_minimum_size = Vector2(160, 44)
-	back.add_theme_font_size_override("font_size", 22)
-	var btn_styles := UITheme.make_button_styles()
-	back.add_theme_stylebox_override("normal", btn_styles["normal"])
-	back.add_theme_stylebox_override("hover", btn_styles["hover"])
-	back.add_theme_stylebox_override("pressed", btn_styles["pressed"])
-	back.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	back.add_theme_color_override("font_color", UITheme.COLOR_TEXT)
-	UITheme.style_button_feedback(back)
-	back.pressed.connect(_on_back_pressed)
-	vbox.add_child(back)
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
+	# #48：返回按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
+	_back_button.add_theme_stylebox_override("normal", btn_styles["normal"])
+	_back_button.add_theme_stylebox_override("hover", btn_styles["hover"])
+	_back_button.add_theme_stylebox_override("pressed", btn_styles["pressed"])
+	_back_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if not _wired:
+		_wired = true
+		UITheme.style_button_feedback(_back_button)
+		_back_button.pressed.connect(_on_back_pressed)
 
 # ==================== 展示 ====================
 
@@ -125,7 +78,8 @@ func _make_upgrade_row(id: String, def: Dictionary) -> Control:
 	buy.disabled = GameStateManager.money < def["price"]
 	buy.custom_minimum_size = Vector2(110, 40)
 	buy.add_theme_font_size_override("font_size", 18)
-	var btn_styles := UITheme.make_button_styles()
+	# #48：购买按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
 	buy.add_theme_stylebox_override("normal", btn_styles["normal"])
 	buy.add_theme_stylebox_override("hover", btn_styles["hover"])
 	buy.add_theme_stylebox_override("pressed", btn_styles["pressed"])
@@ -144,14 +98,6 @@ func _on_buy_pressed(upgrade_id: String) -> void:
 		refresh()
 
 # ==================== 样式辅助 ====================
-
-func _make_rule() -> ColorRect:
-	var rule := ColorRect.new()
-	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
-	rule.custom_minimum_size = Vector2(140, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rule
 
 ## 文本标签（统一居中；rich=true 支持 [img] 内联图标）
 func _make_label(text: String, font_size: int, color: Color, rich: bool = false) -> Control:

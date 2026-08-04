@@ -1,58 +1,18 @@
 ## 文件: scripts/ui/character_select.gd
 ## 职责: 角色选择界面（P8）——开店前（MainScene 载入且未选角色时）弹出，2 角色卡片选择
+##       （#48 tscn 化：静态结构移入 scenes/ui/CharacterSelect.tscn，选择按钮换立体纹理三态）
 ## 依赖: CharacterManager/UITheme (autoload)；选择后恢复暂停开始营业
 
 @tool
 extends CanvasLayer
 
-var _overlay: ColorRect = null
-var _list: HBoxContainer = null
+@onready var _overlay: ColorRect = $Overlay
+@onready var _panel: PanelContainer = $Overlay/CenterContainer/Panel
+@onready var _list: HBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/List
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_build_panel()
-
-func _build_panel() -> void:
-	if _overlay != null and is_instance_valid(_overlay):
-		return
-	_overlay = ColorRect.new()
-	_overlay.name = "Overlay"
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.color = Color(0, 0, 0, 0.5)
-	_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
-	_overlay.visible = false
-	add_child(_overlay)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
-	panel.custom_minimum_size = Vector2(520, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(vbox)
-
-	# 标题 + 装饰
-	vbox.add_child(_make_rule())
-	vbox.add_child(_make_label("选择你的主厨", 30, UITheme.COLOR_GOLD))
-	vbox.add_child(_make_label("不同主厨拥有不同技能，开店后生效", 16, UITheme.COLOR_TEXT_DIM))
-	vbox.add_child(_make_rule())
-
-	_list = HBoxContainer.new()
-	_list.add_theme_constant_override("separation", 14)
-	_list.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(_list)
+	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
 
 # ==================== 展示 ====================
 
@@ -101,7 +61,8 @@ func _make_card(character_id: String, def: Dictionary) -> Control:
 	btn.text = "选择"
 	btn.custom_minimum_size = Vector2(120, 40)
 	btn.add_theme_font_size_override("font_size", 20)
-	var btn_styles := UITheme.make_button_styles()
+	# #48：按钮立体纹理三态
+	var btn_styles := UITheme.make_button_texture_styles()
 	btn.add_theme_stylebox_override("normal", btn_styles["normal"])
 	btn.add_theme_stylebox_override("hover", btn_styles["hover"])
 	btn.add_theme_stylebox_override("pressed", btn_styles["pressed"])
@@ -121,14 +82,6 @@ func _on_select(character_id: String) -> void:
 		AudioManager.play_bgm("bgm_shop.ogg")
 
 # ==================== 样式辅助 ====================
-
-func _make_rule() -> ColorRect:
-	var rule := ColorRect.new()
-	rule.color = Color(UITheme.COLOR_GOLD_DARK, 0.8)
-	rule.custom_minimum_size = Vector2(140, 2)
-	rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return rule
 
 func _make_label(text: String, font_size: int, color: Color) -> Label:
 	var label := Label.new()
