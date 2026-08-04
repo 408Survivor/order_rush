@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="480" height="160">
+<!-- 长吧台（#51）：俯视——奶油木质台面 + 正面木板 + 底部厚度影，贴纸描边 -->
+<g stroke="#4A3728" stroke-width="4" stroke-linejoin="round">
+  <!-- 正面板（下部，深色显厚度） -->
+  <rect x="8" y="56" width="464" height="96" rx="10" fill="#B07D4E"/>
+  <!-- 正面木板缝 -->
+  <path d="M100 62 L100 146 M200 62 L200 146 M300 62 L300 146 M400 62 L400 146" stroke="#8F6510" stroke-width="3" fill="none"/>
+  <!-- 台面 -->
+  <rect x="4" y="8" width="472" height="64" rx="12" fill="#E8C898"/>
+  <!-- 台面高光与前沿 -->
+  <path d="M20 18 Q240 8 460 18" fill="none" stroke="#FFF6E5" stroke-opacity="0.85" stroke-width="4" stroke-linecap="round"/>
+  <path d="M12 64 L468 64" stroke="#C9A06A" stroke-width="3" fill="none"/>
+</g>
+</svg>

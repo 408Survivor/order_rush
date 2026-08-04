@@ -127,7 +127,7 @@ func _on_player_item_picked_up(item: Node2D) -> void:
 
 # ==================== 视觉辅助 ====================
 
-## 机身库存标签（占位可视化，正式素材见 issue #51）
+## 机身库存标签（机身视觉 = freezer.svg，#51）
 func _update_stock_label() -> void:
 	if stock_label == null:
 		return

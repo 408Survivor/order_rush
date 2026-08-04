@@ -21,7 +21,7 @@ func _ready() -> void:
 	add_to_group("crate")
 	apply_dish_visual()
 
-## 按 dish_type 应用名称（占位视觉：素材复用料理包图 + 棕色调，正式素材见 issue #51）
+## 按 dish_type 应用名称（视觉 = crate.svg（#51），根节点 modulate 棕色调）
 func apply_dish_visual() -> void:
 	display_name = "%s货箱" % GameStateManager.get_dish_display_name(dish_type)
 	modulate = Color(0.72, 0.52, 0.34)

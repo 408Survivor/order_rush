@@ -1,5 +1,5 @@
 ## 文件: scripts/main_scene.gd
-## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块+标签）并摆放全部节点；
+## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块+标签）、#51 场景陈设（墙/吧台/桌椅/装饰）并摆放全部节点；
 ##       P3 日循环清场（打烊清顾客/新一天重置物品与玩家）
 ## 依赖: LayoutManager/GameStateManager (autoload)；场景节点结构见 MainScene.tscn（节点位置以本脚本为准）
 ## 注意: @tool 使编辑器进程打开场景即按配置摆放（位置单一权威 = LayoutManager，issue #24）
@@ -40,17 +40,35 @@ const SPECIALTY_PANEL_SCENE := preload("res://scenes/ui/SpecialtyPanel.tscn")
 ## 角色选择面板场景（P8，动态实例化 CanvasLayer；#48 起为 tscn）
 const CHARACTER_SELECT_SCENE := preload("res://scenes/ui/CharacterSelect.tscn")
 
+# ==================== #51 场景陈设素材（手绘 SVG，纯视觉） ====================
+const WALL_TOP_TEX := preload("res://assets/art/props/wall_top.svg")
+const WALL_SIDE_TEX := preload("res://assets/art/props/wall_side.svg")
+const DOOR_TEX := preload("res://assets/art/props/door.svg")
+const FLOOR_MAT_TEX := preload("res://assets/art/props/floor_mat.svg")
+const COUNTER_BAR_TEX := preload("res://assets/art/props/counter_bar.svg")
+const CASHIER_TEX := preload("res://assets/art/props/cashier.svg")
+const TABLE_TEX := preload("res://assets/art/props/table.svg")
+const CHAIR_TEX := preload("res://assets/art/props/chair.svg")
+const PLANT_TEX := preload("res://assets/art/props/plant.svg")
+const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.svg")
+const RUG_TEX := preload("res://assets/art/props/rug.svg")
+const SHELF_CRATES_TEX := preload("res://assets/art/props/shelf_crates.svg")
+
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
 
 func _ready() -> void:
 	_zone_defs = [
-		["ZoneStorage", "冷库区", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.22)],
-		["ZoneKitchen", "厨房区", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.22)],
-		["ZoneFront", "前台", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.22)],
-		["ZoneDining", "就餐区", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.22)],
+		["ZoneStorage", "冷库区", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.10)],
+		["ZoneKitchen", "厨房区", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.10)],
+		["ZoneFront", "前台", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.10)],
+		["ZoneDining", "就餐区", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.10)],
 	]
 	_build_zones()
+	# #51 场景陈设：墙体/门/吧台/装饰先于功能道具生成（同 z 时功能道具后画在上层）
+	_build_walls()
+	_build_counter()
+	_build_decorations()
 	_build_tables()
 	_build_freezer()
 	_build_crate_stacks()
@@ -136,7 +154,10 @@ func _build_zones() -> void:
 		label.name = zone_name + "Label"
 		label.position = rect.position + Vector2(12, 8)
 		label.z_index = -4
-		label.add_theme_color_override("font_color", color.lightened(0.55))
+		# #51：色块 alpha 降到 0.10 后标签独立保证可读性
+		var label_color: Color = color.lightened(0.55)
+		label_color.a = 0.75
+		label.add_theme_color_override("font_color", label_color)
 		label.add_theme_color_override("font_outline_color", Color(0.12, 0.08, 0.05, 0.6))
 		label.add_theme_constant_override("outline_size", 4)
 		label.add_theme_font_size_override("font_size", 22)
@@ -145,19 +166,57 @@ func _build_zones() -> void:
 
 # ==================== 餐桌 ====================
 
-## 按配置生成餐桌（就餐区装饰；数量 = TABLE_SLOTS 全部，P4+ 直接加槽位即可）
+## 按配置生成餐桌（#51：table.svg 圆桌 + 每桌左右两把 chair.svg 圆凳；数量 = TABLE_SLOTS 全部，P4+ 直接加槽位即可）
 func _build_tables() -> void:
 	for i in LayoutManager.TABLE_SLOTS.size():
 		var table_name := "Table%d" % (i + 1)
-		if has_node(table_name):
-			continue
-		var table := ColorRect.new()
-		table.name = table_name
-		table.position = LayoutManager.get_slot_position(LayoutManager.TABLE_SLOTS, i)
-		table.size = Vector2(100, 50)
-		table.color = Color(1, 1, 1, 0.35)
-		table.z_index = -4
-		add_child(table)
+		var slot: Vector2 = LayoutManager.get_slot_position(LayoutManager.TABLE_SLOTS, i)
+		_add_prop_sprite(table_name, TABLE_TEX, slot, Vector2(0.85, 0.85))
+		_add_prop_sprite(table_name + "ChairL", CHAIR_TEX, slot + Vector2(-110, 0), Vector2(0.7, 0.7))
+		_add_prop_sprite(table_name + "ChairR", CHAIR_TEX, slot + Vector2(110, 0), Vector2(0.7, 0.7))
+
+# ==================== #51 场景陈设（墙体/吧台/装饰，全部纯视觉无碰撞） ====================
+
+## 通用陈设生成：Sprite2D 纯视觉（幂等：has_node 防编辑器热重载重复）
+func _add_prop_sprite(prop_name: String, tex: Texture2D, pos: Vector2, prop_scale: Vector2, z: int = 0) -> Sprite2D:
+	if has_node(prop_name):
+		return get_node(prop_name)
+	var sprite := Sprite2D.new()
+	sprite.name = prop_name
+	sprite.texture = tex
+	sprite.position = pos
+	sprite.scale = prop_scale
+	sprite.z_index = z
+	add_child(sprite)
+	return sprite
+
+## 墙体与门脸（z=-3）：顶墙 4 段平铺、左右侧墙各 2 段；入口盖门 + 门内地垫（z=-9）
+func _build_walls() -> void:
+	for i in 4:
+		_add_prop_sprite("WallTop%d" % (i + 1), WALL_TOP_TEX, Vector2(240 + i * 480, 60), Vector2.ONE, -3)
+	_add_prop_sprite("WallSideL1", WALL_SIDE_TEX, Vector2(60, 300), Vector2.ONE, -3)
+	_add_prop_sprite("WallSideL2", WALL_SIDE_TEX, Vector2(60, 780), Vector2.ONE, -3)
+	_add_prop_sprite("WallSideR1", WALL_SIDE_TEX, Vector2(1860, 300), Vector2.ONE, -3)
+	_add_prop_sprite("WallSideR2", WALL_SIDE_TEX, Vector2(1860, 780), Vector2.ONE, -3)
+	# 入口门脸盖左墙门洞位（顾客入口 ENTRANCE_POINT=(80,520)；门在墙段之后生成，同 z 绘制在上层）
+	_add_prop_sprite("Door", DOOR_TEX, Vector2(66, 520), Vector2(1.1, 1.1), -3)
+	# 门内地垫（z=-9 压地板、在区域色块之下）
+	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, Vector2(200, 520), Vector2.ONE, -9)
+
+## 前台吧台 + 收银机（#51 纯视觉无碰撞——本 PR 不加碰撞以免改动队列手感）
+## 3 段吧台摆前台区上缘 y=452：左让入口通道（x<180）、右让外卖口（x>1620），不压 y≥480 顾客队列区
+func _build_counter() -> void:
+	for i in 3:
+		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 480, 452), Vector2.ONE)
+	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + Vector2(0, -80), Vector2.ONE)
+
+## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + 冷库货架（z=-1 作货箱堆背景，不遮箱堆交互视觉）
+func _build_decorations() -> void:
+	_add_prop_sprite("Rug", RUG_TEX, Vector2(975, 810), Vector2(2.6, 1.9), -9)
+	_add_prop_sprite("Plant1", PLANT_TEX, Vector2(140, 960), Vector2.ONE)
+	_add_prop_sprite("Plant2", PLANT_TEX, Vector2(1790, 700), Vector2.ONE)
+	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, Vector2(1790, 560), Vector2.ONE)
+	_add_prop_sprite("ColdShelf", SHELF_CRATES_TEX, Vector2(300, 140), Vector2(0.9, 0.9), -1)
 
 # ==================== 冰柜 + 货箱堆（#50 两段式补给） ====================
 
