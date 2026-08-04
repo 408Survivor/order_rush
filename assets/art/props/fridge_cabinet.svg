@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 320" width="380" height="320">
+<!-- 立式四层冷冻柜（#61）：冷库区储鲜柜，4 层搁架（上 3 层放三菜货箱，底层预留 L2），冰蓝系 + 贴纸描边 -->
+<g stroke-linejoin="round">
+  <!-- 柜体 -->
+  <rect x="4" y="4" width="372" height="312" rx="14" fill="#6E8CA8" stroke="#4A3728" stroke-width="5"/>
+  <!-- 顶部品牌条 + 雪花点缀 -->
+  <rect x="14" y="14" width="352" height="26" rx="8" fill="#4E6E8C" stroke="#4A3728" stroke-width="3"/>
+  <circle cx="42" cy="27" r="5" fill="#EAF6FC"/>
+  <circle cx="60" cy="27" r="5" fill="#BFE3F5"/>
+  <circle cx="78" cy="27" r="5" fill="#EAF6FC"/>
+  <!-- 四层搁架（层中心 y：78 / 146 / 214 / 282） -->
+  <g>
+    <rect x="16" y="46" width="348" height="64" rx="8" fill="#EAF6FC" stroke="#4A3728" stroke-width="3"/>
+    <rect x="16" y="100" width="348" height="10" fill="#A8CBE0"/>
+    <rect x="16" y="114" width="348" height="64" rx="8" fill="#EAF6FC" stroke="#4A3728" stroke-width="3"/>
+    <rect x="16" y="168" width="348" height="10" fill="#A8CBE0"/>
+    <rect x="16" y="182" width="348" height="64" rx="8" fill="#EAF6FC" stroke="#4A3728" stroke-width="3"/>
+    <rect x="16" y="236" width="348" height="10" fill="#A8CBE0"/>
+    <rect x="16" y="250" width="348" height="64" rx="8" fill="#EAF6FC" stroke="#4A3728" stroke-width="3"/>
+    <rect x="16" y="304" width="348" height="10" fill="#A8CBE0"/>
+  </g>
+  <!-- 霜线装饰 -->
+  <path d="M40 60 L70 90 M330 130 L352 152 M50 200 L76 226" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+</g>
+</svg>
