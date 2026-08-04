@@ -88,6 +88,9 @@ func _run() -> void:
 	var probe: CharacterBody2D = customer_scene.instantiate()
 	_check(probe.collision_mask == 16, "顾客 mask=16（不撞吧台碰撞体，#58）")
 	probe.free()
+	# #60 全场景 Y 排序：根节点开启 + 地板 z=-10 垫底（不参与排序遮挡）
+	_check(scene.y_sort_enabled and scene.get_node("CustomerManager").y_sort_enabled, "全场景 Y 排序已开启（#60）")
+	_check(scene.get_node("Floor").z_index == -10, "地板 z=-10 垫底（#60）")
 
 	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
 	var board = scene.get_node("OrderBoard")

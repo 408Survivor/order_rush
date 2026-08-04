@@ -58,6 +58,12 @@ var _zone_defs: Array = []
 
 func _ready() -> void:
 	_init_debug_screenshot()
+	# #60 全场景 Y 排序：同 z 层内按 y 排绘制（靠南/靠前的后画，遮挡关系自动正确）。
+	# 嵌套 y-sort 扁平化：MainScene + CustomerManager + Items 三处开，全场景统一排序；
+	# 玩家/顾客子树不开——保护手持物（HeldItemPivot）与头顶订单标签的树内绘制顺序
+	y_sort_enabled = true
+	$CustomerManager.y_sort_enabled = true
+	items_root.y_sort_enabled = true
 	_zone_defs = [
 		["ZoneStorage", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.06)],
 		["ZoneKitchen", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.06)],
@@ -387,7 +393,8 @@ func _place_nodes() -> void:
 	# 相机居中锁定（世界 = 窗口，整店可见不跟随）
 	camera.position = LayoutManager.WORLD_SIZE / 2.0
 
-	# 地板满铺世界
+	# 地板满铺世界（#60：z=-10 垫底——y-sort 后 y=540 的地板不能参与排序遮挡角色）
+	floor_sprite.z_index = -10
 	floor_sprite.position = LayoutManager.WORLD_SIZE / 2.0
 	if floor_sprite.texture != null:
 		floor_sprite.scale = LayoutManager.WORLD_SIZE / floor_sprite.texture.get_size()
