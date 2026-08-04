@@ -68,6 +68,8 @@ func show_toast(text: String, color: Color = Color.WHITE, duration: float = TOAS
 	var label := RichTextLabel.new()
 	label.bbcode_enabled = true
 	label.fit_content = true
+	# #56：关闭自动换行——容器内 fit_content 最小宽度塌缩为 1 字宽会把文本竖排成虚线状高条
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.text = text
 	label.add_theme_font_size_override("normal_font_size", 20)
