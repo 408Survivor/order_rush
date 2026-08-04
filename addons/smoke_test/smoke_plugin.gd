@@ -80,6 +80,14 @@ func _run() -> void:
 	_check(freezer.global_position == layout.FREEZER_SLOT, "冰柜位于 FREEZER_SLOT（#54）")
 	_check(scene.get_node("Table1").position == layout.TABLE_SLOTS[0], "餐桌位于就餐区槽位 0")
 	_check(layout.QUEUE_SPACING == 200.0 and manager.get("queue_spacing") == 200.0, "队列间距接入布局系统（200）")
+	# #58 吧台碰撞体：StaticBody2D(layer=1) 挡玩家；顾客 mask 去 World 层不受影响
+	var counter_body = scene.get_node_or_null("CounterBody")
+	_check(counter_body != null and counter_body is StaticBody2D and counter_body.collision_layer == 1,
+		"吧台碰撞体存在（StaticBody2D layer=1，#58）")
+	var customer_scene: PackedScene = load("res://scenes/entities/Customer.tscn")
+	var probe: CharacterBody2D = customer_scene.instantiate()
+	_check(probe.collision_mask == 16, "顾客 mask=16（不撞吧台碰撞体，#58）")
+	probe.free()
 
 	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
 	var board = scene.get_node("OrderBoard")

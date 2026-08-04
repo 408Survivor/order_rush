@@ -181,12 +181,27 @@ func _build_walls() -> void:
 	# 门内地垫（z=-9 压地板、在区域色块之下）
 	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, Vector2(200, 520), Vector2.ONE, -9)
 
-## 前台吧台 + 收银机（#51 纯视觉无碰撞——本 PR 不加碰撞以免改动队列手感）
+## 前台吧台 + 收银机（#51 视觉；#58 加碰撞体——只挡玩家，顾客不受影响）
 ## 3 段吧台摆前台区上缘 y=452：左让入口通道（x<180）、右让外卖口（x>1620），不压 y≥480 顾客队列区
 func _build_counter() -> void:
 	for i in 3:
 		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 480, 452), Vector2.ONE)
 	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + Vector2(0, -80), Vector2.ONE)
+	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
+	# 只覆盖正面厚度（y 500..532）——台面视觉可重叠，俯视角下头压桌面是正常观感；
+	# 玩家（半径 117）北面停在 y≈383，距队列顾客（y=520）137px < 交互范围 160
+	if not has_node("CounterBody"):
+		var body := StaticBody2D.new()
+		body.name = "CounterBody"
+		body.collision_layer = 1
+		body.collision_mask = 0
+		var shape := CollisionShape2D.new()
+		var rect := RectangleShape2D.new()
+		rect.size = Vector2(1440, 32)
+		shape.shape = rect
+		body.add_child(shape)
+		add_child(body)
+		body.position = Vector2(960, 516)
 
 ## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + 冷库货架（z=-1 作货箱堆背景，不遮箱堆交互视觉）
 func _build_decorations() -> void:
@@ -321,6 +336,9 @@ func _init_debug_screenshot() -> void:
 	_debug_shot_frame = DEBUG_SHOT_AT_FRAME - frame  # 计数复用：到 DEBUG_SHOT_AT_FRAME 触发
 	if not CharacterManager.has_selected():
 		CharacterManager.current_character = "chef"
+	# --debug-walk-down：持续按住下移（验证碰撞体阻挡效果，#58）
+	if OS.get_cmdline_user_args().has("--debug-walk-down"):
+		Input.action_press("move_down")
 
 ## F12 手动截图（运行模式）
 func _unhandled_input(event: InputEvent) -> void:
