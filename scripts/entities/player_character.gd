@@ -115,11 +115,13 @@ func try_interact() -> bool:
 			return _interact_with_takeout(interactable)
 		return false
 
-	# 空手：取出 / 拾取
+	# 空手：取出 / 拾取 / 拿货箱
 	if interactable.is_in_group("appliance"):
 		return _interact_with_appliance(interactable)
 	elif interactable.is_in_group("pickable"):
 		return _interact_with_pickable(interactable)
+	elif interactable.is_in_group("crate_stack"):
+		return _interact_with_crate_stack(interactable)
 
 	return false
 
@@ -185,6 +187,16 @@ func _interact_with_pickable(pickable: Node2D) -> bool:
 	if held_item != null:
 		return false
 	_pick_up_item(pickable)
+	return true
+
+## 与货箱堆交互（#50 两段式补给）：空手 → 取出一个货箱（批发仓无限库存）
+func _interact_with_crate_stack(stack: Node2D) -> bool:
+	if held_item != null:
+		return false
+	var crate: Node2D = stack.call("give_crate")
+	if crate == null:
+		return false
+	_pick_up_item(crate)
 	return true
 
 ## 与顾客交互（交付成品菜，issue #4）
@@ -338,11 +350,13 @@ func _update_prompt() -> void:
 		if text == "":
 			text = "[Q] 放下"
 	else:
-		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出
+		# 空手：可拾取 → 提示拾取；设备加热完成 → 提示取出；货箱堆 → 提示拿取
 		if target.is_in_group("pickable"):
 			text = "[E] 拾取%s" % _friendly_name(target)
 		elif target.is_in_group("appliance") and target.is_done():
 			text = "[E] 取出%s" % _friendly_name(target)
+		elif target.is_in_group("crate_stack"):
+			text = "[E] 拿取%s" % _friendly_name(target)
 
 	if text == "":
 		hide_prompt()

@@ -9,11 +9,11 @@
 script = ExtResource("1_board")
 
 [node name="Panel" type="PanelContainer" parent="."]
-custom_minimum_size = Vector2(240, 0)
+custom_minimum_size = Vector2(340, 0)
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -256.0
+offset_left = -356.0
 offset_top = 118.0
 offset_right = -16.0
 offset_bottom = 118.0
@@ -33,8 +33,8 @@ bbcode_enabled = true
 fit_content = true
 mouse_filter = 2
 theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
-theme_override_font_sizes/normal_font_size = 18
-text = "[img width=18 height=18]res://assets/art/ui/icons/pack.svg[/img] 外卖订单"
+theme_override_font_sizes/normal_font_size = 22
+text = "[img width=22 height=22]res://assets/art/ui/icons/pack.svg[/img] 外卖订单"
 
 [node name="HSeparator" type="HSeparator" parent="Panel/Margin/VBox"]
 

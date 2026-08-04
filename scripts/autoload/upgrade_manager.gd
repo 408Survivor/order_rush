@@ -12,13 +12,13 @@ var save_path := "user://save_p5.json"
 # ==================== 升级状态 ====================
 var has_second_microwave := false
 var heat_level := 0    ## 0=基础 3.0s，1=加速 2.2s
-var freezer_level := 0 ## 0=3 料理包，1=5 料理包
+var freezer_level := 0 ## 0=每菜库存容量 4，1=8（#50 库存语义；料理包台面按库存镜像）
 
 ## 升级项定义（id → 名称/描述/价格；可购项扩展在此追加）
 const UPGRADES := {
 	"second_microwave": {"name": "第二微波炉", "desc": "并行加热，产能翻倍", "price": 80},
 	"heat_accel": {"name": "加热加速", "desc": "加热时长 3.0s → 2.2s", "price": 50},
-	"freezer": {"name": "冰柜扩容", "desc": "料理包库存 3 → 5", "price": 60},
+	"freezer": {"name": "冰柜扩容", "desc": "每菜库存容量 4 → 8", "price": 60},
 }
 
 signal upgrades_changed

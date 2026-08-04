@@ -18,10 +18,13 @@ extends Node2D
 @onready var order_board: CanvasLayer = $OrderBoard
 @onready var toast_manager: CanvasLayer = $ToastManager
 
-## 料理包场景（打烊清场后重建，P3 日循环）
-const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
+## 料理包台面的单一权威 = Freezer.sync_packages（#50，本脚本不再直接摆料理包）
 ## 微波炉场景（P5：第二台升级后实例化）
 const MICROWAVE_SCENE := preload("res://scenes/props/Microwave.tscn")
+## 冰柜场景（#50 两段式补给：库存 + 台面料理包镜像）
+const FREEZER_SCENE := preload("res://scenes/props/Freezer.tscn")
+## 货箱堆场景（#50：冷库区批发仓，按 CRATE_SLOTS 生成 3 个）
+const CRATE_STACK_SCENE := preload("res://scenes/props/CrateStack.tscn")
 ## 外卖口场景（P4，动态实例化）
 const TAKEOUT_COUNTER_SCENE := preload("res://scenes/props/TakeoutCounter.tscn")
 ## 外卖订单面板场景（P4，动态实例化 CanvasLayer；#48 起为 tscn）
@@ -42,13 +45,15 @@ var _zone_defs: Array = []
 
 func _ready() -> void:
 	_zone_defs = [
-		["ZoneStorage", "仓库区", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.22)],
+		["ZoneStorage", "冷库区", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.22)],
 		["ZoneKitchen", "厨房区", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.22)],
 		["ZoneFront", "前台", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.22)],
 		["ZoneDining", "就餐区", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.22)],
 	]
 	_build_zones()
 	_build_tables()
+	_build_freezer()
+	_build_crate_stacks()
 	_build_takeout_counter()
 	_build_takeaway_ui()
 	_build_upgrade_shop()
@@ -84,15 +89,7 @@ func _on_day_started(_day: int) -> void:
 		customer_manager.start_serving()
 	_reset_shop_items()
 
-## 料理包数量/名字（P5：冰柜扩容后 3→5，MEAL_SLOTS 前 5 位；首包名保持 "MealPackage" 兼容旧引用）
-func _get_meal_names() -> Array[String]:
-	var count := 5 if UpgradeManager.freezer_level >= 1 else 3
-	var names: Array[String] = []
-	for i in range(count):
-		names.append("MealPackage" if i == 0 else "MealPackage%d" % (i + 1))
-	return names
-
-## 新一天重置：销毁手持/微波炉内/散落物品，重建料理包，玩家复位出生点
+## 新一天重置：销毁手持/微波炉内/散落物品，台面料理包由冰柜按库存重摆（#50：库存跨天保留，不再每天免费刷新）
 func _reset_shop_items() -> void:
 	# 玩家手持物品销毁（跨天不保留）
 	if player.has_method("discard_held_item"):
@@ -101,22 +98,17 @@ func _reset_shop_items() -> void:
 	for mw: Node in [microwave, get_node_or_null("Microwave2")]:
 		if mw != null and mw.has_method("clear_contents"):
 			mw.clear_contents()
-	# 清理散落物品（Q 放下/交付残留的成品菜等），料理包由下方重建逻辑处理
-	var meal_names := _get_meal_names()
+	# 清理散落物品（成品菜/货箱/Q 放下的残留）；台面在架的料理包保留，由下方 sync 按库存统一重摆
+	var freezer := get_node_or_null("Freezer")
+	var counter_packages: Array = []
+	if freezer != null:
+		counter_packages = freezer.get("_packages").values()
 	for child in items_root.get_children():
-		if child.name not in meal_names:
+		if child not in counter_packages:
 			child.queue_free()
-	# 重建/复位料理包到货架槽位：缺失的实例化，已存在的重摆；P7 按菜品池循环分配 dish_type
-	for i in meal_names.size():
-		var meal: Node2D = items_root.get_node_or_null(meal_names[i])
-		if meal == null:
-			meal = MEAL_PACKAGE_SCENE.instantiate()
-			meal.name = meal_names[i]
-			items_root.add_child(meal)
-		meal.set("dish_type", GameStateManager.L1_DISHES[i % GameStateManager.L1_DISHES.size()])
-		if meal.has_method("apply_dish_visual"):
-			meal.apply_dish_visual()
-		meal.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
+	# 冰柜按库存同步台面料理包（有货补摆/缺货撤下/重摆取包位）
+	if freezer != null and freezer.has_method("sync_packages"):
+		freezer.sync_packages()
 	# 玩家复位出生点
 	player.global_position = LayoutManager.SPAWN_POINT
 
@@ -166,6 +158,33 @@ func _build_tables() -> void:
 		table.color = Color(1, 1, 1, 0.35)
 		table.z_index = -4
 		add_child(table)
+
+# ==================== 冰柜 + 货箱堆（#50 两段式补给） ====================
+
+## 实例化冰柜并摆到布局槽位（动态生成幂等）；初始台面 sync 在此显式调用（不依赖 freezer._ready 的父节点时序）
+func _build_freezer() -> void:
+	if not has_node("Freezer"):
+		var freezer: Node2D = FREEZER_SCENE.instantiate()
+		freezer.name = "Freezer"
+		add_child(freezer)
+	$Freezer.global_position = LayoutManager.FREEZER_SLOT
+	if $Freezer.has_method("sync_packages"):
+		$Freezer.sync_packages()
+
+## 按 CRATE_SLOTS + L1_DISHES 生成 3 个货箱堆（冷库区批发仓，动态生成幂等）
+func _build_crate_stacks() -> void:
+	for i in GameStateManager.L1_DISHES.size():
+		var stack_name := "CrateStack" if i == 0 else "CrateStack%d" % (i + 1)
+		if has_node(stack_name):
+			get_node(stack_name).global_position = LayoutManager.get_slot_position(LayoutManager.CRATE_SLOTS, i)
+			continue
+		var stack: Node2D = CRATE_STACK_SCENE.instantiate()
+		stack.name = stack_name
+		add_child(stack)
+		stack.set("dish_type", GameStateManager.L1_DISHES[i])
+		if stack.has_method("apply_dish_visual"):
+			stack.apply_dish_visual()
+		stack.global_position = LayoutManager.get_slot_position(LayoutManager.CRATE_SLOTS, i)
 
 # ==================== 外卖口（P4） ====================
 
@@ -223,7 +242,7 @@ func _build_character_select() -> void:
 
 # ==================== P5 设备升级应用 ====================
 
-## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容由 _reset_shop_items 的 _get_meal_names 生效
+## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容语义 = 每菜库存容量（Freezer.capacity，#50）
 func _apply_upgrades() -> void:
 	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
 	if not UpgradeManager.has_second_microwave:
@@ -236,7 +255,7 @@ func _apply_upgrades() -> void:
 		add_child(mw2)
 	$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
 
-## 升级购买后：应用设备效果 + 重置物品（冰柜扩容即时补全料理包）
+## 升级购买后：应用设备效果 + 重置物品（清场后冰柜按库存重摆台面）
 func _on_upgrades_changed() -> void:
 	_apply_upgrades()
 	_reset_shop_items()
@@ -252,13 +271,6 @@ func _place_nodes() -> void:
 	floor_sprite.position = LayoutManager.WORLD_SIZE / 2.0
 	if floor_sprite.texture != null:
 		floor_sprite.scale = LayoutManager.WORLD_SIZE / floor_sprite.texture.get_size()
-
-	# 料理包 → 货架（P5：数量按冰柜升级 3/5）
-	var meal_names := _get_meal_names()
-	for i in meal_names.size():
-		var meal := items_root.get_node_or_null(meal_names[i])
-		if meal != null:
-			meal.global_position = LayoutManager.get_slot_position(LayoutManager.MEAL_SLOTS, i)
 
 	# 关键点位（注意：SpawnPoint 节点 = 顾客生成入口，玩家出生点是 LayoutManager.SPAWN_POINT）
 	spawn_point.global_position = LayoutManager.ENTRANCE_POINT
