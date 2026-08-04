@@ -10,9 +10,9 @@ extends Area2D
 # ==================== 常量 ====================
 ## 各菜料理包纹理（#54：独立分色铝箔袋素材，替代占位 PNG + tint）
 const DISH_TEXTURES := {
-	"kungpao": preload("res://assets/art/items/meal_pack_kungpao.svg"),
-	"yuxiang": preload("res://assets/art/items/meal_pack_yuxiang.svg"),
-	"mapo": preload("res://assets/art/items/meal_pack_mapo.svg"),
+	"kungpao": preload("res://assets/art/items/meal_pack_kungpao.png"),
+	"yuxiang": preload("res://assets/art/items/meal_pack_yuxiang.png"),
+	"mapo": preload("res://assets/art/items/meal_pack_mapo.png"),
 }
 
 # ==================== 导出变量 ====================

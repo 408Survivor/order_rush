@@ -10,9 +10,9 @@ extends Area2D
 # ==================== 常量 ====================
 ## 各菜成品菜纹理（#54：带盘菜图标，替代占位 PNG + tint）
 const DISH_TEXTURES := {
-	"kungpao": preload("res://assets/art/ui/icons/dish_kungpao.svg"),
-	"yuxiang": preload("res://assets/art/ui/icons/dish_yuxiang.svg"),
-	"mapo": preload("res://assets/art/ui/icons/dish_mapo.svg"),
+	"kungpao": preload("res://assets/art/items/dish_kungpao_plated.png"),
+	"yuxiang": preload("res://assets/art/items/dish_yuxiang_plated.png"),
+	"mapo": preload("res://assets/art/items/dish_mapo_plated.png"),
 }
 
 # ==================== 导出变量 ====================

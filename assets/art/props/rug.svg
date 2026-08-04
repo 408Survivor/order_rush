@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
-<!-- 就餐区地毯（#51；#56 柔化：糖果色虚线边框改为低饱和暖棕实线，降低视觉噪音） -->
-<g stroke-linejoin="round">
-  <rect x="4" y="4" width="312" height="192" rx="16" fill="#FFEFC9" stroke="#4A3728" stroke-width="4"/>
-  <rect x="22" y="22" width="276" height="156" rx="10" fill="none" stroke="#E3B387" stroke-width="4"/>
-</g>
-</svg>
