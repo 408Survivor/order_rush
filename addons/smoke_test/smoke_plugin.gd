@@ -190,6 +190,19 @@ func _run() -> void:
 	var first_card: Dictionary = board.get("_cards").values()[0]
 	_check(str(first_card["dish_icon"].texture.resource_path).contains("dish_kungpao.svg"), "订单卡片菜品图标为宫保鸡丁贴纸（#48）")
 	_check(str(first_card["mood_icon"].texture.resource_path).contains("mood_happy.svg"), "满耐心表情为笑脸（#48）")
+	# #69：卡片菜名前显示 #订单号 + 容器子节点按订单号升序
+	_check(str(first_card["name_label"].text).begins_with("#"), "订单卡片显示 #订单号（#69）")
+	var id_by_panel := {}
+	for oid in board.get("_cards"):
+		id_by_panel[board.get("_cards")[oid]["panel"]] = oid
+	var last_id := -1
+	var sorted_ok := true
+	for child in board.get_node("Margin/Cards").get_children():
+		var oid: int = id_by_panel.get(child, -1)
+		if oid <= last_id:
+			sorted_ok = false
+		last_id = oid
+	_check(sorted_ok, "订单卡片按订单号升序排列（#69）")
 	_check(c1.get("order_id") != -1 and c2.get("order_id") != -1 and c3.get("order_id") != -1, "每名顾客均绑定订单 id")
 	var order1: Dictionary = gsm.get_order(c1.get("order_id"))
 	_check(not order1.is_empty() and order1["dish_type"] == "kungpao", "订单菜品为宫保鸡丁")
