@@ -40,19 +40,19 @@ const SPECIALTY_PANEL_SCENE := preload("res://scenes/ui/SpecialtyPanel.tscn")
 const CHARACTER_SELECT_SCENE := preload("res://scenes/ui/CharacterSelect.tscn")
 
 # ==================== #51 场景陈设素材（手绘 SVG，纯视觉） ====================
-const WALL_TOP_TEX := preload("res://assets/art/props/wall_top.svg")
-const WALL_SIDE_TEX := preload("res://assets/art/props/wall_side.svg")
-const DOOR_TEX := preload("res://assets/art/props/door.svg")
-const FLOOR_MAT_TEX := preload("res://assets/art/props/floor_mat.svg")
-const COUNTER_BAR_TEX := preload("res://assets/art/props/counter_bar.svg")
-const CASHIER_TEX := preload("res://assets/art/props/cashier.svg")
-const TABLE_TEX := preload("res://assets/art/props/table.svg")
-const CHAIR_TEX := preload("res://assets/art/props/chair.svg")
-const PLANT_TEX := preload("res://assets/art/props/plant.svg")
-const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.svg")
-const RUG_TEX := preload("res://assets/art/props/rug.svg")
-const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.svg")  ## #61 立式四层冷冻柜
-const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.svg")          ## #61 厨房操作长桌
+const WALL_TOP_TEX := preload("res://assets/art/props/wall_top.png")
+const WALL_SIDE_TEX := preload("res://assets/art/props/wall_side.png")
+const DOOR_TEX := preload("res://assets/art/props/door.png")
+const FLOOR_MAT_TEX := preload("res://assets/art/props/floor_mat.png")
+const COUNTER_BAR_TEX := preload("res://assets/art/props/counter_bar.png")
+const CASHIER_TEX := preload("res://assets/art/props/cashier.png")
+const TABLE_TEX := preload("res://assets/art/props/table.png")
+const CHAIR_TEX := preload("res://assets/art/props/chair.png")
+const PLANT_TEX := preload("res://assets/art/props/plant.png")
+const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.png")
+const RUG_TEX := preload("res://assets/art/props/rug.png")
+const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
+const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.png")          ## #61 厨房操作长桌（#63 AI 素材）
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -184,7 +184,7 @@ func _build_walls() -> void:
 	_add_prop_sprite("WallSideR1", WALL_SIDE_TEX, Vector2(1860, 300), Vector2.ONE, -3)
 	_add_prop_sprite("WallSideR2", WALL_SIDE_TEX, Vector2(1860, 780), Vector2.ONE, -3)
 	# 入口门脸盖左墙门洞位（顾客入口 ENTRANCE_POINT=(80,520)；门在墙段之后生成，同 z 绘制在上层）
-	_add_prop_sprite("Door", DOOR_TEX, Vector2(66, 520), Vector2(1.1, 1.1), -3)
+	_add_prop_sprite("Door", DOOR_TEX, Vector2(66, 520), Vector2(1.1, 1.1), -2)  # #63：新侧墙变宽，门 z 提高避免被盖
 	# 门内地垫（z=-9 压地板、在区域色块之下）
 	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, Vector2(200, 520), Vector2.ONE, -9)
 
@@ -192,7 +192,7 @@ func _build_walls() -> void:
 ## 3 段吧台摆前台区上缘 y=452：左让入口通道（x<180）、右让外卖口（x>1620），不压 y≥480 顾客队列区
 func _build_counter() -> void:
 	for i in 3:
-		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 480, 452), Vector2.ONE)
+		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 455, 452), Vector2.ONE)  # #63：段间叠 25px 消白边接缝，读作一整条
 	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + Vector2(0, -80), Vector2.ONE)
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
 	# 只覆盖正面厚度（y 500..532）——台面视觉可重叠，俯视角下头压桌面是正常观感；
@@ -212,7 +212,7 @@ func _build_counter() -> void:
 
 ## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
 func _build_decorations() -> void:
-	_add_prop_sprite("Rug", RUG_TEX, Vector2(975, 810), Vector2(2.6, 1.9), -9)
+	_add_prop_sprite("Rug", RUG_TEX, Vector2(975, 810), Vector2(0.85, 0.85), -9)
 	_add_prop_sprite("Plant1", PLANT_TEX, Vector2(140, 960), Vector2.ONE)
 	_add_prop_sprite("Plant2", PLANT_TEX, Vector2(1790, 700), Vector2.ONE)
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, Vector2(1790, 560), Vector2.ONE)

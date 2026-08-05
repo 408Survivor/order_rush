@@ -6,10 +6,10 @@
 @tool
 extends Node2D
 
-const RIDER_TEXTURE := preload("res://assets/art/characters/customer_office_waiting.png")
-const RIDER_SCALE := 0.13
+const RIDER_TEXTURE := preload("res://assets/art/characters/rider.png")  # #63：骑手专属素材（蓝头盔俯视角）
+const RIDER_SCALE := 0.35
 const RIDER_STAY := 1.2     ## 骑手停留秒数
-const RIDER_OFFSET := Vector2(0, -70)  ## 出现在外卖口上方
+const RIDER_OFFSET := Vector2(0, -150)  ## 出现在外卖口上方（#63：新窗口素材加高，同步上移）
 
 var _sprite: Sprite2D = null
 var _hide_timer := 0.0
@@ -43,6 +43,6 @@ func _show_rider() -> void:
 	var counter := get_parent().get_node_or_null("TakeoutCounter")
 	if counter != null:
 		_sprite.global_position = counter.global_position + RIDER_OFFSET
-	_sprite.modulate = Color(0.62, 0.78, 1.0)
+	_sprite.modulate = Color.WHITE  # #63：骑手素材已带蓝色，不再整图染色
 	_sprite.visible = true
 	_hide_timer = RIDER_STAY

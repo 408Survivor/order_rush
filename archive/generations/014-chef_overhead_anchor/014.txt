@@ -1,0 +1,9 @@
+批次: 014
+日期: 2026-08-05
+工具: Kimi image_generation 插件（即梦系，透明底 1K 直出）——首次在会话内直出，替代即梦网页手动流程
+素材: 厨师俯视角（美术二期风格锚点，chef_overhead_v1.png）
+参数: 1K / 1:1 / 透明背景
+提示词版本: v1 美术二期统一风格定版 = Overhead view 前缀 + chibi proportion + flat vector illustration + cream white and warm candy colors with coral pink and mint green accents + thick dark brown outlines + sticker style + 2D game asset + single object centered, filling the frame + crisp edges + soft subtle shadow + cozy atmosphere + transparent background
+选中: v1（一次通过，6 维全绿）
+选中原因: 纯 90° 俯视只见帽顶/肩/脚（胡闹厨房式读法）；奶油白+珊瑚粉+薄荷绿与 #42 浅色主题/#48 UI 同族
+备注: 本张为全套素材风格锚点，015/016/017 全部复用此后缀；左下 "AI生成" 水印落透明区，后处理擦除（postprocess_asset.py）

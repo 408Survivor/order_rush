@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/props/takeout_counter.gd" id="1_script"]
-[ext_resource type="Texture2D" path="res://assets/art/props/takeout_window.svg" id="2_tex"]
+[ext_resource type="Texture2D" path="res://assets/art/props/takeout_window.png" id="2_tex"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_takeout"]
 size = Vector2(140, 80)
@@ -17,9 +17,9 @@ texture = ExtResource("2_tex")
 
 [node name="Label" type="Label" parent="."]
 offset_left = -60.0
-offset_top = 62.0
+offset_top = 118.0
 offset_right = 60.0
-offset_bottom = 92.0
+offset_bottom = 148.0
 theme_override_colors/font_color = Color(0.29, 0.22, 0.16, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
 theme_override_constants/outline_size = 4

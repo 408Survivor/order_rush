@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Texture2D" path="res://assets/art/ui/icons/dish_kungpao.svg" id="1_tex"]
+[ext_resource type="Texture2D" path="res://assets/art/items/dish_kungpao_plated.png" id="1_tex"]
 [ext_resource type="Script" uid="uid://qkqdass312dj" path="res://scripts/items/finished_dish.gd" id="2_script"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_dish"]

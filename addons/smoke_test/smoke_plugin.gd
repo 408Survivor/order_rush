@@ -109,7 +109,7 @@ func _run() -> void:
 	_check(_picked_up_count == 1, "item_picked_up 信号应发出 1 次")
 	_check(meal.get_parent() == player.get_node("HeldItemPivot"), "料理包应挂到 HeldItemPivot 下")
 	_check(int(freezer.stock["kungpao"]) == 4, "取货扣库存 5 → 4（#54）")
-	_check(str(meal.get_node("Sprite2D").texture.resource_path).contains("meal_pack_kungpao.svg"), "料理包纹理按 dish_type 区分（#54）")
+	_check(str(meal.get_node("Sprite2D").texture.resource_path).contains("meal_pack_kungpao.png"), "料理包纹理按 dish_type 区分（#54/#63）")
 	_check(str(freezer.call("take_hint")) != "", "冰柜取货提示文本非空（#54）")
 	_check(freezer.call("take_from_slot", 3) == null, "格 4 预留位取货返回 null（#54）")
 	# 取货边界：距离 >340 失败；手持时失败
@@ -237,7 +237,7 @@ func _run() -> void:
 	await get_tree().create_timer(3.5).timeout
 	player.call("_interact_with_appliance", microwave)
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "第二轮取出成品菜")
-	_check(str(player.get("held_item").get_node("Sprite2D").texture.resource_path).contains("dish_kungpao.svg"), "成品菜纹理按 dish_type 区分（#54）")
+	_check(str(player.get("held_item").get_node("Sprite2D").texture.resource_path).contains("dish_kungpao_plated.png"), "成品菜纹理按 dish_type 区分（#54/#63）")
 	_check(player.call("_interact_with_customer", c2), "第二轮交付 c2 成功")
 	_check(gsm.revenue == 40, "营业额累加至 40")
 	_check(gsm.good_reviews == 2, "好评累加至 2")
@@ -582,14 +582,14 @@ func _run() -> void:
 	pkg_taken.free()
 
 	# ===== #51 场景陈设素材（手绘 SVG 换肤 + 纯视觉陈设） =====
-	_check(load("res://assets/art/props/microwave.svg") != null, "微波炉素材文件存在（#51）")
-	_check(load("res://assets/art/props/freezer.svg") != null, "冰柜素材文件存在（#51）")
-	_check(load("res://assets/art/props/table.svg") != null, "餐桌素材文件存在（#51）")
-	_check(load("res://assets/art/props/counter_bar.svg") != null, "吧台素材文件存在（#51）")
-	_check(load("res://assets/art/props/wall_top.svg") != null, "墙体素材文件存在（#51）")
+	_check(load("res://assets/art/props/microwave.png") != null, "微波炉素材文件存在（#51/#63）")
+	_check(load("res://assets/art/props/freezer.png") != null, "冰柜素材文件存在（#51/#63）")
+	_check(load("res://assets/art/props/table.png") != null, "餐桌素材文件存在（#51/#63）")
+	_check(load("res://assets/art/props/counter_bar.png") != null, "吧台素材文件存在（#51/#63）")
+	_check(load("res://assets/art/props/wall_top.png") != null, "墙体素材文件存在（#51/#63）")
 	var mw_sprite: Sprite2D = microwave.get_node_or_null("Sprite2D")
 	_check(mw_sprite != null and mw_sprite.texture != null \
-		and str(mw_sprite.texture.resource_path).contains("props/microwave.svg"), "微波炉 Sprite2D 换用手绘素材（#51）")
+		and str(mw_sprite.texture.resource_path).contains("props/microwave.png"), "微波炉 Sprite2D 换用 AI 素材（#51/#63）")
 	var tables_ok := true
 	for i in 4:
 		var t: Node = scene.get_node_or_null("Table%d" % (i + 1))

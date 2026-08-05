@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3]
 
-[ext_resource type="Texture2D" path="res://assets/art/props/microwave.svg" id="1_tex"]
+[ext_resource type="Texture2D" path="res://assets/art/props/microwave.png" id="1_tex"]
 [ext_resource type="Script" uid="uid://d0ff7b81c1n73" path="res://scripts/items/microwave.gd" id="2_script"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_mw"]
