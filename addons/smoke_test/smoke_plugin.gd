@@ -117,6 +117,19 @@ func _run() -> void:
 	_check(player.call("try_take_from_freezer", 1) == false, "距离 >340 取货失败（#54）")
 	player.global_position = freezer.global_position + Vector2(0, 150)
 	_check(player.call("try_take_from_freezer", 1) == false, "手持时取货失败（#54）")
+	# #71：层键标随取货距离显示/隐藏（无朝向要求；update_key_hints 供编辑器内冒烟直调）
+	var key_label1: Label = freezer.get_node("Slots/Slot1/KeyLabel")
+	var key_label4: Label = freezer.get_node("Slots/Slot4/KeyLabel")
+	freezer.call("update_key_hints")
+	_check(key_label1.visible and key_label4.visible, "玩家在取货距离内 → 四层键标显示（#71）")
+	player.global_position = freezer.global_position + Vector2(0, 500)
+	freezer.call("update_key_hints")
+	_check(not key_label1.visible and not key_label4.visible, "玩家离开取货距离 → 四层键标隐藏（#71）")
+	freezer.call("set_key_hints_visible", true)
+	_check(key_label1.visible, "set_key_hints_visible(true) 直接生效（#71）")
+	freezer.call("set_key_hints_visible", false)
+	_check(not key_label1.visible, "set_key_hints_visible(false) 直接生效（#71）")
+	player.global_position = freezer.global_position + Vector2(0, 150)
 
 	# ===== 1.5 中途放下（issue #22）：Q 放下 → 恢复可拾取 → 再拾取 =====
 	_check(player.call("drop_held_item"), "手持时按 Q 放下应成功")
