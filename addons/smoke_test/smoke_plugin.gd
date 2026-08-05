@@ -131,12 +131,39 @@ func _run() -> void:
 	_check(not key_label1.visible, "set_key_hints_visible(false) 直接生效（#71）")
 	player.global_position = freezer.global_position + Vector2(0, 150)
 
+	# ===== #77 冷库柜四层键标 + J/K/L 按键取箱 =====
+	var cab_hints: Node2D = scene.get_node_or_null("CabinetKeyHints")
+	_check(cab_hints != null, "冷库柜键标节点 CabinetKeyHints 存在（#77）")
+	_check(cab_hints != null and not cab_hints.visible, "冷库柜键标默认隐藏（#77）")
+	player.global_position = layout.FRIDGE_CABINET_POS + Vector2(0, 150)
+	cab_hints.call("update_key_hints")
+	_check(cab_hints.visible, "玩家靠近冷库柜 → 四层键标显示（#77）")
+	player.global_position = layout.FRIDGE_CABINET_POS + Vector2(0, 500)
+	cab_hints.call("update_key_hints")
+	_check(not cab_hints.visible, "玩家远离冷库柜 → 四层键标隐藏（#77）")
+	# 手持时按键取箱失败（玩家此时手持料理包）
+	player.global_position = layout.FRIDGE_CABINET_POS + Vector2(0, 150)
+	_check(player.call("try_take_crate", 1) == false, "手持时按键取箱失败（#77）")
+	player.global_position = freezer.global_position + Vector2(0, 150)
+
 	# ===== 1.5 中途放下（issue #22）：Q 放下 → 恢复可拾取 → 再拾取 =====
 	_check(player.call("drop_held_item"), "手持时按 Q 放下应成功")
 	_check(player.get("held_item") == null, "放下后玩家空手")
 	_check(meal.get_parent() == scene.get_node("Items"), "料理包挂回场景 Items 容器")
 	_check(abs(meal.global_position.distance_to(player.global_position) - 50.0) < 1.0, "放下位置为玩家身前约 50px")
 	_check(meal.collision_layer == 8 and meal.collision_mask == 0, "放下后恢复可拾取碰撞（layer=8）")
+	# #77：空手按键取箱——层 4 预留/距离外失败，层 2 成功；收尾放下货箱并回到料理包旁
+	player.global_position = layout.FRIDGE_CABINET_POS + Vector2(0, 150)
+	_check(player.call("try_take_crate", 4) == false, "第 4 层预留位按键取箱返回 false（#77）")
+	player.global_position = layout.get_slot_position(layout.CRATE_SLOTS, 1) + Vector2(0, 500)
+	_check(player.call("try_take_crate", 2) == false, "距离 >340 按键取箱失败（#77）")
+	player.global_position = layout.get_slot_position(layout.CRATE_SLOTS, 1) + Vector2(0, 120)
+	_check(player.call("try_take_crate", 2), "冷库柜旁按键取箱成功（#77）")
+	var crate_taken: Node2D = player.get("held_item")
+	_check(crate_taken != null and crate_taken.is_in_group("crate"), "取到的是货箱（#77）")
+	_check(str(crate_taken.get("dish_type")) == "yuxiang", "第 2 层货箱为鱼香（#77）")
+	_check(player.call("drop_held_item"), "放下货箱收尾（#77）")
+	player.global_position = meal.global_position + Vector2(0, 100)
 	# 编辑器进程物理不步进：物品重挂场景后需等一帧注册到物理服务器，射线查询才命中
 	await get_tree().process_frame
 	_face_and_ray(player, meal, Vector2.UP)
