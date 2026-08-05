@@ -7,7 +7,7 @@
 extends Node2D
 
 const RIDER_TEXTURE := preload("res://assets/art/characters/rider.png")  # #63：骑手专属素材（蓝头盔俯视角）
-const RIDER_SCALE := 0.35
+const RIDER_SCALE := 0.29
 const RIDER_STAY := 1.2     ## 骑手停留秒数
 const RIDER_OFFSET := Vector2(0, -150)  ## 出现在外卖口上方（#63：新窗口素材加高，同步上移）
 
