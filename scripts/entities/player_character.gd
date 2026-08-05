@@ -88,15 +88,19 @@ func _input(event: InputEvent) -> void:
 	# Q 放下手持物品（中途放下，issue #22）
 	elif event.is_action_pressed("drop_item"):
 		drop_held_item()
-	# J/K/L/空格 从冰柜四格取货（#54）
+	# J/K/L/空格 从冰柜四层取货（#54）；不在冰柜范围时尝试从冷库柜对应层取货箱（#77）
 	elif event.is_action_pressed("take_slot_1"):
-		try_take_from_freezer(1)
+		if not try_take_from_freezer(1):
+			try_take_crate(1)
 	elif event.is_action_pressed("take_slot_2"):
-		try_take_from_freezer(2)
+		if not try_take_from_freezer(2):
+			try_take_crate(2)
 	elif event.is_action_pressed("take_slot_3"):
-		try_take_from_freezer(3)
+		if not try_take_from_freezer(3):
+			try_take_crate(3)
 	elif event.is_action_pressed("take_slot_4"):
-		try_take_from_freezer(4)
+		if not try_take_from_freezer(4):
+			try_take_crate(4)
 
 	# ==================== 冰柜四格取货（#54） ====================
 
@@ -127,6 +131,40 @@ func _find_freezer() -> Node2D:
 		if home != null and home.is_ancestor_of(node):
 			return node
 	return null
+
+# ==================== 冷库柜按键取箱（#77） ====================
+
+## 从冷库柜第 N 层（1..4）取货箱：空手 + 距对应货箱堆 ≤FREEZER_TAKE_DISTANCE（无朝向要求）。
+## 层 4 预留（无堆）→ false；批发仓无限库存（CrateStack.give_crate 不消耗）。
+## 输出: bool（是否取到）；public 供冒烟测试直接调用
+func try_take_crate(slot_number: int) -> bool:
+	if held_item != null:
+		return false
+	var stack := _find_crate_stack(slot_number - 1)
+	if stack == null:
+		return false
+	if global_position.distance_to(stack.global_position) > FREEZER_TAKE_DISTANCE:
+		return false
+	var crate: Node2D = stack.give_crate()
+	if crate == null:
+		return false
+	_pick_up_item(crate)
+	return true
+
+## 取第 index 个货箱堆（0..2，与 CRATE_SLOTS 竖排顺序一致）。
+## 注意：限定与玩家同一场景分支（防编辑器页签干扰，同 _find_freezer）；按 y 排序保证层序稳定
+func _find_crate_stack(index: int) -> Node2D:
+	var home := get_parent()
+	var stacks: Array[Node] = []
+	for node in get_tree().get_nodes_in_group("crate_stack"):
+		if not node.has_method("give_crate"):
+			continue
+		if home != null and home.is_ancestor_of(node):
+			stacks.append(node)
+	stacks.sort_custom(func(a: Node, b: Node) -> bool: return a.global_position.y < b.global_position.y)
+	if index < 0 or index >= stacks.size():
+		return null
+	return stacks[index]
 
 # ==================== 交互系统 ====================
 
