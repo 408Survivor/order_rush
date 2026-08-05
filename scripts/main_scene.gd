@@ -55,6 +55,7 @@ const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.png")
 const RUG_TEX := preload("res://assets/art/props/rug.png")
 const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
 const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.png")          ## #61 厨房操作长桌（#63 AI 素材）
+const CABINET_KEY_HINTS_SCRIPT := preload("res://scripts/props/cabinet_key_hints.gd")  ## #77 冷库柜四层键标
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -81,6 +82,7 @@ func _ready() -> void:
 	_build_tables()
 	_build_freezer()
 	_build_crate_stacks()
+	_build_cabinet_key_hints()
 	_build_takeout_counter()
 	_build_takeaway_ui()
 	_build_upgrade_shop()
@@ -250,6 +252,34 @@ func _build_crate_stacks() -> void:
 		if stack.has_method("apply_dish_visual"):
 			stack.apply_dish_visual()
 		stack.global_position = LayoutManager.get_slot_position(LayoutManager.CRATE_SLOTS, i)
+
+# ==================== 冷库柜四层键标（#77） ====================
+
+## 生成 CabinetKeyHints（动态生成幂等）：[J]/[K]/[L]/[空格] 浮于对应层上方，靠近才显示。
+## 层中心 = CRATE_SLOTS y（136/204/272）+ 第 4 层预留 (300,340)；标签放层左侧蓝色内壁区（层距 68 < 箱堆高 ≈90，上方无干净间隙）
+func _build_cabinet_key_hints() -> void:
+	if has_node("CabinetKeyHints"):
+		return
+	var hints := Node2D.new()
+	hints.name = "CabinetKeyHints"
+	hints.set_script(CABINET_KEY_HINTS_SCRIPT)
+	add_child(hints)
+	hints.global_position = LayoutManager.FRIDGE_CABINET_POS
+	var tier_ys: Array[float] = [136.0, 204.0, 272.0, 340.0]
+	var keys: Array[String] = ["[J]", "[K]", "[L]", "[空格]"]
+	for i in 4:
+		var label := Label.new()
+		label.name = "Tier%d" % (i + 1)
+		label.text = keys[i]
+		label.add_theme_color_override("font_color", Color(0.35, 0.3, 0.25, 1))
+		label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.9))
+		label.add_theme_constant_override("outline_size", 4)
+		label.add_theme_font_size_override("font_size", 11)
+		label.position = Vector2(-100, tier_ys[i] - LayoutManager.FRIDGE_CABINET_POS.y - 8.0)
+		label.size = Vector2(50, 16)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		hints.add_child(label)
+	hints.visible = false
 
 # ==================== 外卖口（P4） ====================
 

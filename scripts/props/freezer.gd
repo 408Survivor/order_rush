@@ -50,15 +50,18 @@ func _process(_delta: float) -> void:
 		return
 	update_key_hints()
 
-## 按玩家距离刷新层键标可见性（public，冒烟可直调；玩家经 player 组查找）
+## 按玩家距离刷新层键标可见性（public，冒烟可直调）
+## 注意：玩家限定与自身同一场景分支——编辑器进程可能开着场景页签（组内多个玩家），
+##       不加过滤会拿到页签里的玩家（距离判定对不上，冒烟 flaky 根因）
 func update_key_hints() -> void:
 	var tree := get_tree()
 	if tree == null:
 		return
-	var player := tree.get_first_node_in_group("player")
-	if player == null:
-		return
-	set_key_hints_visible(global_position.distance_to(player.global_position) <= TAKE_DISTANCE)
+	var home := get_parent()
+	for player in tree.get_nodes_in_group("player"):
+		if home != null and home.is_ancestor_of(player):
+			set_key_hints_visible(global_position.distance_to(player.global_position) <= TAKE_DISTANCE)
+			return
 
 # ==================== 库存 ====================
 
