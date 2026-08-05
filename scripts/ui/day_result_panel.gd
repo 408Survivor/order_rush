@@ -106,6 +106,20 @@ func show_result(result: Dictionary) -> void:
 	tween.parallel().tween_property(_panel, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(_panel, "modulate:a", 1.0, 0.2)
 
+	# #67：金额 count-up（依次滚动出现；编辑器进程在上方已 return，不会执行到这里）
+	_count_up(_revenue_label, "%s 总收入：" % UITheme.icon(UITheme.ICON_COIN), result.get("revenue", 0), 0.15)
+	_count_up(_cost_total_label, "成本合计：", result.get("cost_total", 0), 0.3)
+	_count_up(_profit_label, "今日利润：", profit, 0.45)
+	_count_up(_money_label, "%s 现有资金：" % UITheme.icon(UITheme.ICON_COIN), result.get("money", 0), 0.6)
+
+## #67：数字从 0 滚动到终值（0.55s + 延迟依次出现；终值为 0 时保持静态文本）
+func _count_up(label: Control, prefix: String, final: int, delay: float) -> void:
+	if final == 0:
+		return
+	label.text = "%s0" % prefix
+	var tween := create_tween()
+	tween.tween_method(func(v: float) -> void: label.text = "%s%d" % [prefix, int(v)], 0.0, float(final), 0.55).set_delay(delay)
+
 ## 点击进入下一天：恢复暂停 → 推进天数（清场由 main_scene 监听 day_started 处理）→ 隐藏面板
 func _on_next_day_pressed() -> void:
 	if Engine.is_editor_hint():

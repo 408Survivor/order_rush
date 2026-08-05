@@ -36,6 +36,8 @@ const UPGRADE_SHOP_SCENE := preload("res://scenes/ui/UpgradeShop.tscn")
 const CARD_DRAW_SCENE := preload("res://scenes/ui/CardDraw.tscn")
 ## 招牌菜面板场景（P7，动态实例化 CanvasLayer；#48 起为 tscn）
 const SPECIALTY_PANEL_SCENE := preload("res://scenes/ui/SpecialtyPanel.tscn")
+## 反馈层脚本（#67：世界飘字 + 金币飞行，动态实例化 CanvasLayer）
+const FLOATING_FEEDBACK_SCRIPT := preload("res://scripts/ui/floating_feedback.gd")
 ## 角色选择面板场景（P8，动态实例化 CanvasLayer；#48 起为 tscn）
 const CHARACTER_SELECT_SCENE := preload("res://scenes/ui/CharacterSelect.tscn")
 
@@ -85,6 +87,7 @@ func _ready() -> void:
 	_build_card_draw()
 	_build_specialty_panel()
 	_build_character_select()
+	_build_floating_feedback()
 	_apply_upgrades()
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
@@ -298,6 +301,13 @@ func _build_character_select() -> void:
 	# 未选角色 → 开店前弹出选择（暂停中；选择后恢复开始营业）
 	if not CharacterManager.has_selected():
 		get_node("CharacterSelect").call("show_select")
+
+## 实例化反馈层（#67：世界飘字 + 金币飞行，动态生成幂等）
+func _build_floating_feedback() -> void:
+	if not has_node("FloatingFeedback"):
+		var feedback: CanvasLayer = FLOATING_FEEDBACK_SCRIPT.new()
+		feedback.name = "FloatingFeedback"
+		add_child(feedback)
 
 # ==================== P5 设备升级应用 ====================
 
