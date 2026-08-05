@@ -622,7 +622,8 @@ func _run() -> void:
 		if t == null or not (t is Sprite2D):
 			tables_ok = false
 	_check(tables_ok, "餐桌 Table1..Table4 存在且为 Sprite2D（#51）")
-	_check(scene.get_node_or_null("CounterBar1") != null and scene.get_node_or_null("Cashier") != null, "吧台与收银机已陈设（#51）")
+	_check(scene.get_node_or_null("CounterBar") != null and scene.get_node_or_null("CounterBar1") == null \
+		and scene.get_node_or_null("Cashier") != null, "整吧台单图单 sprite + 收银机已陈设（#75）")
 	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
 
 	# ===== #67 反馈层（世界飘字 + 金币飞行 + 结算 count-up） =====
