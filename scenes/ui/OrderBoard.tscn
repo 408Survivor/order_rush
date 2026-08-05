@@ -18,5 +18,5 @@ offset_bottom = 128.0
 mouse_filter = 2
 
 [node name="Cards" type="HBoxContainer" parent="Margin"]
-alignment = 1
+alignment = 0
 theme_override_constants/separation = 12

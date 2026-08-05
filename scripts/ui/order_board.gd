@@ -48,6 +48,11 @@ func refresh() -> void:
 	# 2) 更新/创建
 	for order in orders:
 		_update_card(order)
+	# 3) #69：按订单号升序重排容器子节点（中间订单完成后新单仍插入正确位置）
+	var sorted_ids: Array = _cards.keys()
+	sorted_ids.sort()
+	for i in sorted_ids.size():
+		_container.move_child(_cards[sorted_ids[i]]["panel"], i)
 
 ## 创建或更新一张订单卡片
 func _update_card(order: Dictionary) -> void:
@@ -58,9 +63,9 @@ func _update_card(order: Dictionary) -> void:
 	else:
 		card = _cards[order_id]
 
-	# #48：菜名纯文本（图标独立为 DishIcon 贴纸，仅菜品变化时重设纹理）
+	# #48：菜名纯文本（图标独立为 DishIcon 贴纸，仅菜品变化时重设纹理）；#69：前缀 #订单号
 	var dish_type := str(order["dish_type"])
-	card["name_label"].text = GameStateManager.get_dish_display_name(dish_type)
+	card["name_label"].text = "#%d %s" % [order_id, GameStateManager.get_dish_display_name(dish_type)]
 	if card["dish_type"] != dish_type:
 		card["dish_type"] = dish_type
 		card["dish_icon"].texture = load(UITheme.dish_icon_path(dish_type))
