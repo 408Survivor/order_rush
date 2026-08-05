@@ -599,6 +599,27 @@ func _run() -> void:
 	_check(scene.get_node_or_null("CounterBar1") != null and scene.get_node_or_null("Cashier") != null, "吧台与收银机已陈设（#51）")
 	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
 
+	# ===== #67 反馈层（世界飘字 + 金币飞行 + 结算 count-up） =====
+	var feedback: Node = scene.get_node_or_null("FloatingFeedback")
+	_check(feedback != null, "FloatingFeedback 存在于 MainScene（#67）")
+	if feedback != null:
+		var before: int = feedback.get_child_count()
+		feedback.call("show_gain", Vector2(500, 400), 20)
+		_check(feedback.get_child_count() > before, "show_gain 生成飘字子节点（#67）")
+		var float_label: Label = null
+		for child in feedback.get_children():
+			if child is Label:
+				float_label = child
+		_check(float_label != null and float_label.text == "+20", "飘字文本为 +20（#67）")
+		feedback.call("show_penalty", Vector2(500, 400), "差评")
+		var penalty_ok := false
+		for child in feedback.get_children():
+			if child is Label and child.text == "差评":
+				penalty_ok = true
+		_check(penalty_ok, "show_penalty 生成红色差评飘字（#67）")
+		for child in feedback.get_children():
+			child.free()
+
 	# ===== 汇总 =====
 	var status := "PASS" if _fail_count == 0 else "FAIL"
 	print("=".repeat(50))
