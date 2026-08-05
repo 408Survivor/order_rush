@@ -1,9 +1,10 @@
 ## 文件: scripts/props/freezer.gd
-## 职责: 冰柜（#54 四格取货）——按菜管理料理包库存：收货箱补库存（每箱 CRATE_SIZE），
-##       盖面四格展示各菜库存（图标 + 计数 + 按键提示），玩家按 J/K/L/空格 直接取包（取货扣库存）
+## 职责: 冰柜（#54 四格取货；#71 立式四层货架）——按菜管理料理包库存：收货箱补库存（每箱 CRATE_SIZE），
+##       四层货架展示各菜库存（图标 + 计数），玩家按 J/K/L/空格 直接取包（取货扣库存）；
+##       层键标默认隐藏，玩家进入取货距离（TAKE_DISTANCE，无朝向要求）时浮于对应层上方显示
 ## 依赖: GameStateManager/UpgradeManager (autoload)；MealPackage.tscn（取货实例化）
 ## 注意: 挂 Area2D，加入 appliance 组复用玩家设备交互分支（can_accept_item/accept_item/give_item/is_done）；
-##       加入 freezer 组供玩家 J/K/L/空格 取货查找；SLOT_DISHES 第 4 格为预留空位
+##       加入 freezer 组供玩家 J/K/L/空格 取货查找；SLOT_DISHES 第 4 层为预留空位
 
 @tool
 extends Area2D
@@ -12,11 +13,13 @@ extends Area2D
 const MEAL_PACKAGE_SCENE := preload("res://scenes/items/MealPackage.tscn")
 const INITIAL_STOCK := 0  ## 各菜初始库存（#54：冰柜初始空，全靠货箱补给）
 const CRATE_SIZE := 4     ## 每个货箱补充的库存数
-## 四格菜品（2×2 排布在机身盖面；格 4 预留空）
+## 取货距离（与 player_character.gd #54 FREEZER_TAKE_DISTANCE 一致；#71 兼作层键标显示半径）
+const TAKE_DISTANCE := 340.0
+## 四层菜品（竖排摆于立式货架；层 4 预留空）
 const SLOT_DISHES: Array[String] = ["kungpao", "yuxiang", "mapo", ""]
-## 四格按键提示（与 project.godot take_slot_1..4 对应：J/K/L/空格）
+## 四层按键提示（与 project.godot take_slot_1..4 对应：J/K/L/空格）
 const SLOT_KEY_HINTS: Array[String] = ["[J]", "[K]", "[L]", "[空格]"]
-## 四格短菜名（取货提示用）
+## 四层短菜名（取货提示用）
 const SLOT_SHORT_NAMES: Array[String] = ["宫保", "鱼香", "麻婆", "预留"]
 
 # ==================== 导出变量 ====================
@@ -37,6 +40,25 @@ func _ready() -> void:
 	add_to_group("appliance")
 	add_to_group("freezer")  # 玩家 J/K/L/空格 取货按组查找（#54）
 	_refresh_slots()
+	set_key_hints_visible(false)  # #71：层键标默认隐藏，靠近才显示
+
+## #71：玩家进入取货距离 → 对应层键标（J/K/L/空格）显示；离开隐藏。
+## 无朝向要求（与 try_take_from_freezer 的判定一致：只看距离）。
+## 编辑器内不自动跑（is_editor_hint 惯例）；距离判定抽成 update_key_hints() 供冒烟直接调用
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+	update_key_hints()
+
+## 按玩家距离刷新层键标可见性（public，冒烟可直调；玩家经 player 组查找）
+func update_key_hints() -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	var player := tree.get_first_node_in_group("player")
+	if player == null:
+		return
+	set_key_hints_visible(global_position.distance_to(player.global_position) <= TAKE_DISTANCE)
 
 # ==================== 库存 ====================
 
@@ -103,7 +125,18 @@ func take_hint() -> String:
 
 # ==================== 视觉辅助 ====================
 
-## 刷新四格展示：库存 >0 → 图标显示、计数 ×N；=0 → 图标隐藏、计数 ×0 调暗；预留格只显示按键提示
+## #71：设置四层键标（KeyLabel）可见性（public，冒烟测试可直接调用）
+func set_key_hints_visible(v: bool) -> void:
+	if _slots == null:
+		return
+	for slot in _slots:
+		if slot == null:
+			continue
+		var key_label: Label = slot.get_node_or_null("KeyLabel")
+		if key_label != null:
+			key_label.visible = v
+
+## 刷新四层展示：库存 >0 → 图标显示、计数 ×N；=0 → 图标隐藏、计数 ×0 调暗；预留层只显示按键提示
 func _refresh_slots() -> void:
 	if _slots == null:
 		return
