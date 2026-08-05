@@ -154,14 +154,15 @@ func _build_zones() -> void:
 
 # ==================== 餐桌 ====================
 
-## 按配置生成餐桌（#51：table.svg 圆桌 + 每桌左右两把 chair.svg 圆凳；数量 = TABLE_SLOTS 全部，P4+ 直接加槽位即可）
+## 按配置生成餐桌（#51：圆桌 + 每桌左右两把圆凳；数量 = TABLE_SLOTS 全部，P4+ 直接加槽位即可）
+## #75：桌/凳 PNG 已按世界尺寸重出（×0.85/×0.7 烘入），scale 恒为 1
 func _build_tables() -> void:
 	for i in LayoutManager.TABLE_SLOTS.size():
 		var table_name := "Table%d" % (i + 1)
 		var slot: Vector2 = LayoutManager.get_slot_position(LayoutManager.TABLE_SLOTS, i)
-		_add_prop_sprite(table_name, TABLE_TEX, slot, Vector2(0.85, 0.85))
-		_add_prop_sprite(table_name + "ChairL", CHAIR_TEX, slot + Vector2(-110, 0), Vector2(0.7, 0.7))
-		_add_prop_sprite(table_name + "ChairR", CHAIR_TEX, slot + Vector2(110, 0), Vector2(0.7, 0.7))
+		_add_prop_sprite(table_name, TABLE_TEX, slot, Vector2.ONE)
+		_add_prop_sprite(table_name + "ChairL", CHAIR_TEX, slot + Vector2(-110, 0), Vector2.ONE)
+		_add_prop_sprite(table_name + "ChairR", CHAIR_TEX, slot + Vector2(110, 0), Vector2.ONE)
 
 # ==================== #51 场景陈设（墙体/吧台/装饰，全部纯视觉无碰撞） ====================
 
@@ -179,24 +180,25 @@ func _add_prop_sprite(prop_name: String, tex: Texture2D, pos: Vector2, prop_scal
 	return sprite
 
 ## 墙体与门脸（z=-3）：顶墙 4 段平铺、左右侧墙各 2 段；入口盖门 + 门内地垫（z=-9）
+## #75：点位收编 LayoutManager；门/地毯 PNG 已按世界尺寸重出，scale 恒为 1
 func _build_walls() -> void:
 	for i in 4:
-		_add_prop_sprite("WallTop%d" % (i + 1), WALL_TOP_TEX, Vector2(240 + i * 480, 60), Vector2.ONE, -3)
-	_add_prop_sprite("WallSideL1", WALL_SIDE_TEX, Vector2(60, 300), Vector2.ONE, -3)
-	_add_prop_sprite("WallSideL2", WALL_SIDE_TEX, Vector2(60, 780), Vector2.ONE, -3)
-	_add_prop_sprite("WallSideR1", WALL_SIDE_TEX, Vector2(1860, 300), Vector2.ONE, -3)
-	_add_prop_sprite("WallSideR2", WALL_SIDE_TEX, Vector2(1860, 780), Vector2.ONE, -3)
+		_add_prop_sprite("WallTop%d" % (i + 1), WALL_TOP_TEX, LayoutManager.WALL_TOP_SLOTS[i], Vector2.ONE, -3)
+	_add_prop_sprite("WallSideL1", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[0], Vector2.ONE, -3)
+	_add_prop_sprite("WallSideL2", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[1], Vector2.ONE, -3)
+	_add_prop_sprite("WallSideR1", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[2], Vector2.ONE, -3)
+	_add_prop_sprite("WallSideR2", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[3], Vector2.ONE, -3)
 	# 入口门脸盖左墙门洞位（顾客入口 ENTRANCE_POINT=(80,520)；门在墙段之后生成，同 z 绘制在上层）
-	_add_prop_sprite("Door", DOOR_TEX, Vector2(66, 520), Vector2(1.1, 1.1), -2)  # #63：新侧墙变宽，门 z 提高避免被盖
+	_add_prop_sprite("Door", DOOR_TEX, LayoutManager.DOOR_POS, Vector2.ONE, -2)  # #63：新侧墙变宽，门 z 提高避免被盖
 	# 门内地垫（z=-9 压地板、在区域色块之下）
-	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, Vector2(200, 520), Vector2.ONE, -9)
+	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, LayoutManager.FLOOR_MAT_POS, Vector2.ONE, -9)
 
 ## 前台吧台 + 收银机（#51 视觉；#58 加碰撞体——只挡玩家，顾客不受影响）
-## 3 段吧台摆前台区上缘 y=452：左让入口通道（x<180）、右让外卖口（x>1620），不压 y≥480 顾客队列区
+## #75：整吧台单图（1440×189 批次 021 v3 空台面），scale=1 单 sprite 摆 (900,452)——
+## 与原 3 段拼合总跨度一致（x 180..1620：左让入口通道、右让外卖口），不压 y≥480 顾客队列区
 func _build_counter() -> void:
-	for i in 3:
-		_add_prop_sprite("CounterBar%d" % (i + 1), COUNTER_BAR_TEX, Vector2(420 + i * 455, 452), Vector2.ONE)  # #63：段间叠 25px 消白边接缝，读作一整条
-	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + Vector2(0, -80), Vector2.ONE)
+	_add_prop_sprite("CounterBar", COUNTER_BAR_TEX, LayoutManager.COUNTER_BAR_POS, Vector2.ONE)
+	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + LayoutManager.CASHIER_OFFSET, Vector2.ONE)
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
 	# 只覆盖正面厚度（y 500..532）——台面视觉可重叠，俯视角下头压桌面是正常观感；
 	# 玩家（半径 117）北面停在 y≈383，距队列顾客（y=520）137px < 交互范围 160
@@ -214,14 +216,15 @@ func _build_counter() -> void:
 		body.position = Vector2(960, 516)
 
 ## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
+## #75：点位收编 LayoutManager；地毯/操作桌 PNG 已按世界尺寸重出，scale 恒为 1
 func _build_decorations() -> void:
-	_add_prop_sprite("Rug", RUG_TEX, Vector2(975, 810), Vector2(0.85, 0.85), -9)
-	_add_prop_sprite("Plant1", PLANT_TEX, Vector2(140, 960), Vector2.ONE)
-	_add_prop_sprite("Plant2", PLANT_TEX, Vector2(1790, 700), Vector2.ONE)
-	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, Vector2(1790, 560), Vector2.ONE)
+	_add_prop_sprite("Rug", RUG_TEX, LayoutManager.RUG_POS, Vector2.ONE, -9)
+	_add_prop_sprite("Plant1", PLANT_TEX, LayoutManager.PLANT_SLOTS[0], Vector2.ONE)
+	_add_prop_sprite("Plant2", PLANT_TEX, LayoutManager.PLANT_SLOTS[1], Vector2.ONE)
+	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, LayoutManager.TRASH_BIN_POS, Vector2.ONE)
 	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）+ 操作长桌（垫冰柜/微波炉一排之下，右缘收在经营面板左侧）
-	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, Vector2(300, 218), Vector2.ONE, -1)
-	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, Vector2(1300, 190), Vector2(0.72, 1.0), -1)
+	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, LayoutManager.FRIDGE_CABINET_POS, Vector2.ONE, -1)
+	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, LayoutManager.WORK_TABLE_POS, Vector2.ONE, -1)
 
 # ==================== 冰柜 + 货箱堆（#50 两段式补给；#54 四格取货） ====================
 
