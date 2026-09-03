@@ -215,6 +215,32 @@ theme_override_font_sizes/font_size = 20
 text = "好评 0 ｜ 差评 0"
 horizontal_alignment = 1
 
+[node name="StarLabel" type="RichTextLabel" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+bbcode_enabled = true
+fit_content = true
+autowrap_mode = 0
+alignment = 1
+mouse_filter = 2
+theme_override_colors/default_color = Color(0.85098, 0.65098, 0.180392, 1)
+theme_override_colors/outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/normal_font_size = 24
+text = "店铺星级：1 星"
+
+[node name="StarProgressBar" type="ProgressBar" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(320, 18)
+mouse_filter = 2
+show_percentage = false
+
+[node name="StarProgressLabel" type="Label" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.290196, 0.215686, 0.156863, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 18
+text = "距 2 星还需繁荣度 320"
+horizontal_alignment = 1
+
 [node name="MoneyLabel" type="RichTextLabel" parent="Overlay/CenterContainer/Panel/Margin/VBox"]
 bbcode_enabled = true
 fit_content = true

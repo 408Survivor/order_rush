@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 空星图标（#83 店铺星级：未达成档位，奶油白填色 + 深咖粗描边） -->
+<g stroke="#4A3728" stroke-width="6" stroke-linejoin="round" stroke-opacity="0.55">
+  <path d="M64 12 L79 46 L116 50 L89 75 L97 112 L64 94 L31 112 L39 75 L12 50 L49 46 Z" fill="#FFF6E5"/>
+</g>
+</svg>

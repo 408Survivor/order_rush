@@ -261,6 +261,8 @@ func _run() -> void:
 	# 玩家此时已手持第 3 段产出的成品菜（dish）
 	var gsm = scene.get_node("/root/GameStateManager")
 	_check(gsm != null, "GameStateManager (autoload) 可访问")
+	# #83：存档路径注入 /tmp，避免后续打烊/升星落档污染真实存档（user://save_p5.json）
+	gsm.set("save_path", "/tmp/test_save_p5.json")
 
 	# P2：每位顾客到达即下单 → 3 名顾客 = 3 个并发订单
 	_check(gsm.get_active_order_count() == 3, "3 名顾客就位后订单队列应有 3 单（P2 多单并发）")
@@ -667,6 +669,89 @@ func _run() -> void:
 	gsm.close_shop()
 	gsm.start_next_day()
 	_check(absf(gsm.heart_rate - gsm.STRESS_INITIAL) < 0.01, "新一天心率重置为安全值（#82）")
+
+	# ===== #83 繁荣度/店铺星级 =====
+	# 测试钩子：隔离前序段累计值，从确定状态起测（当前第 4 天营业中，队列均空）
+	gsm.set("prosperity", 0)
+	gsm.set("shop_stars", 1)
+	_check(gsm.STAR_THRESHOLDS.size() == 5 and gsm.STAR_THRESHOLDS[0] == 0 and gsm.STAR_MAX == 5,
+		"五档星级阈值表（初始 1 星，#83）")
+
+	# 差评扣减：繁荣度 50 时订单超时差评 −PROSPERITY_BAD_WEIGHT
+	gsm.set("prosperity", 50)
+	var star_order: int = gsm.create_order(950, "kungpao")
+	gsm.fail_order(star_order)
+	_check(gsm.get("prosperity") == 50 - gsm.PROSPERITY_BAD_WEIGHT, "差评扣减繁荣度 −%d（#83）" % gsm.PROSPERITY_BAD_WEIGHT)
+	# 触底钳制：繁荣度低于扣减值时再差评 → 0（不为负）
+	gsm.set("prosperity", 10)
+	var star_order2: int = gsm.create_order(951, "kungpao")
+	gsm.fail_order(star_order2)
+	_check(gsm.get("prosperity") == 0, "繁荣度扣减触底钳制为 0（#83）")
+
+	# 阈值升星：距 2 星（阈值 320）一步之遥时交付 → 升星 + 信号
+	var star_signal_count := [0]
+	gsm.shop_star_upgraded.connect(func(_s: int) -> void: star_signal_count[0] += 1)
+	gsm.set("prosperity", gsm.STAR_THRESHOLDS[1] - 30)
+	var star_order3: int = gsm.create_order(952, "kungpao")
+	gsm.complete_order(star_order3)  # +20 菜价 +15 好评 = +35 → 325 ≥ 320
+	_check(gsm.get("prosperity") == gsm.STAR_THRESHOLDS[1] + 5, "交付营收+好评计入繁荣度（#83）")
+	_check(gsm.get("shop_stars") == 2, "达阈值升 2 星（#83）")
+	_check(star_signal_count[0] == 1, "shop_star_upgraded 信号发出一次（#83）")
+
+	# 星级只升不降：升星后差评扣减，星级保持
+	var star_order4: int = gsm.create_order(953, "kungpao")
+	gsm.fail_order(star_order4)
+	_check(gsm.get("shop_stars") == 2, "差评扣减后星级不回降（#83）")
+
+	# 跨天保留：打烊 → 下一天，繁荣度/星级不清零
+	var prosperity_before_close: int = gsm.get("prosperity")
+	gsm.close_shop()
+	gsm.start_next_day()
+	_check(gsm.get("prosperity") == prosperity_before_close and gsm.get("shop_stars") == 2,
+		"繁荣度/星级跨天保留（#83）")
+
+	# HUD 星级常显行：图标 + 文字（编辑器进程手动刷新，与既有 HUD 断言同约定）
+	scene.get_node("RevenueHUD").call("_update_all")
+	var star_hud_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/StarLabel").text
+	_check(star_hud_text.contains("店铺 2 星") and star_hud_text.contains("star.svg"),
+		"HUD 星级常显行（图标 + 文字，#83）")
+	_check(star_hud_text.contains("star_empty.svg"), "HUD 未达成档位显示空星图标（#83）")
+
+	# 结算面板：星级行 + 距下一星进度
+	day_result_panel.call("show_result", gsm.last_settlement)
+	_check(day_result_panel.get("_star_label").text.contains("店铺星级：2 星"),
+		"结算面板显示当前星级（#83）")
+	var progress: Dictionary = gsm.get_star_progress()
+	_check(progress["floor"] == gsm.STAR_THRESHOLDS[1] and progress["next_threshold"] == gsm.STAR_THRESHOLDS[2]
+		and not progress["maxed"], "星级进度快照（本档起点/下一档阈值，#83）")
+	_check(day_result_panel.get("_star_progress_label").text.contains("距 3 星"),
+		"结算面板显示距下一星进度（#83）")
+	var star_bar: ProgressBar = day_result_panel.get("_star_progress_bar")
+	_check(star_bar.max_value == gsm.STAR_THRESHOLDS[2] - gsm.STAR_THRESHOLDS[1]
+		and int(star_bar.value) == maxi(gsm.get("prosperity") - gsm.STAR_THRESHOLDS[1], 0),
+		"结算面板星级进度条填充（#83）")
+
+	# 存档并入 #36 既有通道（user://save_p5.json 合并键）：与升级键共存不互覆
+	gsm.call("save_prosperity")
+	var saved_prosperity: int = gsm.get("prosperity")
+	var saved_stars: int = gsm.get("shop_stars")
+	gsm.set("prosperity", 0)
+	gsm.set("shop_stars", 1)
+	gsm.call("load_prosperity")
+	_check(gsm.get("prosperity") == saved_prosperity and gsm.get("shop_stars") == saved_stars,
+		"繁荣度/星级存档读写恢复（#83）")
+	var save_file := FileAccess.open("/tmp/test_save_p5.json", FileAccess.READ)
+	var save_data: Variant = JSON.parse_string(save_file.get_as_text())
+	save_file.close()
+	_check(typeof(save_data) == TYPE_DICTIONARY and save_data.has("prosperity") and save_data.has("shop_stars")
+		and save_data.has("heat_level"), "星级并入 save_p5.json 与升级键共存（#83）")
+	# 满星快照边界（纯函数断言，不动状态）
+	gsm.set("prosperity", gsm.STAR_THRESHOLDS[4] + 100)
+	gsm.set("shop_stars", gsm.STAR_MAX)
+	var maxed_progress: Dictionary = gsm.get_star_progress()
+	_check(maxed_progress["maxed"] and maxed_progress["next_threshold"] == -1, "满星进度快照 maxed（#83）")
+	gsm.set("prosperity", saved_prosperity)
+	gsm.set("shop_stars", saved_stars)
 
 	# ===== P8 角色系统 =====
 	CharacterManager.save_path = "/tmp/test_save_p8.json"

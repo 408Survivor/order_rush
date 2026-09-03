@@ -40,6 +40,13 @@ func _ready() -> void:
 	# P7 特殊事件提示（设备故障/恶劣天气）
 	if not GameStateManager.event_started.is_connected(_on_event_started):
 		GameStateManager.event_started.connect(_on_event_started)
+	# #83 店铺升星反馈
+	if not GameStateManager.shop_star_upgraded.is_connected(_on_shop_star_upgraded):
+		GameStateManager.shop_star_upgraded.connect(_on_shop_star_upgraded)
+
+## #83：升星 Toast（金色，多停留 1s 强化里程碑感）
+func _on_shop_star_upgraded(new_star: int) -> void:
+	show_toast("%s 店铺升星！当前 %d 星" % [UITheme.icon(UITheme.ICON_STAR), new_star], UITheme.COLOR_GOLD, TOAST_DURATION + 1.0)
 
 func _on_order_completed(order_id: int, revenue: int) -> void:
 	show_toast("%s 交付成功  +%d" % [UITheme.icon(UITheme.ICON_CHECK), revenue], UITheme.COLOR_GREEN)

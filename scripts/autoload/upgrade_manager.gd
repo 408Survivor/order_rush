@@ -65,13 +65,19 @@ func _apply_upgrade(upgrade_id: String) -> void:
 
 # ==================== JSON 存档 ====================
 
-## 保存升级状态（写失败仅告警——编辑器进程 TCC 限制下不阻塞逻辑）
+## 保存升级状态（读-改-写合并：保留 #83 繁荣度/店铺星级等同文件外键；写失败仅告警——编辑器进程 TCC 限制下不阻塞逻辑）
 func save_upgrades() -> void:
-	var data := {
-		"has_second_microwave": has_second_microwave,
-		"heat_level": heat_level,
-		"freezer_level": freezer_level,
-	}
+	var data := {}
+	if FileAccess.file_exists(save_path):
+		var read_file := FileAccess.open(save_path, FileAccess.READ)
+		if read_file != null:
+			var parsed: Variant = JSON.parse_string(read_file.get_as_text())
+			read_file.close()
+			if typeof(parsed) == TYPE_DICTIONARY:
+				data = parsed
+	data["has_second_microwave"] = has_second_microwave
+	data["heat_level"] = heat_level
+	data["freezer_level"] = freezer_level
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
 		push_warning("UpgradeManager: 存档写入失败（%s, err=%d）" % [save_path, FileAccess.get_open_error()])

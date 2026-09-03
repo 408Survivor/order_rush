@@ -57,6 +57,9 @@ const ICON_DISH_YUXIANG := "res://assets/art/ui/icons/dish_yuxiang.svg"
 const ICON_DISH_MAPO := "res://assets/art/ui/icons/dish_mapo.svg"
 ## #82：心率（全局营业压力 HUD / 危机事件提示）
 const ICON_HEART := "res://assets/art/ui/icons/heart.svg"
+## #83：店铺星级（HUD 常显 / 结算面板 / 升星 Toast）
+const ICON_STAR := "res://assets/art/ui/icons/star.svg"               ## 已达成星（奶黄贴纸）
+const ICON_STAR_EMPTY := "res://assets/art/ui/icons/star_empty.svg"   ## 未达成星（奶油白描边）
 
 ## #48：dish_type → 菜品图标路径（未知菜品回退通用餐盘）
 static func dish_icon_path(dish_type: String) -> String:
