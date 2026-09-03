@@ -607,6 +607,63 @@ func _run() -> void:
 	gsm.tick_event(100.0)
 	_check(gsm.active_event == GameStateManager.SpecialEvent.NONE, "天气事件结束清除")
 
+	# ===== #82 心率值：全局营业压力机制 =====
+	# 第 3 天开工心率已重置为安全值；此时堂食/外卖队列均空
+	var heart_panel: CanvasLayer = scene.get_node_or_null("HeartRatePanel")
+	_check(heart_panel != null, "心率面板存在于 MainScene（#82）")
+	_check(absf(gsm.heart_rate - gsm.STRESS_INITIAL) < 0.01, "心率每日开工初始为安全值 %d（#82）" % int(gsm.STRESS_INITIAL))
+	var hr_signal_count := [0]
+	gsm.heart_rate_changed.connect(func(_v: float) -> void: hr_signal_count[0] += 1)
+
+	# 缓解路径 1：空闲（无在队订单/外卖）持续 −X/s
+	gsm.tick_stress(5.0)
+	var hr_expect: float = gsm.STRESS_INITIAL - gsm.STRESS_IDLE_RATE * 5.0
+	_check(absf(gsm.heart_rate - hr_expect) < 0.01, "空闲 5s 心率回落 −%.0f/s（#82）" % gsm.STRESS_IDLE_RATE)
+
+	# 累积路径 1：在队订单 ≥3 持续 +X/s
+	var stress_ids: Array[int] = []
+	for i in 3:
+		stress_ids.append(gsm.create_order(900 + i, "kungpao"))
+	gsm.tick_stress(2.0)
+	hr_expect += gsm.STRESS_QUEUE_RATE * 2.0
+	_check(absf(gsm.heart_rate - hr_expect) < 0.01, "在队 3 单 2s 心率持续 +%.0f/s（#82）" % gsm.STRESS_QUEUE_RATE)
+	# HUD 同步（编辑器进程手动 refresh）
+	heart_panel.call("refresh")
+	var hr_bar: ProgressBar = heart_panel.get_node("Panel/Margin/HBox/Bar")
+	_check(heart_panel.get_node("Panel/Margin/HBox/Value").text == "%d" % int(round(gsm.heart_rate)), "心率面板数值同步（#82）")
+	_check(absf(hr_bar.value - gsm.heart_rate) < 0.01, "心率条填充同步（#82）")
+	_check(hr_bar.max_value == gsm.STRESS_MAX, "心率条量程 = STRESS_MAX（#82）")
+
+	# 缓解路径 2：成功交付 −X
+	gsm.complete_order(stress_ids[0])
+	hr_expect -= gsm.STRESS_ON_DELIVERY
+	_check(absf(gsm.heart_rate - hr_expect) < 0.01, "成功交付心率 −%.0f（#82）" % gsm.STRESS_ON_DELIVERY)
+
+	# 累积路径 2/3：堂食订单超时 +X、外卖超时差评 +X
+	gsm.fail_order(stress_ids[1])
+	var stress_takeout: int = gsm.create_takeaway_order()
+	gsm.fail_takeaway(stress_takeout)
+	hr_expect += gsm.STRESS_ON_TIMEOUT + gsm.STRESS_ON_BAD_REVIEW
+	_check(absf(gsm.heart_rate - hr_expect) < 0.01, "订单超时 +%.0f / 差评 +%.0f（#82）" % [gsm.STRESS_ON_TIMEOUT, gsm.STRESS_ON_BAD_REVIEW])
+	_check(hr_signal_count[0] > 0, "heart_rate_changed 信号随压力事件发出（#82）")
+
+	# 爆表路径：≥100 触发危机事件（主厨慌乱，复用 P7 事件框架）并回落安全值
+	gsm.remove_order(stress_ids[2])
+	gsm.add_stress(gsm.STRESS_MAX)
+	_check(gsm.active_event == GameStateManager.SpecialEvent.CHEF_PANIC, "爆表触发危机事件：主厨慌乱（#82）")
+	_check(absf(gsm.heart_rate - gsm.STRESS_SAFE_AFTER_CRISIS) < 0.01, "爆表后心率回落安全值 %d（#82）" % int(gsm.STRESS_SAFE_AFTER_CRISIS))
+	microwave._refresh_heat_time()
+	_check(absf(microwave.heat_time - 2.2 * gsm.STRESS_CRISIS_HEAT_MULTIPLIER) < 0.01, "主厨慌乱加热耗时 ×%.1f（2.2 → %.2f，#82）" % [gsm.STRESS_CRISIS_HEAT_MULTIPLIER, 2.2 * gsm.STRESS_CRISIS_HEAT_MULTIPLIER])
+	gsm.tick_event(100.0)
+	_check(gsm.active_event == GameStateManager.SpecialEvent.NONE, "危机事件结束清除（#82）")
+	microwave._refresh_heat_time()
+	_check(absf(microwave.heat_time - 2.2) < 0.01, "危机结束加热耗时恢复（#82）")
+
+	# 跨天语义：每日开工心率重置（day 3 → 4；P8 段起不再依赖天数/心率）
+	gsm.close_shop()
+	gsm.start_next_day()
+	_check(absf(gsm.heart_rate - gsm.STRESS_INITIAL) < 0.01, "新一天心率重置为安全值（#82）")
+
 	# ===== P8 角色系统 =====
 	CharacterManager.save_path = "/tmp/test_save_p8.json"
 	CharacterManager.current_character = ""

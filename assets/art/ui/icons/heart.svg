@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+<!-- 心率图标（#82：贴纸风心形，珊瑚粉 + 深咖粗描边） -->
+<g stroke="#4A3728" stroke-width="6" stroke-linejoin="round">
+  <path d="M64 110 C28 82 14 62 14 44 C14 27 27 16 41 16 C51 16 60 22 64 32 C68 22 77 16 87 16 C101 16 114 27 114 44 C114 62 100 82 64 110 Z" fill="#FF8A80"/>
+</g>
+<path d="M32 42 C34 32 43 26 50 27" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-opacity="0.85"/>
+</svg>

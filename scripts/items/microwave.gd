@@ -65,11 +65,20 @@ func _ready() -> void:
 		CardManager.cards_changed.connect(_on_upgrades_changed)
 	if not CharacterManager.character_changed.is_connected(_on_upgrades_changed):
 		CharacterManager.character_changed.connect(_on_upgrades_changed)
+	# #82：主厨慌乱危机事件开始/结束 → 重算加热耗时（×1.5 降速即时生效）
+	if not GameStateManager.event_started.is_connected(_on_upgrades_changed):
+		GameStateManager.event_started.connect(_on_upgrades_changed)
+	if not GameStateManager.event_ended.is_connected(_on_upgrades_changed):
+		GameStateManager.event_ended.connect(_on_upgrades_changed)
 
-## 统一重算加热时长 = 基础（P5 加速可选）× 卡牌乘数（P6 工业烤箱）× 角色技能（P8 快手主厨）；即时生效
+## 统一重算加热时长 = 基础（P5 加速可选）× 卡牌乘数（P6 工业烤箱）× 角色技能（P8 快手主厨）
+## × 主厨慌乱危机降速（#82，CHEF_PANIC 期间 ×1.5）；即时生效
+## 注意: Timer 运行中改 wait_time 不影响当前加热，降速只作用于新放入的料理包
 func _refresh_heat_time() -> void:
 	var base := HEAT_TIME_UPGRADED if UpgradeManager.heat_level >= 1 else HEAT_TIME
 	var new_time := base * CardManager.get_multiplier("heat_multiplier") * CharacterManager.get_heat_multiplier()
+	if GameStateManager.is_event_active(GameStateManager.SpecialEvent.CHEF_PANIC):
+		new_time *= GameStateManager.STRESS_CRISIS_HEAT_MULTIPLIER
 	if heat_time != new_time:
 		heat_time = new_time
 		heat_timer.wait_time = heat_time
