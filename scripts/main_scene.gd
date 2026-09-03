@@ -191,29 +191,29 @@ func _add_prop_sprite(prop_name: String, tex: Texture2D, pos: Vector2, prop_scal
 	add_child(sprite)
 	return sprite
 
-## 墙体与门脸（z=-3）：顶墙 4 段平铺、左右侧墙各 2 段；入口盖门 + 门内地垫（z=-9）
+## 墙体与门脸（z=-3）：顶墙平铺、左右侧墙平铺（段数 = LayoutManager 槽位数组长度）；入口盖门 + 门内地垫（z=-9）
 ## #75：点位收编 LayoutManager；门/地毯 PNG 已按世界尺寸重出，scale 恒为 1
+## #90：段数随店内尺寸扩容（顶 4→5、侧 2→3/边），循环按槽位数组驱动不再硬编码
 func _build_walls() -> void:
-	for i in 4:
+	for i in LayoutManager.WALL_TOP_SLOTS.size():
 		_add_prop_sprite("WallTop%d" % (i + 1), WALL_TOP_TEX, LayoutManager.WALL_TOP_SLOTS[i], Vector2.ONE, -3)
-	_add_prop_sprite("WallSideL1", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[0], Vector2.ONE, -3)
-	_add_prop_sprite("WallSideL2", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[1], Vector2.ONE, -3)
-	_add_prop_sprite("WallSideR1", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[2], Vector2.ONE, -3)
-	_add_prop_sprite("WallSideR2", WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[3], Vector2.ONE, -3)
-	# 入口门脸盖左墙门洞位（顾客入口 ENTRANCE_POINT=(80,520)；门在墙段之后生成，同 z 绘制在上层）
+	for i in 3:
+		_add_prop_sprite("WallSideL%d" % (i + 1), WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[i], Vector2.ONE, -3)
+		_add_prop_sprite("WallSideR%d" % (i + 1), WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[3 + i], Vector2.ONE, -3)
+	# 入口门脸盖左墙门洞位（与顾客入口 ENTRANCE_POINT 对齐；门在墙段之后生成，同 z 绘制在上层）
 	_add_prop_sprite("Door", DOOR_TEX, LayoutManager.DOOR_POS, Vector2.ONE, -2)  # #63：新侧墙变宽，门 z 提高避免被盖
 	# 门内地垫（z=-9 压地板、在区域色块之下）
 	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, LayoutManager.FLOOR_MAT_POS, Vector2.ONE, -9)
 
 ## 前台吧台 + 收银机（#51 视觉；#58 加碰撞体——只挡玩家，顾客不受影响）
-## #75：整吧台单图（1440×189 批次 021 v3 空台面），scale=1 单 sprite 摆 (900,452)——
-## 与原 3 段拼合总跨度一致（x 180..1620：左让入口通道、右让外卖口），不压 y≥480 顾客队列区
+## #75：整吧台单图（1440×189 批次 021 v3 空台面），scale=1 单 sprite——左让入口通道、右让外卖口，不压顾客队列区
+## #90：店内加宽只重摆（COUNTER_BAR_POS 跟随），图宽不变故碰撞体尺寸不变、位置按偏移跟随
 func _build_counter() -> void:
 	_add_prop_sprite("CounterBar", COUNTER_BAR_TEX, LayoutManager.COUNTER_BAR_POS, Vector2.ONE)
 	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + LayoutManager.CASHIER_OFFSET, Vector2.ONE)
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
-	# 只覆盖正面厚度（y 500..532）——台面视觉可重叠，俯视角下头压桌面是正常观感；
-	# 玩家（半径 117）北面停在 y≈383，距队列顾客（y=520）137px < 交互范围 160
+	# 只覆盖正面厚度（柜点 y-20..y+12）——台面视觉可重叠，俯视角下头压桌面是正常观感；
+	# 玩家（半径 117）北面停在柜点 y-137，距队列顾客 137px < 交互范围 160
 	if not has_node("CounterBody"):
 		var body := StaticBody2D.new()
 		body.name = "CounterBody"
@@ -225,7 +225,8 @@ func _build_counter() -> void:
 		shape.shape = rect
 		body.add_child(shape)
 		add_child(body)
-		body.position = Vector2(960, 516)
+	# 位置每帧就绪都跟随布局（@tool 编辑器内热重载也要复位，不能只写在 has_node 分支里）
+	$CounterBody.position = LayoutManager.COUNTER_BAR_POS + Vector2(60, 64)
 
 ## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
 ## #75：点位收编 LayoutManager；地毯/操作桌 PNG 已按世界尺寸重出，scale 恒为 1
@@ -244,7 +245,7 @@ func _build_decorations() -> void:
 ## z 层：草地 -11（比店内地板 -10 更靠底）、石板路 -9（同门内地垫，压草地）；果树/灌木/路灯/栅栏 z=0
 ## 参与全场景 y-sort——玩家/顾客走进店外时遮挡自动正确（#60 扁平化排序覆盖世界全域）
 func _build_outdoor() -> void:
-	# 草地整图垫底（768x432 × 3 = 世界 2304x1296）
+	# 草地整图垫底（768x432 等比拉伸铺满世界）
 	if not has_node("Grass"):
 		var grass := Sprite2D.new()
 		grass.name = "Grass"
@@ -253,7 +254,7 @@ func _build_outdoor() -> void:
 		grass.scale = LayoutManager.WORLD_SIZE / Vector2(GRASS_TEX.get_size())
 		grass.z_index = -11
 		add_child(grass)
-	# 石板小路（左带，对齐顾客入口动线 y=520）
+	# 石板小路（左带，对齐顾客入口动线）
 	_add_prop_sprite("StonePath", STONE_PATH_TEX, LayoutManager.STONE_PATH_POS, Vector2.ONE, -9)
 	# 果树 ×4 / 灌木 ×6 / 路灯 ×2 / 栅栏 ×9（点位单一权威 = LayoutManager）
 	for i in LayoutManager.TREE_SLOTS.size():
@@ -476,7 +477,7 @@ func _dump_ui_tree(node: Node = null, depth: int = 0) -> void:
 
 ## 按 LayoutManager 配置摆放全部功能节点（位置单一权威）
 func _place_nodes() -> void:
-	# 相机居中锁定（世界中心 = 店内中心 (960,540)，#85 外扩后不变）+ zoom 适配整世界（2304x1296 → 5/6）
+	# 相机居中锁定（世界中心 = WORLD_ORIGIN + WORLD_SIZE/2）+ zoom 适配整世界（zoom = WINDOW/WORLD 动态换算）
 	camera.position = LayoutManager.WORLD_ORIGIN + LayoutManager.WORLD_SIZE / 2.0
 	camera.zoom = LayoutManager.WINDOW_SIZE / LayoutManager.WORLD_SIZE
 

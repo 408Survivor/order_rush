@@ -69,9 +69,9 @@ func _run() -> void:
 	_check(layout != null, "LayoutManager (autoload) 可访问")
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
-	_check(layout.WORLD_SIZE == Vector2(2304, 1296), "世界尺寸 2304x1296（#85 店外氛围带外扩，16:9 保持）")
-	_check(layout.SHOP_SIZE == Vector2(1920, 1080) and layout.WORLD_ORIGIN == Vector2(-192, -108),
-		"店内范围 1920x1080 + 氛围带边距 192/108（#85，gameplay 点位不变）")
+	_check(layout.WORLD_SIZE == Vector2(2688, 1512), "世界尺寸 2688x1512（#90 店堂扩容 + #85 氛围带边距，16:9 保持）")
+	_check(layout.SHOP_SIZE == Vector2(2304, 1296) and layout.WORLD_ORIGIN == Vector2(-192, -108),
+		"店内范围 2304x1296（#90 扩容 +20%）+ 氛围带边距 192/108 不变（#85）")
 	_check(scene.get_node("ZoneStorage") != null and scene.get_node("ZoneFront") != null \
 		and scene.get_node("ZoneKitchen") != null and scene.get_node("ZoneDining") != null,
 		"四区色块由布局配置生成")
@@ -86,6 +86,9 @@ func _run() -> void:
 	var counter_body = scene.get_node_or_null("CounterBody")
 	_check(counter_body != null and counter_body is StaticBody2D and counter_body.collision_layer == 1,
 		"吧台碰撞体存在（StaticBody2D layer=1，#58）")
+	# #90：吧台碰撞体跟随整吧台重摆（图宽不变 → 碰撞尺寸不变，位置 = 吧台中心 + 固定偏移）
+	_check(counter_body != null and counter_body.position == layout.COUNTER_BAR_POS + Vector2(60, 64),
+		"吧台碰撞体跟随吧台新位置（#90）")
 	var customer_scene: PackedScene = load("res://scenes/entities/Customer.tscn")
 	var probe: CharacterBody2D = customer_scene.instantiate()
 	_check(probe.collision_mask == 16, "顾客 mask=16（不撞吧台碰撞体，#58）")
@@ -100,10 +103,10 @@ func _run() -> void:
 	_check(grass != null and grass.z_index == -11, "草地 z=-11（比店内地板 -10 更靠底，#85）")
 	_check(grass != null and grass.position == layout.WORLD_ORIGIN + layout.WORLD_SIZE / 2.0, "草地满铺整世界（#85）")
 	var floor_sprite: Sprite2D = scene.get_node("Floor")
-	_check(floor_sprite.position == layout.SHOP_SIZE / 2.0, "地板仍只盖店内 1920x1080（#85）")
+	_check(floor_sprite.position == layout.SHOP_SIZE / 2.0, "地板仍只盖店内 2304x1296（#90）")
 	var stone_path: Sprite2D = scene.get_node_or_null("StonePath")
 	_check(stone_path != null and stone_path.position == layout.STONE_PATH_POS, "石板路位于布局点位（#85）")
-	_check(stone_path != null and absf(stone_path.position.y - layout.ENTRANCE_POINT.y) < 1.0, "石板路与顾客入口动线 y=520 对齐（#85）")
+	_check(stone_path != null and absf(stone_path.position.y - layout.ENTRANCE_POINT.y) < 1.0, "石板路与顾客入口动线 y=680 对齐（#90）")
 	_check(stone_path != null and stone_path.z_index == -9, "石板路 z=-9 压草地（#85）")
 	var outdoor_counts_ok := true
 	for i in 4:
@@ -115,18 +118,18 @@ func _run() -> void:
 	for i in 2:
 		if scene.get_node_or_null("GardenLamp%d" % (i + 1)) == null:
 			outdoor_counts_ok = false
-	for i in 9:
+	for i in 11:
 		if scene.get_node_or_null("Fence%d" % (i + 1)) == null:
 			outdoor_counts_ok = false
-	_check(outdoor_counts_ok, "果树×4/灌木×6/路灯×2/栅栏×9 全部上屏（#85）")
+	_check(outdoor_counts_ok, "果树×4/灌木×6/路灯×2/栅栏×11 全部上屏（#85/#90 栅栏随世界宽 2688 增至 11 段）")
 	_check(scene.get_node("FruitTree1").position == layout.TREE_SLOTS[0] \
-		and scene.get_node("Fence9").position == layout.FENCE_SLOTS[8], "氛围带点位接入 LayoutManager（#85）")
-	# 相机：中心仍在店内中心 (960,540)，zoom = 窗口/世界 适配外扩后整世界可见
-	_check(scene.get_node("Camera2D").position == Vector2(960, 540), "相机中心不变（#85）")
-	_check(scene.get_node("Camera2D").zoom.is_equal_approx(layout.WINDOW_SIZE / layout.WORLD_SIZE), "相机 zoom 适配世界外扩（#85）")
-	# gameplay 点位数值不变（#85 验收红线）
-	_check(layout.ENTRANCE_POINT == Vector2(80, 520) and layout.COUNTER_POINT == Vector2(1350, 520) \
-		and layout.PICKUP_POINT == Vector2(1640, 520) and layout.SPAWN_POINT == Vector2(960, 300), "gameplay 点位数值不变（#85）")
+		and scene.get_node("Fence11").position == layout.FENCE_SLOTS[10], "氛围带点位接入 LayoutManager（#85/#90）")
+	# 相机：中心 = 世界中心 (1152,648)，zoom = 窗口/世界 适配扩容后整世界可见
+	_check(scene.get_node("Camera2D").position == Vector2(1152, 648), "相机中心 = 新世界中心（#90）")
+	_check(scene.get_node("Camera2D").zoom.is_equal_approx(layout.WINDOW_SIZE / layout.WORLD_SIZE), "相机 zoom 适配世界扩容（#90）")
+	# gameplay 点位数值（#90 扩容重排：拓扑不变、间距拉开）
+	_check(layout.ENTRANCE_POINT == Vector2(80, 680) and layout.COUNTER_POINT == Vector2(1560, 680) \
+		and layout.PICKUP_POINT == Vector2(1850, 680) and layout.SPAWN_POINT == Vector2(1152, 460), "gameplay 点位数值（#90）")
 
 	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
 	var board = scene.get_node("OrderBoard")
@@ -224,14 +227,15 @@ func _run() -> void:
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 
-	# 顾客生成时序：入口(80,520)→柜台(1350,520) 距离 1270px / 160 ≈ 7.9s，
+	# 顾客生成时序（#90 按新动线重算，#24 经验：距离变 → 时序按距离/160px/s 重算）：
+	# 入口(80,680)→柜台(1560,680) 距离 1480px / 160 = 9.25s；槽位 1 = 1280px = 8.0s；槽位 2 = 1080px = 6.75s
 	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
 	var c1 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.5).timeout
+	await get_tree().create_timer(10.0).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.5).timeout
+	await get_tree().create_timer(8.7).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(6.0).timeout
+	await get_tree().create_timer(7.4).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
 	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
@@ -347,14 +351,14 @@ func _run() -> void:
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
-	# 等待上一批顾客全部离店（柜台→入口 1270px ≈ 7.9s）后生成新一批
-	await get_tree().create_timer(8.5).timeout
+	# 等待上一批顾客全部离店（柜台→入口 1480px / 160 = 9.25s，#90 重算）后生成新一批
+	await get_tree().create_timer(10.0).timeout
 	var c4 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.5).timeout
+	await get_tree().create_timer(10.0).timeout
 	var c5 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.5).timeout
+	await get_tree().create_timer(8.7).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(6.0).timeout
+	await get_tree().create_timer(7.4).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 
@@ -701,8 +705,8 @@ func _run() -> void:
 		stacks.append(stack)
 		_check(stack != null, "货箱堆 %d 已实例化（#50）" % (i + 1))
 		_check(stack != null and stack.global_position == layout.get_slot_position(layout.CRATE_SLOTS, i), "货箱堆 %d 位于 CRATE_SLOTS（#50）" % (i + 1))
-	_check(layout.PICKUP_POINT == Vector2(1640, 520), "外卖口点位右移至柜台旁（#50）")
-	_check(layout.SPAWN_POINT == Vector2(960, 300), "玩家出生点位（#50）")
+	_check(layout.PICKUP_POINT == Vector2(1850, 680), "外卖口点位（#90：吧台右缘 +20，随柜台右移）")
+	_check(layout.SPAWN_POINT == Vector2(1152, 460), "玩家出生点位（#90）")
 
 	# 空手从货箱堆拿货箱 → 手持 crate 组物品
 	player.call("discard_held_item")  # 防御：确保空手，避免影响后续断言
