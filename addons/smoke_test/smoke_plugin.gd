@@ -350,20 +350,35 @@ func _run() -> void:
 	_check(gsm.is_shop_open, "当前营业中")
 	_check(absf(gsm.business_time_left - gsm.BUSINESS_TIME_PER_DAY) < 0.01, "营业倒计时初始为满")
 
-	# HUD 拆行（#32 第③步）：DayTimeLabel 天数行 + TimeLabel 倒计时行
+	# HUD 拆行（#32 第③步）：DayTimeLabel 天数行 + TimeLabel 倒计时行（#84 移入 TopRow/TopLabels，与饼图时钟并排）
 	scene.get_node("RevenueHUD").call("_update_all")
-	var day_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/DayTimeLabel").text
-	var time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/TimeLabel").text
-	_check(day_text.contains("第 1 天") and day_text.contains("calendar.svg"), "HUD 天数行（图标化）")
+	var day_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/TopRow/TopLabels/DayTimeLabel").text
+	var time_text: String = scene.get_node("RevenueHUD/Panel/Margin/VBox/TopRow/TopLabels/TimeLabel").text
+	_check(day_text.contains("第 1/7 天") and day_text.contains("calendar.svg"), "HUD 天数行（图标化 + Day N/7 标注，#84）")
 	_check(time_text.contains("营业剩余 90s") and time_text.contains("timer.svg"), "HUD 倒计时行（图标化）")
-	_check(scene.get_node_or_null("RevenueHUD/Panel/Margin/VBox/TimeBar") != null, "HUD 时间进度条节点存在（#48）")
+	# #84 饼图时钟：节点就位 + 满时指针指向 12 点（-PI/2）
+	var clock: Control = scene.get_node_or_null("RevenueHUD/Panel/Margin/VBox/TopRow/BusinessClock")
+	_check(clock != null, "HUD 饼图时钟节点存在（#84，替换 #48 线性 TimeBar）")
+	var angle_start: float = clock.get("hand_angle")
+	_check(absf(angle_start - (-PI / 2.0)) < 0.01, "时钟满时指针指向 12 点（#84）")
 
 	# 倒计时推进（未到点不触发打烊）
 	gsm.tick_business_time(10.0)
 	_check(absf(gsm.business_time_left - (gsm.BUSINESS_TIME_PER_DAY - 10.0)) < 0.01, "营业倒计时随 tick 递减")
 	_check(gsm.is_shop_open, "未到点仍营业")
 	scene.get_node("RevenueHUD").call("_update_all")
-	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/TimeBar").value < 100.0, "HUD 时间条随倒计时减少（#48）")
+	var angle_after: float = clock.get("hand_angle")
+	_check(absf(angle_after - angle_start - TAU / 9.0) < 0.01, "时钟指针随 tick 顺时针转动（#84）")
+	_check(not clock.get("urgent"), "非末段时钟无紧急脉冲（#84）")
+
+	# #84 末段（最后 10s）：进入紧急态 + 红色脉冲相位推进
+	gsm.tick_business_time(71.0)
+	_check(absf(gsm.business_time_left - 9.0) < 0.01, "营业倒计时推进至末段（剩 9s）")
+	scene.get_node("RevenueHUD").call("_update_all")
+	_check(clock.get("urgent"), "最后 10s 时钟进入紧急脉冲态（#84）")
+	var alpha0: float = clock.call("pulse_alpha")
+	clock.call("_tick_pulse", 0.35)
+	_check(absf(clock.call("pulse_alpha") - alpha0) > 0.01, "末段红色脉冲相位随时间推进（#84）")
 
 	# 倒计时耗尽 → 自动打烊：停止营业、作废订单、结算利润
 	# 打烊前造一笔未完成订单（P2 超时段已把订单清空），真实覆盖“打烊作废订单”分支

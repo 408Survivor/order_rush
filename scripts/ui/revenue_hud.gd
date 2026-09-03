@@ -1,20 +1,21 @@
 ## 文件: scripts/ui/revenue_hud.gd
-## 职责: 经营面板 HUD——右上角显示天数/营业倒计时（+时间进度条）/当日营业额/好评/差评
-##       （issue #26；#30 图标化/数字滚动/倒计时脉冲；#48 tscn 化 + 时间进度条 + 营业额弹跳）
+## 职责: 经营面板 HUD——右上角饼图时钟（营业倒计时）+ 天数/当日营业额/好评/差评
+##       （issue #26；#30 图标化/数字滚动/倒计时脉冲；#48 tscn 化 + 营业额弹跳；#84 饼图时钟替换线性 TimeBar）
 ## 依赖: GameStateManager/UITheme (autoload)；静态节点树在 scenes/ui/RevenueHUD.tscn
-## 注意: 场景结构 RevenueHUD > Panel > Margin > VBox > DayTimeLabel/TimeLabel/TimeBar/RevenueLabel/GoodLabel/BadLabel
-##       （节点路径保持兼容，冒烟测试硬依赖）
+## 注意: 场景结构 RevenueHUD > Panel > Margin > VBox > TopRow{BusinessClock,TopLabels{DayTimeLabel,TimeLabel}}
+##       + RevenueLabel/GoodLabel/BadLabel（节点路径保持兼容，冒烟测试硬依赖）
 ##       @tool：编辑器进程（冒烟测试）不连接信号/不启用动画，手动 _update_all 断言（项目统一约定）
 ## #30: 营业额数字滚动、倒计时最后 10s 红色脉冲仅运行模式生效
-## #48: TimeBar 进度条用 UITheme bar 纹理（绿/红），样式只在颜色变化时重设；营业额增大时数字弹跳（运行模式）
+## #48: 营业额增大时数字弹跳（仅运行模式）
+## #84: BusinessClock 饼图时钟由 _on_time_changed 调 set_time 驱动（指针平滑转动；末段 10s 红色脉冲）
 
 @tool
 extends CanvasLayer
 
 @onready var panel: PanelContainer = $Panel
-@onready var day_time_label: RichTextLabel = $Panel/Margin/VBox/DayTimeLabel
-@onready var time_label: RichTextLabel = $Panel/Margin/VBox/TimeLabel
-@onready var time_bar: ProgressBar = $Panel/Margin/VBox/TimeBar
+@onready var business_clock: Control = $Panel/Margin/VBox/TopRow/BusinessClock
+@onready var day_time_label: RichTextLabel = $Panel/Margin/VBox/TopRow/TopLabels/DayTimeLabel
+@onready var time_label: RichTextLabel = $Panel/Margin/VBox/TopRow/TopLabels/TimeLabel
 @onready var revenue_label: RichTextLabel = $Panel/Margin/VBox/RevenueLabel
 @onready var good_label: RichTextLabel = $Panel/Margin/VBox/GoodLabel
 @onready var bad_label: RichTextLabel = $Panel/Margin/VBox/BadLabel
@@ -24,16 +25,10 @@ var _displayed_revenue := -1
 var _revenue_tween: Tween = null
 ## 倒计时脉冲动画（最后 10s 启用）
 var _pulse_tween: Tween = null
-## 时间条当前填充色名（"green"/"red"，仅变化时重设样式）
-var _bar_color := ""
 
 func _ready() -> void:
 	# #30/#32：纹理面板样式（九宫格金边圆角；@tool 下同样生效，纯视觉无副作用）
 	panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style())
-	# #48：时间条轨道样式（填充色由 _on_time_changed 按紧急度切换）
-	time_bar.add_theme_stylebox_override("background", UITheme.make_bar_bg_style())
-	time_bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style("green"))
-	_bar_color = "green"
 	# @tool：编辑器进程不连接信号/刷新（冒烟测试手动 _update_all 断言），与 toast/order_board 拦截模式一致
 	if Engine.is_editor_hint():
 		return
@@ -52,24 +47,19 @@ func _on_day_stats_changed() -> void:
 	good_label.text = "%s 好评 %d" % [UITheme.icon(UITheme.ICON_GOOD), GameStateManager.day_good_reviews]
 	bad_label.text = "%s 差评 %d" % [UITheme.icon(UITheme.ICON_BAD), GameStateManager.day_bad_reviews]
 
-## 营业倒计时更新 → 天数与倒计时分两行显示（#32 第③步 版式拆行）；最后 10s 红色脉冲警示；打烊后显示"已打烊"
-## #48：同步 TimeBar 剩余比例（打烊归零；紧急时填充换红色纹理，仅变化时重设样式）
+## 营业倒计时更新 → 天数行（Day N/7）+ 倒计时行；最后 10s 红色脉冲警示；打烊后显示"已打烊"
+## #84：同步 BusinessClock 饼图时钟（time_changed 每帧发出，指针平滑转动；打烊归零灰显）
 func _on_time_changed(time_left: float) -> void:
 	var urgent := false
-	day_time_label.text = "%s 第 %d 天" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day]
+	day_time_label.text = "%s 第 %d/%d 天" % [UITheme.icon(UITheme.ICON_CALENDAR), GameStateManager.day, GameStateManager.TOTAL_DAYS]
 	if GameStateManager.is_shop_open:
 		var left := int(ceil(time_left))
 		time_label.text = "%s 营业剩余 %ds" % [UITheme.icon(UITheme.ICON_TIMER), left]
 		urgent = left <= 10
-		time_bar.value = clampf(time_left / maxf(GameStateManager.BUSINESS_TIME_PER_DAY, 0.01), 0.0, 1.0) * 100.0
 	else:
 		time_label.text = "%s 已打烊" % UITheme.icon(UITheme.ICON_CLOSED)
-		time_bar.value = 0.0
+	business_clock.set_time(time_left, GameStateManager.BUSINESS_TIME_PER_DAY, GameStateManager.is_shop_open)
 	time_label.add_theme_color_override("default_color", UITheme.COLOR_RED if urgent else UITheme.COLOR_GOLD)
-	var color_name := "red" if urgent else "green"
-	if _bar_color != color_name:
-		_bar_color = color_name
-		time_bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style(color_name))
 	_update_pulse(urgent)
 
 ## 进入下一天 → 刷新整面板（倒计时已在 time_changed 刷新）

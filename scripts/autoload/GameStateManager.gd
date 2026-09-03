@@ -45,6 +45,7 @@ const CONSUMABLE_COST_PER_ORDER := 2   ## 耗材成本（按售出量计，每�
 const RENT_COST_PER_DAY := 30          ## 固定房租（每天）
 const UTILITY_COST_PER_HEAT := 1       ## 水电燃气（按设备使用次数计，每次加热）
 const BUSINESS_TIME_PER_DAY := 90.0    ## 每天营业时长（秒），到点自动打烊
+const TOTAL_DAYS := 7                  ## 营业总天数（#84 HUD 饼图时钟标注 Day N/7；与 7 天难度表对应）
 
 # ===== P4 外卖常量（可调） =====
 const TAKEOUT_MAX_CONCURRENT := 3       ## 外卖订单并发上限（与堂食 3 单并行）
