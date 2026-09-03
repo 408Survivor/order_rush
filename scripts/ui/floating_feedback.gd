@@ -55,7 +55,7 @@ func _resolve_customer_pos(order_id: int) -> Vector2:
 				return customer.global_position
 	if scene != null and scene.has_node("CounterPoint"):
 		return scene.get_node("CounterPoint").global_position
-	return Vector2(960, 520)
+	return LayoutManager.COUNTER_POINT
 
 ## 外卖口位置（回退 LayoutManager.PICKUP_POINT）
 func _resolve_takeout_pos() -> Vector2:

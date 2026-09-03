@@ -20,10 +20,10 @@
 script = ExtResource("8_main")
 
 [node name="Camera2D" type="Camera2D" parent="."]
-position = Vector2(960, 540)
+position = Vector2(1152, 648)
 
 [node name="Floor" type="Sprite2D" parent="."]
-position = Vector2(960, 540)
+position = Vector2(1152, 648)
 scale = Vector2(3, 3)
 texture = ExtResource("3_floor")
 z_index = -10
@@ -33,18 +33,18 @@ z_index = -10
 [node name="Items" type="Node2D" parent="."]
 
 [node name="Microwave" parent="." instance=ExtResource("5_mw")]
-position = Vector2(1700, 180)
+position = Vector2(1690, 230)
 
 [node name="SpawnPoint" type="Marker2D" parent="."]
-position = Vector2(80, 520)
+position = Vector2(80, 680)
 
 [node name="CounterPoint" type="Marker2D" parent="."]
-position = Vector2(1350, 520)
+position = Vector2(1560, 680)
 
 [node name="CustomerManager" parent="." instance=ExtResource("6_cm")]
 
 [node name="PlayerCharacter" parent="." unique_id=1418374193 instance=ExtResource("2_ibiss")]
-position = Vector2(960, 260)
+position = Vector2(1152, 460)
 
 [node name="RevenueHUD" parent="." instance=ExtResource("7_hud")]
 
