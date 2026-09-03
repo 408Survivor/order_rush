@@ -1,5 +1,6 @@
 ## 文件: scripts/main_scene.gd
-## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块，#56 起无标签）、#51 场景陈设（墙/吧台/桌椅/装饰）并摆放全部节点；
+## 职责: 主场景组装：按 LayoutManager 布局配置生成区域视觉（色块，#56 起无标签）、#51 场景陈设（墙/吧台/桌椅/装饰）、
+##       #85 店外氛围带（草地/石板路/果树/灌木/路灯/栅栏，纯视觉）并摆放全部节点；
 ##       P3 日循环清场（打烊清顾客/新一天重置物品与玩家）
 ## 依赖: LayoutManager/GameStateManager (autoload)；场景节点结构见 MainScene.tscn（节点位置以本脚本为准）
 ## 注意: @tool 使编辑器进程打开场景即按配置摆放（位置单一权威 = LayoutManager，issue #24）
@@ -56,6 +57,13 @@ const RUG_TEX := preload("res://assets/art/props/rug.png")
 const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
 const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.png")          ## #61 厨房操作长桌（#63 AI 素材）
 const CABINET_KEY_HINTS_SCRIPT := preload("res://scripts/props/cabinet_key_hints.gd")  ## #77 冷库柜四层键标
+# ==================== #85 店外氛围带素材（手绘 SVG，纯视觉） ====================
+const GRASS_TEX := preload("res://assets/art/props/grass.svg")
+const STONE_PATH_TEX := preload("res://assets/art/props/stone_path.svg")
+const FRUIT_TREE_TEX := preload("res://assets/art/props/fruit_tree.svg")
+const BUSH_TEX := preload("res://assets/art/props/bush.svg")
+const GARDEN_LAMP_TEX := preload("res://assets/art/props/garden_lamp.svg")
+const FENCE_TEX := preload("res://assets/art/props/fence.svg")
 
 # ==================== 区域定义（名称/标签/矩形/色值，顺序与 LayoutManager.ZONE_* 一致） ====================
 var _zone_defs: Array = []
@@ -75,6 +83,8 @@ func _ready() -> void:
 		["ZoneDining", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.06)],
 	]
 	_build_zones()
+	# #85 店外氛围带：草地垫底 + 石板路/果树/灌木/路灯/栅栏（纯视觉，先于店内陈设生成垫底）
+	_build_outdoor()
 	# #51 场景陈设：墙体/门/吧台/装饰先于功能道具生成（同 z 时功能道具后画在上层）
 	_build_walls()
 	_build_counter()
@@ -227,6 +237,33 @@ func _build_decorations() -> void:
 	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）+ 操作长桌（垫冰柜/微波炉一排之下，右缘收在经营面板左侧）
 	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, LayoutManager.FRIDGE_CABINET_POS, Vector2.ONE, -1)
 	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, LayoutManager.WORK_TABLE_POS, Vector2.ONE, -1)
+
+# ==================== #85 店外氛围带（草地/石板路/果树/灌木/路灯/栅栏，全部纯视觉无碰撞） ====================
+
+## 店外氛围带生成（幂等：has_node 防编辑器热重载重复；节点自身不开 y_sort——继承 MainScene 根排序即可）
+## z 层：草地 -11（比店内地板 -10 更靠底）、石板路 -9（同门内地垫，压草地）；果树/灌木/路灯/栅栏 z=0
+## 参与全场景 y-sort——玩家/顾客走进店外时遮挡自动正确（#60 扁平化排序覆盖世界全域）
+func _build_outdoor() -> void:
+	# 草地整图垫底（768x432 × 3 = 世界 2304x1296）
+	if not has_node("Grass"):
+		var grass := Sprite2D.new()
+		grass.name = "Grass"
+		grass.texture = GRASS_TEX
+		grass.position = LayoutManager.WORLD_ORIGIN + LayoutManager.WORLD_SIZE / 2.0
+		grass.scale = LayoutManager.WORLD_SIZE / Vector2(GRASS_TEX.get_size())
+		grass.z_index = -11
+		add_child(grass)
+	# 石板小路（左带，对齐顾客入口动线 y=520）
+	_add_prop_sprite("StonePath", STONE_PATH_TEX, LayoutManager.STONE_PATH_POS, Vector2.ONE, -9)
+	# 果树 ×4 / 灌木 ×6 / 路灯 ×2 / 栅栏 ×9（点位单一权威 = LayoutManager）
+	for i in LayoutManager.TREE_SLOTS.size():
+		_add_prop_sprite("FruitTree%d" % (i + 1), FRUIT_TREE_TEX, LayoutManager.get_slot_position(LayoutManager.TREE_SLOTS, i), Vector2.ONE)
+	for i in LayoutManager.BUSH_SLOTS.size():
+		_add_prop_sprite("Bush%d" % (i + 1), BUSH_TEX, LayoutManager.get_slot_position(LayoutManager.BUSH_SLOTS, i), Vector2.ONE)
+	for i in LayoutManager.LAMP_SLOTS.size():
+		_add_prop_sprite("GardenLamp%d" % (i + 1), GARDEN_LAMP_TEX, LayoutManager.get_slot_position(LayoutManager.LAMP_SLOTS, i), Vector2.ONE)
+	for i in LayoutManager.FENCE_SLOTS.size():
+		_add_prop_sprite("Fence%d" % (i + 1), FENCE_TEX, LayoutManager.get_slot_position(LayoutManager.FENCE_SLOTS, i), Vector2.ONE)
 
 # ==================== 冰柜 + 货箱堆（#50 两段式补给；#54 四格取货） ====================
 
@@ -439,14 +476,15 @@ func _dump_ui_tree(node: Node = null, depth: int = 0) -> void:
 
 ## 按 LayoutManager 配置摆放全部功能节点（位置单一权威）
 func _place_nodes() -> void:
-	# 相机居中锁定（世界 = 窗口，整店可见不跟随）
-	camera.position = LayoutManager.WORLD_SIZE / 2.0
+	# 相机居中锁定（世界中心 = 店内中心 (960,540)，#85 外扩后不变）+ zoom 适配整世界（2304x1296 → 5/6）
+	camera.position = LayoutManager.WORLD_ORIGIN + LayoutManager.WORLD_SIZE / 2.0
+	camera.zoom = LayoutManager.WINDOW_SIZE / LayoutManager.WORLD_SIZE
 
-	# 地板满铺世界（#60：z=-10 垫底——y-sort 后 y=540 的地板不能参与排序遮挡角色）
+	# 地板满铺店内（#60：z=-10 垫底；#85：店外由草地 -11 承接，地板仍只盖 SHOP_SIZE 店内范围）
 	floor_sprite.z_index = -10
-	floor_sprite.position = LayoutManager.WORLD_SIZE / 2.0
+	floor_sprite.position = LayoutManager.SHOP_SIZE / 2.0
 	if floor_sprite.texture != null:
-		floor_sprite.scale = LayoutManager.WORLD_SIZE / floor_sprite.texture.get_size()
+		floor_sprite.scale = LayoutManager.SHOP_SIZE / floor_sprite.texture.get_size()
 
 	# 关键点位（注意：SpawnPoint 节点 = 顾客生成入口，玩家出生点是 LayoutManager.SPAWN_POINT）
 	spawn_point.global_position = LayoutManager.ENTRANCE_POINT

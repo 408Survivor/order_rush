@@ -69,7 +69,9 @@ func _run() -> void:
 	_check(layout != null, "LayoutManager (autoload) 可访问")
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
-	_check(layout.WORLD_SIZE == Vector2(1920, 1080), "世界尺寸 1920x1080")
+	_check(layout.WORLD_SIZE == Vector2(2304, 1296), "世界尺寸 2304x1296（#85 店外氛围带外扩，16:9 保持）")
+	_check(layout.SHOP_SIZE == Vector2(1920, 1080) and layout.WORLD_ORIGIN == Vector2(-192, -108),
+		"店内范围 1920x1080 + 氛围带边距 192/108（#85，gameplay 点位不变）")
 	_check(scene.get_node("ZoneStorage") != null and scene.get_node("ZoneFront") != null \
 		and scene.get_node("ZoneKitchen") != null and scene.get_node("ZoneDining") != null,
 		"四区色块由布局配置生成")
@@ -91,6 +93,40 @@ func _run() -> void:
 	# #60 全场景 Y 排序：根节点开启 + 地板 z=-10 垫底（不参与排序遮挡）
 	_check(scene.y_sort_enabled and scene.get_node("CustomerManager").y_sort_enabled, "全场景 Y 排序已开启（#60）")
 	_check(scene.get_node("Floor").z_index == -10, "地板 z=-10 垫底（#60）")
+
+	# ===== #85 店外氛围带：草地/石板路/果树/灌木/路灯/栅栏（纯视觉） =====
+	var grass: Sprite2D = scene.get_node_or_null("Grass")
+	_check(grass != null, "店外草地节点存在（#85）")
+	_check(grass != null and grass.z_index == -11, "草地 z=-11（比店内地板 -10 更靠底，#85）")
+	_check(grass != null and grass.position == layout.WORLD_ORIGIN + layout.WORLD_SIZE / 2.0, "草地满铺整世界（#85）")
+	var floor_sprite: Sprite2D = scene.get_node("Floor")
+	_check(floor_sprite.position == layout.SHOP_SIZE / 2.0, "地板仍只盖店内 1920x1080（#85）")
+	var stone_path: Sprite2D = scene.get_node_or_null("StonePath")
+	_check(stone_path != null and stone_path.position == layout.STONE_PATH_POS, "石板路位于布局点位（#85）")
+	_check(stone_path != null and absf(stone_path.position.y - layout.ENTRANCE_POINT.y) < 1.0, "石板路与顾客入口动线 y=520 对齐（#85）")
+	_check(stone_path != null and stone_path.z_index == -9, "石板路 z=-9 压草地（#85）")
+	var outdoor_counts_ok := true
+	for i in 4:
+		if scene.get_node_or_null("FruitTree%d" % (i + 1)) == null:
+			outdoor_counts_ok = false
+	for i in 6:
+		if scene.get_node_or_null("Bush%d" % (i + 1)) == null:
+			outdoor_counts_ok = false
+	for i in 2:
+		if scene.get_node_or_null("GardenLamp%d" % (i + 1)) == null:
+			outdoor_counts_ok = false
+	for i in 9:
+		if scene.get_node_or_null("Fence%d" % (i + 1)) == null:
+			outdoor_counts_ok = false
+	_check(outdoor_counts_ok, "果树×4/灌木×6/路灯×2/栅栏×9 全部上屏（#85）")
+	_check(scene.get_node("FruitTree1").position == layout.TREE_SLOTS[0] \
+		and scene.get_node("Fence9").position == layout.FENCE_SLOTS[8], "氛围带点位接入 LayoutManager（#85）")
+	# 相机：中心仍在店内中心 (960,540)，zoom = 窗口/世界 适配外扩后整世界可见
+	_check(scene.get_node("Camera2D").position == Vector2(960, 540), "相机中心不变（#85）")
+	_check(scene.get_node("Camera2D").zoom.is_equal_approx(layout.WINDOW_SIZE / layout.WORLD_SIZE), "相机 zoom 适配世界外扩（#85）")
+	# gameplay 点位数值不变（#85 验收红线）
+	_check(layout.ENTRANCE_POINT == Vector2(80, 520) and layout.COUNTER_POINT == Vector2(1350, 520) \
+		and layout.PICKUP_POINT == Vector2(1640, 520) and layout.SPAWN_POINT == Vector2(960, 300), "gameplay 点位数值不变（#85）")
 
 	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
 	var board = scene.get_node("OrderBoard")
