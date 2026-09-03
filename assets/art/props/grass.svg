@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 768 432" width="768" height="432">
+<!-- 店外草地整图（#85）：768x432 ×3 平铺世界 2304x1296；浅草绿底 + 浅色草斑/草丛点缀，不描边（衬底用） -->
+<rect x="0" y="0" width="768" height="432" fill="#A9DB9B"/>
+<!-- 草斑（同色系深浅交替，读作草地起伏） -->
+<ellipse cx="120" cy="80" rx="130" ry="60" fill="#BCE5AC"/>
+<ellipse cx="420" cy="150" rx="150" ry="70" fill="#9BCF8B"/>
+<ellipse cx="660" cy="60" rx="110" ry="55" fill="#BCE5AC"/>
+<ellipse cx="80" cy="300" rx="120" ry="65" fill="#9BCF8B"/>
+<ellipse cx="350" cy="360" rx="140" ry="60" fill="#BCE5AC"/>
+<ellipse cx="640" cy="330" rx="130" ry="70" fill="#9BCF8B"/>
+<ellipse cx="240" cy="210" rx="90" ry="45" fill="#B7E2A6"/>
+<ellipse cx="560" cy="230" rx="100" ry="50" fill="#A2D694"/>
+<!-- 草丛笔触（深一档绿） -->
+<g stroke="#7FBF72" stroke-width="4" stroke-linecap="round" fill="none">
+<path d="M60 150 q4 -14 8 0 M72 150 q4 -18 9 0 M84 150 q4 -12 8 0"/>
+<path d="M300 70 q4 -14 8 0 M312 70 q4 -18 9 0 M324 70 q4 -12 8 0"/>
+<path d="M520 100 q4 -14 8 0 M532 100 q4 -18 9 0 M544 100 q4 -12 8 0"/>
+<path d="M700 200 q4 -14 8 0 M712 200 q4 -18 9 0 M724 200 q4 -12 8 0"/>
+<path d="M180 380 q4 -14 8 0 M192 380 q4 -18 9 0 M204 380 q4 -12 8 0"/>
+<path d="M460 300 q4 -14 8 0 M472 300 q4 -18 9 0 M484 300 q4 -12 8 0"/>
+<path d="M40 30 q4 -14 8 0 M52 30 q4 -18 9 0 M64 30 q4 -12 8 0"/>
+<path d="M730 400 q4 -14 8 0 M742 400 q4 -18 9 0 M754 400 q4 -12 8 0"/>
+</g>
+<!-- 小野花（奶油白/珊瑚粉，贴色板） -->
+<g>
+<circle cx="150" cy="130" r="6" fill="#FFF6E5"/><circle cx="150" cy="130" r="2.5" fill="#FFE9A8"/>
+<circle cx="480" cy="60" r="6" fill="#FF8A80"/><circle cx="480" cy="60" r="2.5" fill="#FFF6E5"/>
+<circle cx="620" cy="270" r="6" fill="#FFF6E5"/><circle cx="620" cy="270" r="2.5" fill="#FFE9A8"/>
+<circle cx="260" cy="330" r="6" fill="#FF8A80"/><circle cx="260" cy="330" r="2.5" fill="#FFF6E5"/>
+<circle cx="710" cy="120" r="6" fill="#FFF6E5"/><circle cx="710" cy="120" r="2.5" fill="#FFE9A8"/>
+<circle cx="90" cy="240" r="6" fill="#FF8A80"/><circle cx="90" cy="240" r="2.5" fill="#FFF6E5"/>
+</g>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 264 128" width="264" height="128">
+<!-- 店外石板路（#85）：264x128，世界左侧 (-193..71, 456..584) 对齐顾客入口动线 y=520；石板暖灰 + 柔棕描边（衬底元素，描边比道具细） -->
+<g fill="#E7DEC9" stroke="#8A7A5F" stroke-width="4" stroke-linejoin="round">
+<rect x="6" y="14" width="76" height="46" rx="14"/>
+<rect x="96" y="8" width="80" height="50" rx="14" fill="#DED4BC"/>
+<rect x="190" y="16" width="68" height="44" rx="14"/>
+<rect x="26" y="70" width="70" height="48" rx="14" fill="#DED4BC"/>
+<rect x="110" y="66" width="76" height="50" rx="14"/>
+<rect x="200" y="72" width="58" height="44" rx="14" fill="#DED4BC"/>
+</g>
+<!-- 石板高光 -->
+<g stroke="#FFF6E5" stroke-width="3" stroke-linecap="round" fill="none" stroke-opacity="0.8">
+<path d="M20 26 q28 -8 52 0"/>
+<path d="M110 20 q30 -8 54 0"/>
+<path d="M202 28 q24 -7 44 0"/>
+<path d="M40 82 q24 -7 44 0"/>
+<path d="M124 78 q28 -8 50 0"/>
+<path d="M210 84 q20 -6 38 0"/>
+</g>
+</svg>

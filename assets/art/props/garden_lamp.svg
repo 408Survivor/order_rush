@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 190" width="90" height="190">
+<!-- 店外路灯（#85）：90x190 庭院灯——墨绿灯柱 + 奶黄暖光灯罩，深咖啡粗描边（对标烘焙糕手路边灯） -->
+<ellipse cx="45" cy="178" rx="26" ry="7" fill="#4A3728" fill-opacity="0.15"/>
+<!-- 底座 + 灯柱 -->
+<rect x="26" y="162" width="38" height="16" rx="7" fill="#3E6B52" stroke="#4A3728" stroke-width="6"/>
+<rect x="37" y="72" width="16" height="96" rx="7" fill="#4A7A5E" stroke="#4A3728" stroke-width="6"/>
+<!-- 灯罩（上盖 + 暖光玻璃） -->
+<path d="M22 50 Q22 30 45 30 Q68 30 68 50 L64 56 L26 56 Z" fill="#3E6B52" stroke="#4A3728" stroke-width="6" stroke-linejoin="round"/>
+<rect x="26" y="56" width="38" height="26" rx="9" fill="#FFE9A8" stroke="#4A3728" stroke-width="6"/>
+<rect x="33" y="61" width="10" height="14" rx="5" fill="#FFF6E5"/>
+<!-- 顶部小圆珠 -->
+<circle cx="45" cy="24" r="8" fill="#3E6B52" stroke="#4A3728" stroke-width="5"/>
+</svg>

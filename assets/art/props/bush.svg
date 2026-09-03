@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 100" width="150" height="100">
+<!-- 店外灌木（#85）：150x100 圆球灌木 + 小花，薄荷绿系 + 深咖啡粗描边 -->
+<ellipse cx="75" cy="90" rx="48" ry="8" fill="#4A3728" fill-opacity="0.15"/>
+<circle cx="48" cy="62" r="28" fill="#3E9E63" stroke="#4A3728" stroke-width="6"/>
+<circle cx="102" cy="62" r="28" fill="#3E9E63" stroke="#4A3728" stroke-width="6"/>
+<circle cx="75" cy="48" r="32" fill="#3E9E63" stroke="#4A3728" stroke-width="6"/>
+<circle cx="48" cy="60" r="20" fill="#57B87E"/>
+<circle cx="102" cy="60" r="20" fill="#57B87E"/>
+<circle cx="75" cy="46" r="24" fill="#57B87E"/>
+<circle cx="66" cy="38" r="13" fill="#6FCE96"/>
+<path d="M52 32 Q64 20 84 20" fill="none" stroke="#FFF6E5" stroke-width="4" stroke-linecap="round" stroke-opacity="0.8"/>
+<!-- 小花 -->
+<circle cx="44" cy="52" r="6" fill="#FF8A80" stroke="#4A3728" stroke-width="3"/>
+<circle cx="98" cy="40" r="6" fill="#FFF6E5" stroke="#4A3728" stroke-width="3"/>
+<circle cx="78" cy="66" r="6" fill="#FFE9A8" stroke="#4A3728" stroke-width="3"/>
+</svg>

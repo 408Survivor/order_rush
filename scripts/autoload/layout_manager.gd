@@ -5,17 +5,24 @@
 ##       CustomerManager 按此计算队列槽位。新增设备/区域/货位只改本文件（issue #24）。
 ##       #50 布局动线重构：冷库区放货箱堆（CRATE_SLOTS），冰柜移至厨房区微波炉左侧，外卖口右移至柜台旁；
 ##       #54 冰柜四格取货：台面前取包位（MEAL_SLOTS）删除，料理包经 J/K/L/空格 从冰柜直接取货；
-##       #75 tile 化一期：TILE_SIZE=64 网格建立 + 纯视觉装饰点位收编（main_scene 硬编码 → 本文件常量）。
+##       #75 tile 化一期：TILE_SIZE=64 网格建立 + 纯视觉装饰点位收编（main_scene 硬编码 → 本文件常量）；
+##       #85 店外氛围带：世界四周外扩（左右 192 / 上下 108，保持 16:9），店内 SHOP_SIZE 与全部 gameplay 点位数值不变。
 
 @tool
 extends Node
 
 # ==================== 世界 ====================
-## 世界尺寸（= 窗口 1920x1080，整店可见）
-const WORLD_SIZE := Vector2(1920, 1080)
+## 窗口尺寸（= project.godot viewport 1920x1080，相机 zoom 换算用）
+const WINDOW_SIZE := Vector2(1920, 1080)
+## 店内范围（原世界 1920x1080：地板/墙体/gameplay 全部在此内，#85 起数值冻结）
+const SHOP_SIZE := Vector2(1920, 1080)
+## 世界左上角（#85 店外氛围带边距：左右 192 = 3 tile、上下 108；世界 = 店内 + 四周氛围带）
+const WORLD_ORIGIN := Vector2(-192, -108)
+## 世界尺寸（#85：2304x1296 = 1920+2×192 / 1080+2×108，仍 16:9；相机 zoom = WINDOW/WORLD ≈ 0.833 整世界可见）
+const WORLD_SIZE := Vector2(2304, 1296)
 
 # ==================== Tile 网格（#75 美术规格 Step2 一期） ====================
-## 1 tile = 64px 世界单位（Art Bible v0.1，#65）；世界 1920x1080 = 30 x 16.875 tile
+## 1 tile = 64px 世界单位（Art Bible v0.1，#65）；世界 2304x1296 = 36 x 20.25 tile（#85 外扩，店内仍 30 x 16.875）
 ## 一期：仅建立网格常量/换算函数 + 收编装饰点位；gameplay 点位数值不动
 ## （tile 坐标注释标注，~ 表示非整格），Step 3 设备节点化时再统一取整
 const TILE_SIZE := 64
@@ -79,6 +86,24 @@ const TRASH_BIN_POS := Vector2(1790, 560)
 const FRIDGE_CABINET_POS := Vector2(300, 218)
 ## 厨房操作长桌（垫冰柜/微波炉一排之下）
 const WORK_TABLE_POS := Vector2(1300, 190)
+
+# ==================== 店外氛围带（#85，纯视觉无碰撞；z 序留在 main_scene 调用处） ====================
+## 石板小路中心（左氛围带，y=520 对齐顾客入口动线 ENTRANCE_POINT，东端抵门脸 DOOR_POS）
+const STONE_PATH_POS := Vector2(-61, 520)
+## 果树 ×4（左带上下各一 + 右带上/中各一；190x240，全部收在氛围带内）
+const TREE_SLOTS: Array[Vector2] = [Vector2(-90, 190), Vector2(-90, 860), Vector2(2010, 40), Vector2(2010, 720)]
+## 灌木 ×6（顶带横排 4 + 右带 2）
+const BUSH_SLOTS: Array[Vector2] = [
+	Vector2(250, -52), Vector2(760, -52), Vector2(1270, -52), Vector2(1780, -52),
+	Vector2(2020, 470), Vector2(2030, 1000),
+]
+## 路灯 ×2（左带石板路两侧交错，对标烘焙糕手路边灯）
+const LAMP_SLOTS: Array[Vector2] = [Vector2(-140, 395), Vector2(-45, 655)]
+## 栅栏段 ×9（底带横向平铺：256 宽/段 × 9 = 2304 满宽，首段中心 x=-64 步进 256）
+const FENCE_SLOTS: Array[Vector2] = [
+	Vector2(-64, 1134), Vector2(192, 1134), Vector2(448, 1134), Vector2(704, 1134), Vector2(960, 1134),
+	Vector2(1216, 1134), Vector2(1472, 1134), Vector2(1728, 1134), Vector2(1984, 1134),
+]
 
 # ==================== 访问函数 ====================
 

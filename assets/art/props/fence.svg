@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 96" width="256" height="96">
+<!-- 店外栅栏（#85）：256x96 木栅栏单元，世界底带横向平铺 9 段（256x9=2304）；浅木色 + 深咖啡粗描边 -->
+<ellipse cx="128" cy="88" rx="118" ry="6" fill="#4A3728" fill-opacity="0.12"/>
+<!-- 立柱 ×5 -->
+<g fill="#E0B57E" stroke="#4A3728" stroke-width="6" stroke-linejoin="round">
+<rect x="10" y="14" width="20" height="72" rx="8"/>
+<rect x="66" y="14" width="20" height="72" rx="8"/>
+<rect x="122" y="14" width="20" height="72" rx="8"/>
+<rect x="178" y="14" width="20" height="72" rx="8"/>
+<rect x="226" y="14" width="20" height="72" rx="8"/>
+</g>
+<!-- 横档 ×2 -->
+<rect x="2" y="30" width="252" height="16" rx="8" fill="#D9A566" stroke="#4A3728" stroke-width="6"/>
+<rect x="2" y="60" width="252" height="16" rx="8" fill="#D9A566" stroke="#4A3728" stroke-width="6"/>
+<!-- 木纹高光 -->
+<g stroke="#FFF6E5" stroke-width="3" stroke-linecap="round" stroke-opacity="0.7">
+<path d="M12 36 L60 36"/>
+<path d="M132 36 L180 36"/>
+<path d="M70 66 L118 66"/>
+<path d="M188 66 L236 66"/>
+</g>
+</svg>
