@@ -119,12 +119,17 @@ func _on_takeaway_completed(_order_id: int, revenue: int) -> void:
 func _on_takeaway_failed(_order_id: int) -> void:
 	show_toast("%s 外卖超时！罚款 %d" % [UITheme.icon(UITheme.ICON_CROSS), GameStateManager.TAKEOUT_FAIL_PENALTY], UITheme.COLOR_RED)
 
-## P7 特殊事件提示（设备故障 / 恶劣天气）
+## P7 特殊事件提示（设备故障 / 恶劣天气；#82 主厨慌乱——心率爆表危机）
 func _on_event_started(event_type: int) -> void:
 	if event_type == GameStateManager.SpecialEvent.EQUIPMENT_BREAK:
 		show_toast("⚠ 设备故障！微波炉停用 8s", UITheme.COLOR_RED)
 	elif event_type == GameStateManager.SpecialEvent.BAD_WEATHER:
 		show_toast("⚠ 恶劣天气！外卖暂停 15s", UITheme.COLOR_YELLOW)
+	elif event_type == GameStateManager.SpecialEvent.CHEF_PANIC:
+		show_toast("%s 心率爆表！主厨慌乱：加热 ×%.1f（%.0fs）" % [
+			UITheme.icon(UITheme.ICON_HEART),
+			GameStateManager.STRESS_CRISIS_HEAT_MULTIPLIER,
+			GameStateManager.EVENT_DURATION[GameStateManager.SpecialEvent.CHEF_PANIC]], UITheme.COLOR_RED)
 
 ## 淡出并移除（防御：节点可能已被超限移除提前释放）
 func _begin_fade(entry: Dictionary) -> void:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://daj3okb8q64jh"]
+[gd_scene load_steps=10 format=3 uid="uid://daj3okb8q64jh"]
 
 [ext_resource type="PackedScene" uid="uid://db624ccgigcb3" path="res://scenes/entities/PlayerCharacter.tscn" id="2_ibiss"]
 [ext_resource type="Texture2D" uid="uid://x3fq32rmh0tf" path="res://assets/art/environment/floor_tile.png" id="3_floor"]
@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/OrderBoard.tscn" id="9_board"]
 [ext_resource type="PackedScene" path="res://scenes/ui/ToastManager.tscn" id="10_toast"]
 [ext_resource type="PackedScene" path="res://scenes/ui/DayResultPanel.tscn" id="11_dayresult"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HeartRatePanel.tscn" id="12_heartrate"]
 
 ; ===== 布局说明（issue #24） =====
 ; 节点位置由 scripts/main_scene.gd 按 LayoutManager 配置统一摆放（此处坐标仅编辑器占位）。
@@ -52,3 +53,5 @@ position = Vector2(960, 260)
 [node name="ToastManager" parent="." instance=ExtResource("10_toast")]
 
 [node name="DayResultPanel" parent="." instance=ExtResource("11_dayresult")]
+
+[node name="HeartRatePanel" parent="." instance=ExtResource("12_heartrate")]

@@ -34,6 +34,10 @@ signal takeaway_completed(order_id: int, revenue: int)
 signal takeaway_failed(order_id: int)
 ## P7 特殊事件信号：开始（Toast/微波炉提示用）
 signal event_started(event_type: int)
+## P7 特殊事件信号：结束（#82 新增；微波炉危机降速恢复用）
+signal event_ended(event_type: int)
+## #82 心率值（全局营业压力）变化时发出（供心率 HUD 更新）
+signal heart_rate_changed(value: float)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 3  # P2: 最多同时 3 单（与 max_queue=3 对齐）
@@ -78,11 +82,25 @@ const DIFFICULTY_TABLE: Array[Dictionary] = [
 	{"spawn": 0.66, "patience": 0.75, "eta": 0.80},
 	{"spawn": 0.60, "patience": 0.70, "eta": 0.76},
 ]
-## 特殊事件类型（P7 简化：设备故障 / 恶劣天气）
-enum SpecialEvent { NONE, EQUIPMENT_BREAK, BAD_WEATHER }
-const EVENT_DURATION := {0: 0.0, 1: 8.0, 2: 15.0}  ## 事件时长（秒）
+## 特殊事件类型（P7：设备故障 / 恶劣天气；#82：主厨慌乱——心率爆表危机专用，不进随机池）
+enum SpecialEvent { NONE, EQUIPMENT_BREAK, BAD_WEATHER, CHEF_PANIC }
+const EVENT_DURATION := {0: 0.0, 1: 8.0, 2: 15.0, 3: 8.0}  ## 事件时长（秒）
 const EVENT_TRIGGER_INTERVAL := 30.0  ## 事件判定间隔（秒）
 const EVENT_TRIGGER_CHANCE := 0.15    ## 每次判定触发概率
+
+# ===== #82 心率值（全局营业压力）常量（可调） =====
+## 取值理由见 PR #82：90s 营业日下，满队列 ≈27s 持续失速爆表；5~6 次超时从平静到危机；
+## 交付 −8 让正常出餐可对冲积压增压；危机后回落 40 留缓冲而非清零
+const STRESS_MAX := 100.0               ## 心率爆表阈值（达到触发危机事件）
+const STRESS_INITIAL := 20.0            ## 每日开工初始心率（安全区）
+const STRESS_ON_TIMEOUT := 18.0         ## 堂食订单超时增压（含其差评）
+const STRESS_ON_BAD_REVIEW := 10.0      ## 外卖超时差评增压
+const STRESS_ON_DELIVERY := 8.0         ## 成功交付缓解（堂食/外卖同）
+const STRESS_QUEUE_MIN_ORDERS := 3      ## 在队订单达到该数起持续增压
+const STRESS_QUEUE_RATE := 3.0          ## 在队订单 ≥ 阈值时每秒钟增压
+const STRESS_IDLE_RATE := 2.0           ## 空闲（堂食/外卖均无在队）每秒钟缓解
+const STRESS_SAFE_AFTER_CRISIS := 40.0  ## 爆表危机后回落到的安全值
+const STRESS_CRISIS_HEAT_MULTIPLIER := 1.5  ## 主厨慌乱：加热耗时倍率
 
 ## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 由 DISHES 驱动）
 const DISH_NAMES := {
@@ -135,6 +153,9 @@ var active_event := SpecialEvent.NONE  ## 当前特殊事件
 var _event_time_left := 0.0         ## 事件剩余时长
 var _event_timer := EVENT_TRIGGER_INTERVAL  ## 距下次事件判定
 var _dish_override := ""            ## 随机菜测试钩子（空 = 真随机）
+
+## #82 心率值（全局营业压力，0..STRESS_MAX；每日开工重置，随压力事件增减）
+var heart_rate := STRESS_INITIAL
 
 ## 累计营业额（跨天累加，交付成功累加；P3 保留作历史统计/兼容）
 var revenue := 0
@@ -290,6 +311,8 @@ func complete_order(order_id: int) -> bool:
 			day_good_reviews += gain
 			# P7：招牌菜熟练度
 			record_dish_served(served_dish)
+			# #82：成功交付缓解心率
+			add_stress(-STRESS_ON_DELIVERY)
 			order_completed.emit(order_id, price)
 			revenue_changed.emit(revenue)
 			reviews_changed.emit(good_reviews, bad_reviews)
@@ -309,6 +332,7 @@ func fail_order(order_id: int) -> bool:
 			active_orders.remove_at(i)
 			bad_reviews += 1
 			day_bad_reviews += 1
+			add_stress(STRESS_ON_TIMEOUT)  # #82：订单超时增压
 			order_failed.emit(order_id)
 			reviews_changed.emit(good_reviews, bad_reviews)
 			day_stats_changed.emit()
@@ -422,6 +446,8 @@ func complete_takeaway(order_id: int) -> bool:
 	day_good_reviews += gain
 	# P7：招牌菜熟练度
 	record_dish_served(order["dish_type"])
+	# #82：外卖交付成功缓解心率
+	add_stress(-STRESS_ON_DELIVERY)
 	remove_takeaway(order_id)
 	takeaway_completed.emit(order_id, price)
 	revenue_changed.emit(revenue)
@@ -440,6 +466,7 @@ func fail_takeaway(order_id: int) -> bool:
 	day_bad_reviews += 1
 	var penalty := get_fail_penalty()
 	day_cost_penalty += penalty
+	add_stress(STRESS_ON_BAD_REVIEW)  # #82：外卖超时差评增压
 	remove_takeaway(order_id)
 	takeaway_failed.emit(order_id)
 	reviews_changed.emit(good_reviews, bad_reviews)
@@ -461,6 +488,7 @@ func tick_event(delta: float) -> void:
 		if _event_time_left <= 0.0:
 			var ended := active_event
 			active_event = SpecialEvent.NONE
+			event_ended.emit(ended)
 			print_rich("[color=orange]Event ended: %s[/color]" % SpecialEvent.keys()[ended])
 		return
 	_event_timer -= delta
@@ -481,6 +509,37 @@ func force_event(event_type: int) -> void:
 	active_event = event_type
 	_event_time_left = EVENT_DURATION[event_type]
 	event_started.emit(event_type)
+
+# ==================== #82 心率值（全局营业压力） ====================
+
+## 调整心率（正 = 增压，负 = 缓解），钳制 0..STRESS_MAX；爆表触发危机事件并回落安全值
+## 输入: amount (float)
+## 副作用: heart_rate 变化时发出 heart_rate_changed；达到 STRESS_MAX 时 _trigger_crisis
+func add_stress(amount: float) -> void:
+	var new_value := clampf(heart_rate + amount, 0.0, STRESS_MAX)
+	if is_equal_approx(new_value, heart_rate):
+		return  # 无变化不发信号（避免空闲触底/积压触顶时每帧刷屏）
+	heart_rate = new_value
+	heart_rate_changed.emit(heart_rate)
+	if heart_rate >= STRESS_MAX:
+		_trigger_crisis()
+
+## 每帧推进压力（运行模式由 _process 调用，测试手动调用）：
+## 在队订单 ≥ STRESS_QUEUE_MIN_ORDERS 持续增压；堂食/外卖均无在队则空闲持续缓解
+func tick_stress(delta: float) -> void:
+	if active_orders.size() >= STRESS_QUEUE_MIN_ORDERS:
+		add_stress(STRESS_QUEUE_RATE * delta)
+	elif active_orders.is_empty() and takeaway_orders.is_empty():
+		add_stress(-STRESS_IDLE_RATE * delta)
+
+## 爆表危机（#82）：复用 P7 特殊事件框架强制触发 CHEF_PANIC（主厨慌乱：加热耗时 ×1.5），
+## 心率回落到安全值（不清零——留持续运营压力的记性）
+func _trigger_crisis() -> void:
+	force_event(SpecialEvent.CHEF_PANIC)
+	heart_rate = STRESS_SAFE_AFTER_CRISIS
+	heart_rate_changed.emit(heart_rate)
+	print_rich("[color=red]心率爆表！危机事件：主厨慌乱（加热 ×%.1f，%.0fs），心率回落 %d[/color]" % [
+		STRESS_CRISIS_HEAT_MULTIPLIER, EVENT_DURATION[SpecialEvent.CHEF_PANIC], int(STRESS_SAFE_AFTER_CRISIS)])
 
 # ==================== 耐心值（P2） ====================
 
@@ -515,6 +574,7 @@ func _process(delta: float) -> void:
 	tick_patience(delta)
 	tick_takeaway(delta)
 	tick_event(delta)
+	tick_stress(delta)  # #82 心率值
 	tick_business_time(delta)
 
 
@@ -650,6 +710,7 @@ func start_next_day() -> void:
 	print_rich("[color=green]Day %d 开始！营业时间 %.0fs[/color]" % [day, BUSINESS_TIME_PER_DAY])
 
 ## 当日统计清零（进入下一天时调用；累计 revenue/good_reviews/bad_reviews/money 保留）
+## #82：心率跨天语义 = 每日开工重置（对标烘焙糕手按天循环，不当成跨天累计惩罚）
 func _reset_day_stats() -> void:
 	day_revenue = 0
 	day_cost_ingredients = 0
@@ -658,6 +719,8 @@ func _reset_day_stats() -> void:
 	day_cost_penalty = 0
 	day_good_reviews = 0
 	day_bad_reviews = 0
+	heart_rate = STRESS_INITIAL
+	heart_rate_changed.emit(heart_rate)
 
 
 # ==================== 调试辅助 ====================
