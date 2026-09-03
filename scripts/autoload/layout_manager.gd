@@ -12,8 +12,8 @@
 extends Node
 
 # ==================== 世界 ====================
-## 窗口尺寸（= project.godot viewport 1920x1080，相机 zoom 换算用）
-const WINDOW_SIZE := Vector2(1920, 1080)
+## 窗口尺寸（= project.godot viewport 2560x1440，相机 zoom 换算用；#89 从 1920x1080 提升，店内元素视觉放大）
+const WINDOW_SIZE := Vector2(2560, 1440)
 ## 店内范围（原世界 1920x1080：地板/墙体/gameplay 全部在此内，#85 起数值冻结）
 const SHOP_SIZE := Vector2(1920, 1080)
 ## 世界左上角（#85 店外氛围带边距：左右 192 = 3 tile、上下 108；世界 = 店内 + 四周氛围带）
