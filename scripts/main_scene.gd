@@ -364,12 +364,14 @@ func _on_upgrades_changed() -> void:
 
 # ==================== 调试截图（#56） ====================
 
-## 自动截图帧计数（-1 = 关闭；>=0 时到点截图并退出，供终端核验运行画面）
+## 自动截图帧计数（-1 = 关闭；>=0 时每帧 +1，到 _debug_shot_target 截图并退出，供终端核验运行画面）
 var _debug_shot_frame := -1
-## 自动截图触发帧（~25s：顾客/订单/外卖骑手已上屏，画面最具代表性）
+## 自动截图触发帧（默认 ~25s：顾客/订单/外卖骑手已上屏，画面最具代表性）
 const DEBUG_SHOT_AT_FRAME := 1500
 ## 截图输出目录（已 gitignore）
 const DEBUG_SHOT_DIR := "res://debug_shots"
+## 自动截图目标帧（--debug-screenshot=N 指定；#84 修复 N > 1500 时计数从负值起步永不触发的问题）
+var _debug_shot_target := DEBUG_SHOT_AT_FRAME
 
 ## 启动时检测 --debug-screenshot[=帧数] 用户参数：开启自动截图，并跳过角色选择面板（不落存档）
 func _init_debug_screenshot() -> void:
@@ -385,7 +387,8 @@ func _init_debug_screenshot() -> void:
 			frame = int(arg.get_slice("=", 1))
 	if not found:
 		return
-	_debug_shot_frame = DEBUG_SHOT_AT_FRAME - frame  # 计数复用：到 DEBUG_SHOT_AT_FRAME 触发
+	_debug_shot_target = frame
+	_debug_shot_frame = 0
 	if not CharacterManager.has_selected():
 		CharacterManager.current_character = "chef"
 	# --debug-walk-down：持续按住下移（验证碰撞体阻挡效果，#58）
@@ -403,7 +406,7 @@ func _process(_delta: float) -> void:
 	if _debug_shot_frame < 0:
 		return
 	_debug_shot_frame += 1
-	if _debug_shot_frame == DEBUG_SHOT_AT_FRAME:
+	if _debug_shot_frame == _debug_shot_target:
 		print("DEBUG_SHOT_SAVED %s" % save_debug_screenshot())
 		_dump_ui_tree()
 		get_tree().quit()
