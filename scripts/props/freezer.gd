@@ -39,6 +39,7 @@ func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("appliance")
 	add_to_group("freezer")  # 玩家 J/K/L/空格 取货按组查找（#54）
+	add_to_group("device")   # #93：设备（不可搬运，但占桌面槽位——is_slot_free 按 device 组派生占用）
 	_refresh_slots()
 	set_key_hints_visible(false)  # #71：层键标默认隐藏，靠近才显示
 

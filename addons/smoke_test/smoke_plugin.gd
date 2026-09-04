@@ -33,6 +33,8 @@ func _run() -> void:
 	var character_manager = get_tree().root.get_node_or_null("CharacterManager")
 	if character_manager != null:
 		character_manager.set("current_character", "chef")
+	# #93 测试钩子：清空设备自定义位置（真实存档若含 device_positions 会让微波炉不落默认槽位）
+	UpgradeManager.device_positions = {}
 	get_tree().root.add_child(scene)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -227,15 +229,34 @@ func _run() -> void:
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 
-	# 顾客生成时序（#90 按新动线重算，#24 经验：距离变 → 时序按距离/160px/s 重算）：
-	# 入口(80,680)→柜台(1560,680) 距离 1480px / 160 = 9.25s；槽位 1 = 1280px = 8.0s；槽位 2 = 1080px = 6.75s
+	# ===== #93 顾客寻路：导航网格（代码生成）+ 绕行展示柜 =====
+	var nav_region: NavigationRegion2D = scene.get_node_or_null("NavRegion")
+	_check(nav_region != null, "导航区域 NavRegion 存在（#93）")
+	var nav_poly: NavigationPolygon = nav_region.navigation_polygon if nav_region != null else null
+	_check(nav_poly != null and nav_poly.get_outline_count() == 7,
+		"导航多边形 = 店内轮廓 + 6 个家具洞（厨房整带/吧台+展示柜凹形带/餐桌×4，#93）")
+	var probe_nav: CharacterBody2D = customer_scene.instantiate()
+	_check(probe_nav.get_node_or_null("NavigationAgent2D") != null, "顾客携带 NavigationAgent2D（#93）")
+	probe_nav.free()
+	# 入口→柜台路径因展示柜洞绕行（直线 1480px → 绕行 >1500px）
+	var nav_map: RID = scene.get_world_2d().navigation_map
+	NavigationServer2D.map_force_update(nav_map)
+	var nav_path := NavigationServer2D.map_get_path(nav_map, layout.ENTRANCE_POINT, layout.COUNTER_POINT, true)
+	var nav_len := 0.0
+	for i in range(nav_path.size() - 1):
+		nav_len += nav_path[i].distance_to(nav_path[i + 1])
+	_check(nav_path.size() > 2 and nav_len > 1500.0,
+		"入口→柜台寻路绕行展示柜（路径 %.0fpx > 直线 1480px，#93）" % nav_len)
+
+	# 顾客生成时序（#93 按寻路路径重算：绕行展示柜，入口→柜台 ≈1650px/160 ≈ 10.3s，断言用「最终到达」）：
+	# 槽位 0 ≈ 1650px = 10.3s；槽位 1 ≈ 1450px = 9.1s；槽位 2 ≈ 1250px = 7.8s
 	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
 	var c1 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.0).timeout
+	await get_tree().create_timer(12.5).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.7).timeout
+	await get_tree().create_timer(10.5).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.4).timeout
+	await get_tree().create_timer(9.0).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
 	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
@@ -353,14 +374,14 @@ func _run() -> void:
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
-	# 等待上一批顾客全部离店（柜台→入口 1480px / 160 = 9.25s，#90 重算）后生成新一批
-	await get_tree().create_timer(10.0).timeout
+	# 等待上一批顾客全部离店（柜台→入口绕行 ≈1650px / 160 ≈ 10.3s，#93 寻路重算）后生成新一批
+	await get_tree().create_timer(12.5).timeout
 	var c4 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.0).timeout
+	await get_tree().create_timer(12.5).timeout
 	var c5 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.7).timeout
+	await get_tree().create_timer(10.5).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.4).timeout
+	await get_tree().create_timer(9.0).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 
@@ -769,6 +790,89 @@ func _run() -> void:
 	# 微波炉即时生效：P5 加热加速(2.2s) × 卡牌(无，已重置) × 快手主厨(0.85) = 1.87
 	_check(absf(microwave.heat_time - (2.2 * 0.85)) < 0.01, "微波炉加热角色技能生效（2.2 → 1.87s）")
 
+	# ===== #93 设备搬运：搬起 → 摆上桌槽 → 加热全链路 → Q 放地面 → 存档读回 → 清场保留 =====
+	# 存档通道已在 P5 段替换为 /tmp/test_save_p5.json，设备位置写盘不污染真实存档
+	UpgradeManager.device_positions = {}
+	_check(microwave.is_in_group("device") and bool(microwave.get("is_device")), "微波炉在 device 组（#93）")
+	_check(bool(microwave.call("can_be_picked_up")), "IDLE 空载微波炉可搬起（#93）")
+	var table2: Node2D = scene.get_node("DeviceTable2")
+	var mw2_node: Node2D = scene.get_node("Microwave2")
+
+	# 搬起：空手对空闲微波炉按 E → 设备上手（碰撞清零、挂 HeldItemPivot）
+	player.call("discard_held_item")  # 防御：确保空手
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact"), "空手对空闲微波炉按 E 搬起设备（#93）")
+	_check(player.get("held_item") == microwave, "手持物为微波炉（#93）")
+	_check(microwave.collision_layer == 0 and microwave.get_parent() == player.get_node("HeldItemPivot"),
+		"搬起后碰撞清零并挂手持点（#93）")
+
+	# 不可套娃：手持设备对另一台设备交互 → 拒绝
+	_face_and_ray(player, mw2_node, Vector2.UP)
+	_check(player.call("try_interact") == false and player.get("held_item") == microwave, "设备不能叠放（#93）")
+
+	# 摆上桌槽：面对桌面 2 右槽（DEVICE_SLOTS[3]，此时空槽）按 E → 吸附放置
+	player.global_position = layout.DEVICE_SLOTS[3] + Vector2(0, 250)
+	player.set("facing_direction", Vector2.UP)
+	player.get_node("InteractionRay").target_position = Vector2.UP * 280.0
+	player.set("_interaction_cooldown", 0.0)
+	_check(player.call("_find_free_device_slot") == table2.get_node("SlotR"), "身前扫到桌面 2 右槽空槽位（#93）")
+	_check(player.call("try_interact"), "手持设备对空槽位按 E 放上工作台（#93）")
+	_check(microwave.global_position == layout.DEVICE_SLOTS[3], "微波炉吸附到槽位（#93）")
+	_check(microwave.collision_layer == 5 and microwave.get_parent() == scene, "放上桌后恢复设备碰撞层并挂回场景根（#93）")
+	_check(not bool(table2.call("is_slot_free", table2.get_node("SlotR"))), "槽位被占（派生占用，#93）")
+	_check(UpgradeManager.get_device_position("Microwave") == layout.DEVICE_SLOTS[3], "放置写自定义位置存档（#93）")
+	# 设备重挂场景根后需等一帧注册到物理服务器，射线查询才命中（Session 8/12 经验）
+	await get_tree().process_frame
+
+	# 加热全链路（新位置功能照常）：取包 → 放入 → 加热中不可搬/不可取 → 完成取出
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1), "桌面槽位上就位后取包（#93）")
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact"), "料理包放入槽位上的微波炉（#93）")
+	_check(microwave.call("is_occupied"), "槽位上的微波炉加热中（#93）")
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") == false and player.get("held_item") == null \
+		and microwave.get_parent() == scene, "加热中不可搬起也不可取出（#93）")
+	await get_tree().create_timer(3.5).timeout
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") and player.get("held_item") != null \
+		and player.get("held_item").is_in_group("dish"), "槽位上加热完成取出成品菜（#93）")
+	player.call("discard_held_item")
+
+	# Q 放地面：恢复 layer=5、挂 Items、位置写存档
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") and player.get("held_item") == microwave, "从桌槽搬回设备（#93）")
+	player.global_position = Vector2(1152, 460)
+	player.set("facing_direction", Vector2.UP)
+	_check(player.call("drop_held_item"), "Q 放下设备到地面（#93）")
+	_check(microwave.get_parent() == scene.get_node("Items") and microwave.collision_layer == 5,
+		"设备落地面挂 Items 且恢复 layer=5（#93）")
+	_check(microwave.global_position == Vector2(1152, 410), "设备落在身前 50px（#93）")
+	_check(UpgradeManager.get_device_position("Microwave") == Vector2(1152, 410), "落地面位置写存档（#93）")
+
+	# 存档读回：_apply_upgrades 优先用自定义位置；清档后回退默认槽位
+	microwave.global_position = Vector2(500, 900)
+	scene.call("_apply_upgrades")
+	_check(microwave.global_position == Vector2(1152, 410), "重摆时按存档读回自定义位置（#93）")
+	UpgradeManager.device_positions.clear()
+	scene.call("_apply_upgrades")
+	_check(microwave.global_position == layout.MICROWAVE_SLOTS[0], "无存档回退默认桌面槽位（#93）")
+	# 派生占用（device 组实际位置判定）：桌面 1 两槽被两台微波炉占满，桌面 2 左槽被冰柜占、右槽空
+	var table1: Node2D = scene.get_node("DeviceTable")
+	_check(table1.call("get_free_slot") == null, "桌面 1 两槽被微波炉占满（派生占用，#93）")
+	_check(table2.call("get_free_slot") == table2.get_node("SlotR"), "桌面 2 右槽空闲（冰柜占左槽，#93）")
+
+	# 清场保留：设备（device 组）跨天不被 queue_free，普通物品照清
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	player.call("try_take_from_freezer", 1)
+	var pkg_drop: Node2D = player.get("held_item")
+	player.call("drop_held_item")  # 普通物品落入 Items 作对照组
+	gsm.close_shop()
+	gsm.start_next_day()  # 触发 _reset_shop_items（day_started 信号）
+	await get_tree().process_frame
+	_check(is_instance_valid(microwave) and microwave.is_inside_tree(), "清场后设备仍在（#93）")
+	_check(not is_instance_valid(pkg_drop), "普通物品仍被清场（#93）")
+
 	# ===== P9 Polish =====
 	_check(load("res://assets/audio/sfx/deliver.wav") != null, "交付音效文件存在")
 	_check(load("res://assets/audio/sfx/timeout.wav") != null, "超时音效文件存在")
@@ -849,6 +953,40 @@ func _run() -> void:
 	_check(scene.get_node_or_null("CounterBar") != null and scene.get_node_or_null("CounterBar1") == null \
 		and scene.get_node_or_null("Cashier") != null, "整吧台单图单 sprite + 收银机已陈设（#75）")
 	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
+
+	# ===== #93 布局重排：靠墙置物架 + 工作台（设备上桌）+ 展示柜 =====
+	_check(load("res://assets/art/props/shelf_wall.svg") != null, "置物架素材存在（#93）")
+	_check(load("res://assets/art/props/display_case.svg") != null, "展示柜素材存在（#93）")
+	var shelves_ok := true
+	for i in 3:
+		var s: Node = scene.get_node_or_null("ShelfWall%d" % (i + 1))
+		if s == null or not (s is Sprite2D) or s.position != layout.SHELF_SLOTS[i] or s.z_index != -1:
+			shelves_ok = false
+	_check(shelves_ok, "靠墙置物架 ×3 位于 SHELF_SLOTS（z=-1 贴墙，#93）")
+	_check(scene.get_node_or_null("WorkTable") == null, "旧 WORK_TABLE 单图已撤除（#93）")
+	var dt1: Node2D = scene.get_node_or_null("DeviceTable")
+	var dt2: Node2D = scene.get_node_or_null("DeviceTable2")
+	_check(dt1 != null and dt2 != null, "工作台 ×2 已实例化（#93）")
+	_check(dt1 != null and dt1.global_position == layout.DEVICE_TABLE_SLOTS[0] \
+		and dt2 != null and dt2.global_position == layout.DEVICE_TABLE_SLOTS[1], "工作台位于 DEVICE_TABLE_SLOTS（#93）")
+	if dt1 != null and dt2 != null:
+		_check(dt1.get_node("SlotL").global_position == layout.DEVICE_SLOTS[0] \
+			and dt1.get_node("SlotR").global_position == layout.DEVICE_SLOTS[1] \
+			and dt2.get_node("SlotL").global_position == layout.DEVICE_SLOTS[2] \
+			and dt2.get_node("SlotR").global_position == layout.DEVICE_SLOTS[3], "桌面槽位 = DEVICE_SLOTS（单一权威，#93）")
+		_check(dt1.get_node("SlotL").is_in_group("device_slot"), "桌面槽位在 device_slot 组（#93）")
+	_check(layout.MICROWAVE_SLOTS[0] == layout.DEVICE_SLOTS[0] and layout.MICROWAVE_SLOTS[1] == layout.DEVICE_SLOTS[1],
+		"微波炉默认槽位 = 桌面 1 两槽（设备上桌，#93）")
+	_check(microwave.global_position == layout.DEVICE_SLOTS[0], "微波炉摆上桌面槽位（#93）")
+	var cases_ok := true
+	for i in 2:
+		var dc: Node = scene.get_node_or_null("DisplayCase%d" % (i + 1))
+		if dc == null or not (dc is Sprite2D) or dc.position != layout.DISPLAY_SLOTS[i] or dc.z_index != 0:
+			cases_ok = false
+	_check(cases_ok, "展示柜 ×2 位于 DISPLAY_SLOTS（z=0 参与 y-sort，#93）")
+	# 走道校核：设备排（微波炉底缘 230+121）与柜台碰撞体顶缘（吧台中心 y+64-16=660）之间主走道 ≥ 260px
+	var aisle: float = (layout.COUNTER_BAR_POS.y + 64.0 - 16.0) - (layout.DEVICE_SLOTS[0].y + 121.0)
+	_check(aisle >= 260.0, "设备排与柜台间主走道 %.0fpx ≥ 260（玩家直径 234，#93）" % aisle)
 
 	# ===== #67 反馈层（世界飘字 + 金币飞行 + 结算 count-up） =====
 	var feedback: Node = scene.get_node_or_null("FloatingFeedback")

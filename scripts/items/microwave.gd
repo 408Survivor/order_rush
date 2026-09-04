@@ -32,6 +32,8 @@ const HEAT_TIME_UPGRADED := 2.2  ## 加热加速后时长（P5 升级 heat_level
 # ==================== 导出变量 ====================
 ## 显示名称（用于交互提示）
 @export var display_name := "微波炉"
+## 是否可搬运设备（#93：device 组标记；玩家可 E 搬起并摆放到工作台槽位）
+@export var is_device := true
 
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
@@ -52,6 +54,7 @@ var _progress_max_width := 120.0
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("appliance")
+	add_to_group("device")  # #93：可搬运设备（玩家 E 搬起 / 摆上工作台槽位 / Q 放地面）
 	_refresh_heat_time()
 	heat_timer.one_shot = true
 	heat_timer.timeout.connect(_on_heat_timer_timeout)
@@ -114,6 +117,10 @@ func is_occupied() -> bool:
 ## 是否加热完成待取出
 func is_done() -> bool:
 	return current_state == MicrowaveState.DONE
+
+## #93：是否可被玩家搬起（仅空闲且空载；加热中/有内容时保持原取出逻辑）
+func can_be_picked_up() -> bool:
+	return current_state == MicrowaveState.IDLE and contained_item == null
 
 ## 放入料理包并开始加热
 ## 输入: item (Node2D) - 料理包

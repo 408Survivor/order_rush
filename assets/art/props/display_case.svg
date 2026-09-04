@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" width="320" height="220">
+<!-- 玻璃展示柜（#93）：320x220，奶油白柜体 + 浅蓝玻璃面 + 暖木底座，内置两层糕点（风格对齐 #51/#85 手绘路线） -->
+<ellipse cx="160" cy="210" rx="150" ry="9" fill="#4A3728" fill-opacity="0.15"/>
+<!-- 柜体（奶油白） -->
+<rect x="14" y="30" width="292" height="170" rx="14" fill="#FFF6E5" stroke="#4A3728" stroke-width="7"/>
+<!-- 玻璃面（浅蓝半透明，上 2/3） -->
+<rect x="26" y="42" width="268" height="118" rx="9" fill="#A8D8F0" fill-opacity="0.55" stroke="#4A3728" stroke-width="5"/>
+<!-- 玻璃高光斜纹 -->
+<path d="M52 150 L110 52" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-opacity="0.65"/>
+<path d="M76 150 L134 52" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-opacity="0.5"/>
+<!-- 两层展示架 -->
+<rect x="30" y="96" width="260" height="8" rx="4" fill="#FFF6E5" stroke="#4A3728" stroke-width="4"/>
+<rect x="30" y="140" width="260" height="8" rx="4" fill="#FFF6E5" stroke="#4A3728" stroke-width="4"/>
+<!-- 上层糕点：一排圆面包 -->
+<circle cx="66" cy="82" r="14" fill="#E8A558" stroke="#4A3728" stroke-width="4"/>
+<circle cx="116" cy="82" r="14" fill="#E8A558" stroke="#4A3728" stroke-width="4"/>
+<circle cx="166" cy="82" r="14" fill="#E8A558" stroke="#4A3728" stroke-width="4"/>
+<circle cx="216" cy="82" r="14" fill="#E8A558" stroke="#4A3728" stroke-width="4"/>
+<circle cx="262" cy="82" r="14" fill="#E8A558" stroke="#4A3728" stroke-width="4"/>
+<path d="M58 76 Q66 70 74 76" fill="none" stroke="#FFF6E5" stroke-width="3" stroke-linecap="round"/>
+<path d="M158 76 Q166 70 174 76" fill="none" stroke="#FFF6E5" stroke-width="3" stroke-linecap="round"/>
+<path d="M254 76 Q262 70 270 76" fill="none" stroke="#FFF6E5" stroke-width="3" stroke-linecap="round"/>
+<!-- 下层糕点：巧克力包 + 奶油包交错 -->
+<circle cx="66" cy="126" r="13" fill="#7A4A2B" stroke="#4A3728" stroke-width="4"/>
+<circle cx="112" cy="126" r="13" fill="#FFE9A8" stroke="#4A3728" stroke-width="4"/>
+<circle cx="158" cy="126" r="13" fill="#7A4A2B" stroke="#4A3728" stroke-width="4"/>
+<circle cx="204" cy="126" r="13" fill="#FFE9A8" stroke="#4A3728" stroke-width="4"/>
+<circle cx="250" cy="126" r="13" fill="#7A4A2B" stroke="#4A3728" stroke-width="4"/>
+<circle cx="112" cy="121" r="4" fill="#FF8A80"/>
+<circle cx="204" cy="121" r="4" fill="#FF8A80"/>
+<!-- 底座（暖木色抽屉带） -->
+<rect x="26" y="168" width="268" height="24" rx="8" fill="#C68B59" stroke="#4A3728" stroke-width="5"/>
+<rect x="120" y="175" width="80" height="9" rx="4" fill="#A06B3D" stroke="#4A3728" stroke-width="3"/>
+</svg>

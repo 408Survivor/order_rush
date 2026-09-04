@@ -55,7 +55,11 @@ const PLANT_TEX := preload("res://assets/art/props/plant.png")
 const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.png")
 const RUG_TEX := preload("res://assets/art/props/rug.png")
 const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
-const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.png")          ## #61 厨房操作长桌（#63 AI 素材）
+const SHELF_WALL_TEX := preload("res://assets/art/props/shelf_wall.svg")          ## #93 靠墙置物架（手绘 SVG）
+const DISPLAY_CASE_TEX := preload("res://assets/art/props/display_case.svg")      ## #93 玻璃展示柜（手绘 SVG）
+const DEVICE_TABLE_SCENE := preload("res://scenes/props/DeviceTable.tscn")        ## #93 工作台（设备上桌底座）
+## #93 靠墙置物架缩放（SVG 200x320 → 场景 150x240）
+const SHELF_SCALE := Vector2(0.75, 0.75)
 const CABINET_KEY_HINTS_SCRIPT := preload("res://scripts/props/cabinet_key_hints.gd")  ## #77 冷库柜四层键标
 # ==================== #85 店外氛围带素材（手绘 SVG，纯视觉） ====================
 const GRASS_TEX := preload("res://assets/art/props/grass.svg")
@@ -90,6 +94,10 @@ func _ready() -> void:
 	_build_counter()
 	_build_decorations()
 	_build_tables()
+	# #93：置物架 / 工作台（设备上桌底座）/ 展示柜
+	_build_shelves()
+	_build_device_tables()
+	_build_display_cases()
 	_build_freezer()
 	_build_crate_stacks()
 	_build_cabinet_key_hints()
@@ -100,7 +108,10 @@ func _ready() -> void:
 	_build_specialty_panel()
 	_build_character_select()
 	_build_floating_feedback()
+	_build_navigation()
 	_apply_upgrades()
+	if _debug_move_device:
+		microwave.global_position = LayoutManager.get_slot_position(LayoutManager.DEVICE_SLOTS, 3)
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
 	if not GameStateManager.shop_closed.is_connected(_on_shop_closed):
@@ -130,16 +141,23 @@ func _on_day_started(_day: int) -> void:
 	_reset_shop_items()
 
 ## 新一天重置：销毁手持/微波炉内/散落物品（#54：冰柜库存跨天保留，四格展示无需重建）
+## #93：设备（device 组）跨天保留——清场跳过；玩家手持的设备不销毁，改为原地放下
 func _reset_shop_items() -> void:
-	# 玩家手持物品销毁（跨天不保留）
+	# 玩家手持物品销毁（跨天不保留）；#93 手持设备改为放下保留
 	if player.has_method("discard_held_item"):
-		player.discard_held_item()
+		if player.get("held_item") != null and player.get("held_item").is_in_group("device"):
+			player.call("drop_held_item")
+		else:
+			player.discard_held_item()
 	# 微波炉内物品清空（含加热中强制中止）——含 P5 第二台
 	for mw: Node in [microwave, get_node_or_null("Microwave2")]:
 		if mw != null and mw.has_method("clear_contents"):
 			mw.clear_contents()
-	# 清理散落物品（成品菜/货箱/Q 放下的料理包等全部清空；#54 起冰柜不再镜像台面包）
+	# 清理散落物品（成品菜/货箱/Q 放下的料理包等全部清空；#54 起冰柜不再镜像台面包；
+	# #93 跳过 device 组——散落的设备跨天保留，不被 queue_free）
 	for child in items_root.get_children():
+		if child.is_in_group("device"):
+			continue
 		child.queue_free()
 	# 玩家复位出生点
 	player.global_position = LayoutManager.SPAWN_POINT
@@ -228,16 +246,42 @@ func _build_counter() -> void:
 	# 位置每帧就绪都跟随布局（@tool 编辑器内热重载也要复位，不能只写在 has_node 分支里）
 	$CounterBody.position = LayoutManager.COUNTER_BAR_POS + Vector2(60, 64)
 
-## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
-## #75：点位收编 LayoutManager；地毯/操作桌 PNG 已按世界尺寸重出，scale 恒为 1
+## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜（z=-1 作功能道具背景，不遮交互视觉）
+## #75：点位收编 LayoutManager；地毯 PNG 已按世界尺寸重出，scale 恒为 1
 func _build_decorations() -> void:
 	_add_prop_sprite("Rug", RUG_TEX, LayoutManager.RUG_POS, Vector2.ONE, -9)
 	_add_prop_sprite("Plant1", PLANT_TEX, LayoutManager.PLANT_SLOTS[0], Vector2.ONE)
 	_add_prop_sprite("Plant2", PLANT_TEX, LayoutManager.PLANT_SLOTS[1], Vector2.ONE)
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, LayoutManager.TRASH_BIN_POS, Vector2.ONE)
-	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）+ 操作长桌（垫冰柜/微波炉一排之下，右缘收在经营面板左侧）
+	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）
 	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, LayoutManager.FRIDGE_CABINET_POS, Vector2.ONE, -1)
-	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, LayoutManager.WORK_TABLE_POS, Vector2.ONE, -1)
+
+# ==================== #93 置物架 / 工作台 / 展示柜 ====================
+
+## 靠墙置物架 ×3（z=-1 贴墙背景；顶墙下沿，冷库区与厨房区之间）
+func _build_shelves() -> void:
+	for i in LayoutManager.SHELF_SLOTS.size():
+		_add_prop_sprite("ShelfWall%d" % (i + 1), SHELF_WALL_TEX,
+			LayoutManager.get_slot_position(LayoutManager.SHELF_SLOTS, i), SHELF_SCALE, -1)
+
+## 工作台 ×2（设备上桌底座；替换 #61 WORK_TABLE 单图。桌面 z=-1 由 device_table.gd 自设）
+func _build_device_tables() -> void:
+	for i in LayoutManager.DEVICE_TABLE_SLOTS.size():
+		var table_name := "DeviceTable" if i == 0 else "DeviceTable%d" % (i + 1)
+		if not has_node(table_name):
+			var table: Node2D = DEVICE_TABLE_SCENE.instantiate()
+			table.name = table_name
+			table.set("table_index", i)  # 须在 add_child 前注入：_ready 即按序号摆槽位
+			add_child(table)
+		var table_node: Node2D = get_node(table_name)
+		table_node.global_position = LayoutManager.get_slot_position(LayoutManager.DEVICE_TABLE_SLOTS, i)
+		table_node.call("_sync_slots")  # 槽位按新全局位置重摆（编辑器热重载/布局调整时跟随）
+
+## 玻璃展示柜 ×2（z=0 参与 y-sort 遮挡；前区下沿、收银台左侧）
+func _build_display_cases() -> void:
+	for i in LayoutManager.DISPLAY_SLOTS.size():
+		_add_prop_sprite("DisplayCase%d" % (i + 1), DISPLAY_CASE_TEX,
+			LayoutManager.get_slot_position(LayoutManager.DISPLAY_SLOTS, i), Vector2.ONE, 0)
 
 # ==================== #85 店外氛围带（草地/石板路/果树/灌木/路灯/栅栏，全部纯视觉无碰撞） ====================
 
@@ -380,11 +424,70 @@ func _build_floating_feedback() -> void:
 		feedback.name = "FloatingFeedback"
 		add_child(feedback)
 
+# ==================== #93 顾客寻路（NavigationAgent2D） ====================
+
+## 导航网格（代码生成，不走烘焙工具链）：店内矩形为可行走外轮廓，挡路家具 footprint 为洞。
+## 洞数据全部从 LayoutManager 常量推导（不手抄坐标）；店外氛围带/装饰不进导航；
+## 顾客出入口 = ENTRANCE_POINT（左墙内侧），位于外轮廓内无需留口
+func _build_navigation() -> void:
+	if has_node("NavRegion"):
+		return
+	var region := NavigationRegion2D.new()
+	region.name = "NavRegion"
+	var poly := NavigationPolygon.new()
+	# 外轮廓：店内矩形（区域原点即店内原点 (0,0)，店外氛围带不可走）
+	poly.add_outline(PackedVector2Array([
+		Vector2.ZERO, Vector2(LayoutManager.SHOP_SIZE.x, 0),
+		LayoutManager.SHOP_SIZE, Vector2(0, LayoutManager.SHOP_SIZE.y),
+	]))
+	# 洞轮廓互不相交（make_polygons_from_outlines 拒绝相交/共边的轮廓）：
+	# 厨房整带合并为 1 洞；吧台+展示柜合并为 1 个凹形洞（零缝隙封死北侧，逼出南侧绕行）
+	for outline in _nav_obstacle_outlines():
+		poly.add_outline(outline)
+	poly.make_polygons_from_outlines()
+	region.navigation_polygon = poly
+	add_child(region)
+
+## 导航洞轮廓列表（多边形顶点，世界坐标；单一权威 = LayoutManager 常量；轮廓间零相交零共边）
+## 顾客动线：入口(80,680) → 队列(y=680)。北侧厨房整带封锁（顾客不进厨房）；
+## 吧台+展示柜一体凹形洞横在动线上 → 顾客从其南侧通道（860..950）绕行——寻路的实际意义所在
+func _nav_obstacle_outlines() -> Array[PackedVector2Array]:
+	var outlines: Array[PackedVector2Array] = []
+	# ① 厨房整带：冷库柜/货架/工作台/设备排全在内（顾客无业务到吧台以北；上缘留 40px 边距避外轮廓）
+	outlines.append(PackedVector2Array([
+		Vector2(40, 40), Vector2(2264, 40), Vector2(2264, 510), Vector2(40, 510),
+	]))
+	# ② 前区设施带（凹形）：整吧台（y 517..660）+ 展示柜整排垂脚（y 660..860）——
+	# 与吧台零缝隙相接、两柜并为一排（柜间 20px 缝会被零半径寻路穿针），北侧不可穿；
+	# 南侧 y=680 队列动线保持可走
+	var bar := Rect2(LayoutManager.COUNTER_BAR_POS - Vector2(720, 95), Vector2(1440, 143))  # (390,517)-(1830,660)
+	var cases := Rect2(LayoutManager.DISPLAY_SLOTS[0] - Vector2(160, 100), Vector2(0, 200))
+	cases = cases.merge(Rect2(LayoutManager.DISPLAY_SLOTS[1] - Vector2(160, 100), Vector2(320, 200)))  # (320,660)-(980,860)
+	outlines.append(PackedVector2Array([
+		Vector2(bar.position.x, bar.position.y), Vector2(bar.end.x, bar.position.y),
+		Vector2(bar.end.x, bar.end.y), Vector2(cases.end.x, bar.end.y),
+		Vector2(cases.end.x, cases.end.y), Vector2(cases.position.x, cases.end.y),
+		Vector2(cases.position.x, bar.end.y), Vector2(bar.position.x, bar.end.y),
+	]))
+	# ③ 餐桌 ×4（桌图 136 + 左右圆凳 ±110）
+	for slot in LayoutManager.TABLE_SLOTS:
+		var rect := Rect2(slot - Vector2(180, 70), Vector2(360, 140))
+		outlines.append(PackedVector2Array([
+			rect.position, rect.position + Vector2(rect.size.x, 0),
+			rect.position + rect.size, rect.position + Vector2(0, rect.size.y),
+		]))
+	return outlines
+
 # ==================== P5 设备升级应用 ====================
 
 ## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容语义 = 每菜库存容量（Freezer.capacity，#50）
+## #93：设备摆位存档优先——有自定义位置（放上桌槽/Q 放地面时写入）用存档，没有回退默认槽位
 func _apply_upgrades() -> void:
-	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
+	var saved_mw: Variant = UpgradeManager.get_device_position("Microwave")
+	if saved_mw != null:
+		microwave.global_position = saved_mw
+	else:
+		microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
 	if not UpgradeManager.has_second_microwave:
 		if has_node("Microwave2"):
 			$Microwave2.queue_free()
@@ -393,7 +496,11 @@ func _apply_upgrades() -> void:
 		var mw2: Node2D = MICROWAVE_SCENE.instantiate()
 		mw2.name = "Microwave2"
 		add_child(mw2)
-	$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
+	var saved_mw2: Variant = UpgradeManager.get_device_position("Microwave2")
+	if saved_mw2 != null:
+		$Microwave2.global_position = saved_mw2
+	else:
+		$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
 
 ## 升级购买后：应用设备效果 + 重置物品（清场；冰柜库存不受升级影响）
 func _on_upgrades_changed() -> void:
@@ -410,6 +517,8 @@ const DEBUG_SHOT_AT_FRAME := 1500
 const DEBUG_SHOT_DIR := "res://debug_shots"
 ## 自动截图目标帧（--debug-screenshot=N 指定；#84 修复 N > 1500 时计数从负值起步永不触发的问题）
 var _debug_shot_target := DEBUG_SHOT_AT_FRAME
+## --debug-move-device 标志（#93；_apply_upgrades 摆位后于 _ready 尾部应用）
+var _debug_move_device := false
 
 ## 启动时检测 --debug-screenshot[=帧数] 用户参数：开启自动截图，并跳过角色选择面板（不落存档）
 func _init_debug_screenshot() -> void:
@@ -432,6 +541,10 @@ func _init_debug_screenshot() -> void:
 	# --debug-walk-down：持续按住下移（验证碰撞体阻挡效果，#58）
 	if OS.get_cmdline_user_args().has("--debug-walk-down"):
 		Input.action_press("move_down")
+	# --debug-move-device：把 Microwave 摆到桌面 2 右槽（#93 截图验收：设备自定义摆位效果；
+	# 须等 _apply_upgrades 摆位后再移动，见 _ready）
+	if OS.get_cmdline_user_args().has("--debug-move-device"):
+		_debug_move_device = true
 
 ## F12 手动截图（运行模式）
 func _unhandled_input(event: InputEvent) -> void:
