@@ -49,11 +49,8 @@ const DOOR_TEX := preload("res://assets/art/props/door.png")
 const FLOOR_MAT_TEX := preload("res://assets/art/props/floor_mat.png")
 const COUNTER_BAR_TEX := preload("res://assets/art/props/counter_bar.png")
 const CASHIER_TEX := preload("res://assets/art/props/cashier.png")
-const TABLE_TEX := preload("res://assets/art/props/table.png")
-const CHAIR_TEX := preload("res://assets/art/props/chair.png")
 const PLANT_TEX := preload("res://assets/art/props/plant.png")
 const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.png")
-const RUG_TEX := preload("res://assets/art/props/rug.png")
 const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
 const SHELF_WALL_TEX := preload("res://assets/art/props/shelf_wall.svg")          ## #93 靠墙置物架（手绘 SVG）
 const DISPLAY_CASE_TEX := preload("res://assets/art/props/display_case.svg")      ## #93 玻璃展示柜（手绘 SVG）
@@ -83,8 +80,7 @@ func _ready() -> void:
 	_zone_defs = [
 		["ZoneStorage", LayoutManager.ZONE_STORAGE, Color(0.7, 0.85, 1, 0.06)],
 		["ZoneKitchen", LayoutManager.ZONE_KITCHEN, Color(1, 0.95, 0.7, 0.06)],
-		["ZoneFront", LayoutManager.ZONE_FRONT, Color(0.8, 1, 0.75, 0.06)],
-		["ZoneDining", LayoutManager.ZONE_DINING, Color(1, 0.8, 0.6, 0.06)],
+		["ZoneCounter", LayoutManager.ZONE_COUNTER, Color(0.8, 1, 0.75, 0.06)],
 	]
 	_build_zones()
 	# #85 店外氛围带：草地垫底 + 石板路/果树/灌木/路灯/栅栏（纯视觉，先于店内陈设生成垫底）
@@ -93,7 +89,6 @@ func _ready() -> void:
 	_build_walls()
 	_build_counter()
 	_build_decorations()
-	_build_tables()
 	# #93：置物架 / 工作台（设备上桌底座）/ 展示柜
 	_build_shelves()
 	_build_device_tables()
@@ -159,8 +154,8 @@ func _reset_shop_items() -> void:
 		if child.is_in_group("device"):
 			continue
 		child.queue_free()
-	# 玩家复位出生点
-	player.global_position = LayoutManager.SPAWN_POINT
+	# 玩家复位出生点（#103：SPAWN_POINT_PLAYER 店内中央走道）
+	player.global_position = LayoutManager.SPAWN_POINT_PLAYER
 
 # ==================== 区域视觉 ====================
 
@@ -181,18 +176,6 @@ func _build_zones() -> void:
 		zone.color = color
 		zone.z_index = -5
 		add_child(zone)
-
-# ==================== 餐桌 ====================
-
-## 按配置生成餐桌（#51：圆桌 + 每桌左右两把圆凳；数量 = TABLE_SLOTS 全部，P4+ 直接加槽位即可）
-## #75：桌/凳 PNG 已按世界尺寸重出（×0.85/×0.7 烘入），scale 恒为 1
-func _build_tables() -> void:
-	for i in LayoutManager.TABLE_SLOTS.size():
-		var table_name := "Table%d" % (i + 1)
-		var slot: Vector2 = LayoutManager.get_slot_position(LayoutManager.TABLE_SLOTS, i)
-		_add_prop_sprite(table_name, TABLE_TEX, slot, Vector2.ONE)
-		_add_prop_sprite(table_name + "ChairL", CHAIR_TEX, slot + Vector2(-110, 0), Vector2.ONE)
-		_add_prop_sprite(table_name + "ChairR", CHAIR_TEX, slot + Vector2(110, 0), Vector2.ONE)
 
 # ==================== #51 场景陈设（墙体/吧台/装饰，全部纯视觉无碰撞） ====================
 
@@ -218,17 +201,20 @@ func _build_walls() -> void:
 	for i in 3:
 		_add_prop_sprite("WallSideL%d" % (i + 1), WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[i], Vector2.ONE, -3)
 		_add_prop_sprite("WallSideR%d" % (i + 1), WALL_SIDE_TEX, LayoutManager.WALL_SIDE_SLOTS[3 + i], Vector2.ONE, -3)
-	# 入口门脸盖左墙门洞位（与顾客入口 ENTRANCE_POINT 对齐；门在墙段之后生成，同 z 绘制在上层）
+	# #103 南墙（临街）：复用顶墙图平铺，吧台/外卖窗口处留窗口缺口
+	for i in LayoutManager.WALL_BOTTOM_SLOTS.size():
+		_add_prop_sprite("WallBottom%d" % (i + 1), WALL_TOP_TEX, LayoutManager.WALL_BOTTOM_SLOTS[i], Vector2.ONE, -3)
+	# 入口门脸盖左墙门洞位（#103 起纯装饰——玩家不出门、顾客不进店；门在墙段之后生成，同 z 绘制在上层）
 	_add_prop_sprite("Door", DOOR_TEX, LayoutManager.DOOR_POS, Vector2.ONE, -2)  # #63：新侧墙变宽，门 z 提高避免被盖
 	# 门内地垫（z=-9 压地板、在区域色块之下）
 	_add_prop_sprite("FloorMat", FLOOR_MAT_TEX, LayoutManager.FLOOR_MAT_POS, Vector2.ONE, -9)
 
 ## 前台吧台 + 收银机（#51 视觉；#58 加碰撞体——只挡玩家，顾客不受影响）
-## #75：整吧台单图（1440×189 批次 021 v3 空台面），scale=1 单 sprite——左让入口通道、右让外卖口，不压顾客队列区
-## #90：店内加宽只重摆（COUNTER_BAR_POS 跟随），图宽不变故碰撞体尺寸不变、位置按偏移跟随
+## #75：整吧台单图（1440×189 批次 021 v3 空台面），scale=1 单 sprite
+## #103：吧台南移贴南墙临街开窗（COUNTER_BAR_POS=(1152,990)），收银机改挂点单台 ORDER_POINT
 func _build_counter() -> void:
 	_add_prop_sprite("CounterBar", COUNTER_BAR_TEX, LayoutManager.COUNTER_BAR_POS, Vector2.ONE)
-	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.COUNTER_POINT + LayoutManager.CASHIER_OFFSET, Vector2.ONE)
+	_add_prop_sprite("Cashier", CASHIER_TEX, LayoutManager.ORDER_POINT + LayoutManager.CASHIER_OFFSET, Vector2.ONE)
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 只挡玩家（顾客 mask 已去 World 层）；
 	# 只覆盖正面厚度（柜点 y-20..y+12）——台面视觉可重叠，俯视角下头压桌面是正常观感；
 	# 玩家（半径 117）北面停在柜点 y-137，距队列顾客 137px < 交互范围 160
@@ -246,10 +232,9 @@ func _build_counter() -> void:
 	# 位置每帧就绪都跟随布局（@tool 编辑器内热重载也要复位，不能只写在 has_node 分支里）
 	$CounterBody.position = LayoutManager.COUNTER_BAR_POS + Vector2(60, 64)
 
-## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜（z=-1 作功能道具背景，不遮交互视觉）
-## #75：点位收编 LayoutManager；地毯 PNG 已按世界尺寸重出，scale 恒为 1
+## 装饰陈设：绿植 + 垃圾桶 + #61 立式冷冻柜（z=-1 作功能道具背景，不遮交互视觉）
+## #75：点位收编 LayoutManager；#103：就餐区地毯随餐桌一并移除
 func _build_decorations() -> void:
-	_add_prop_sprite("Rug", RUG_TEX, LayoutManager.RUG_POS, Vector2.ONE, -9)
 	_add_prop_sprite("Plant1", PLANT_TEX, LayoutManager.PLANT_SLOTS[0], Vector2.ONE)
 	_add_prop_sprite("Plant2", PLANT_TEX, LayoutManager.PLANT_SLOTS[1], Vector2.ONE)
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, LayoutManager.TRASH_BIN_POS, Vector2.ONE)
@@ -298,8 +283,10 @@ func _build_outdoor() -> void:
 		grass.scale = LayoutManager.WORLD_SIZE / Vector2(GRASS_TEX.get_size())
 		grass.z_index = -11
 		add_child(grass)
-	# 石板小路（左带，对齐顾客入口动线）
-	_add_prop_sprite("StonePath", STONE_PATH_TEX, LayoutManager.STONE_PATH_POS, Vector2.ONE, -9)
+	# 石板路（#103：横向平铺整排店前人行道，对齐顾客动线 y=1150）
+	for i in LayoutManager.STONE_PATH_SLOTS.size():
+		_add_prop_sprite("StonePath%d" % (i + 1), STONE_PATH_TEX,
+			LayoutManager.get_slot_position(LayoutManager.STONE_PATH_SLOTS, i), Vector2.ONE, -9)
 	# 果树 ×4 / 灌木 ×6 / 路灯 ×2 / 栅栏 ×9（点位单一权威 = LayoutManager）
 	for i in LayoutManager.TREE_SLOTS.size():
 		_add_prop_sprite("FruitTree%d" % (i + 1), FRUIT_TREE_TEX, LayoutManager.get_slot_position(LayoutManager.TREE_SLOTS, i), Vector2.ONE)
@@ -366,14 +353,15 @@ func _build_cabinet_key_hints() -> void:
 # ==================== 外卖口（P4） ====================
 
 ## 实例化外卖取餐口并摆到布局点位（动态生成幂等：has_node 防编辑器热重载重复 _ready）
+## #103：外卖窗口移到南墙东端 RIDER_POINT（堂食取餐台独立为 PICKUP_POINT，见阶段 2 PickupCounter）
 func _build_takeout_counter() -> void:
 	if has_node("TakeoutCounter"):
-		$TakeoutCounter.global_position = LayoutManager.PICKUP_POINT
+		$TakeoutCounter.global_position = LayoutManager.RIDER_POINT
 		return
 	var counter: Node2D = TAKEOUT_COUNTER_SCENE.instantiate()
 	counter.name = "TakeoutCounter"
 	add_child(counter)
-	counter.global_position = LayoutManager.PICKUP_POINT
+	counter.global_position = LayoutManager.RIDER_POINT
 
 ## 实例化外卖 UI：订单面板 + 骑手视觉（动态生成幂等）
 func _build_takeaway_ui() -> void:
@@ -426,57 +414,57 @@ func _build_floating_feedback() -> void:
 
 # ==================== #93 顾客寻路（NavigationAgent2D） ====================
 
-## 导航网格（代码生成，不走烘焙工具链）：店内矩形为可行走外轮廓，挡路家具 footprint 为洞。
-## 洞数据全部从 LayoutManager 常量推导（不手抄坐标）；店外氛围带/装饰不进导航；
-## 顾客出入口 = ENTRANCE_POINT（左墙内侧），位于外轮廓内无需留口
+## 导航网格（代码生成，不走烘焙工具链）。
+## #103 窗口店：顾客全程店外——外轮廓 = 店外 L 形（左竖带 ∪ 南横带，单一凹形轮廓避免相交共边），
+## 洞 = 带内装饰（果树/路灯/灌木，从 LayoutManager 点位推导并裁剪进带内）；店内不再需要顾客导航
 func _build_navigation() -> void:
 	if has_node("NavRegion"):
 		return
 	var region := NavigationRegion2D.new()
 	region.name = "NavRegion"
 	var poly := NavigationPolygon.new()
-	# 外轮廓：店内矩形（区域原点即店内原点 (0,0)，店外氛围带不可走）
+	# 外轮廓：店外 L 形（左竖带上缘 → 南横带，凹点在 (左带右缘, 横带上缘)）
+	var left: Rect2 = LayoutManager.NAV_BAND_LEFT
+	var south: Rect2 = LayoutManager.NAV_BAND_SOUTH
 	poly.add_outline(PackedVector2Array([
-		Vector2.ZERO, Vector2(LayoutManager.SHOP_SIZE.x, 0),
-		LayoutManager.SHOP_SIZE, Vector2(0, LayoutManager.SHOP_SIZE.y),
+		left.position, Vector2(left.end.x, left.position.y),
+		Vector2(left.end.x, south.position.y), Vector2(south.end.x, south.position.y),
+		south.end, Vector2(south.position.x, south.end.y),
 	]))
 	# 洞轮廓互不相交（make_polygons_from_outlines 拒绝相交/共边的轮廓）：
-	# 厨房整带合并为 1 洞；吧台+展示柜合并为 1 个凹形洞（零缝隙封死北侧，逼出南侧绕行）
-	for outline in _nav_obstacle_outlines():
-		poly.add_outline(outline)
+	# 装饰洞矩形先与带内（缩 10px）求交，完全贴合/出带的跳过，杜绝与轮廓共边
+	for rect in _nav_decor_rects():
+		poly.add_outline(PackedVector2Array([
+			rect.position, rect.position + Vector2(rect.size.x, 0),
+			rect.position + rect.size, rect.position + Vector2(0, rect.size.y),
+		]))
 	poly.make_polygons_from_outlines()
 	region.navigation_polygon = poly
 	add_child(region)
 
-## 导航洞轮廓列表（多边形顶点，世界坐标；单一权威 = LayoutManager 常量；轮廓间零相交零共边）
-## 顾客动线：入口(80,680) → 队列(y=680)。北侧厨房整带封锁（顾客不进厨房）；
-## 吧台+展示柜一体凹形洞横在动线上 → 顾客从其南侧通道（860..950）绕行——寻路的实际意义所在
-func _nav_obstacle_outlines() -> Array[PackedVector2Array]:
-	var outlines: Array[PackedVector2Array] = []
-	# ① 厨房整带：冷库柜/货架/工作台/设备排全在内（顾客无业务到吧台以北；上缘留 40px 边距避外轮廓）
-	outlines.append(PackedVector2Array([
-		Vector2(40, 40), Vector2(2264, 40), Vector2(2264, 510), Vector2(40, 510),
-	]))
-	# ② 前区设施带（凹形）：整吧台（y 517..660）+ 展示柜整排垂脚（y 660..860）——
-	# 与吧台零缝隙相接、两柜并为一排（柜间 20px 缝会被零半径寻路穿针），北侧不可穿；
-	# 南侧 y=680 队列动线保持可走
-	var bar := Rect2(LayoutManager.COUNTER_BAR_POS - Vector2(720, 95), Vector2(1440, 143))  # (390,517)-(1830,660)
-	var cases := Rect2(LayoutManager.DISPLAY_SLOTS[0] - Vector2(160, 100), Vector2(0, 200))
-	cases = cases.merge(Rect2(LayoutManager.DISPLAY_SLOTS[1] - Vector2(160, 100), Vector2(320, 200)))  # (320,660)-(980,860)
-	outlines.append(PackedVector2Array([
-		Vector2(bar.position.x, bar.position.y), Vector2(bar.end.x, bar.position.y),
-		Vector2(bar.end.x, bar.end.y), Vector2(cases.end.x, bar.end.y),
-		Vector2(cases.end.x, cases.end.y), Vector2(cases.position.x, cases.end.y),
-		Vector2(cases.position.x, bar.end.y), Vector2(bar.position.x, bar.end.y),
-	]))
-	# ③ 餐桌 ×4（桌图 136 + 左右圆凳 ±110）
-	for slot in LayoutManager.TABLE_SLOTS:
-		var rect := Rect2(slot - Vector2(180, 70), Vector2(360, 140))
-		outlines.append(PackedVector2Array([
-			rect.position, rect.position + Vector2(rect.size.x, 0),
-			rect.position + rect.size, rect.position + Vector2(0, rect.size.y),
-		]))
-	return outlines
+## 导航洞 footprint 列表（Rect2，世界坐标；单一权威 = LayoutManager 装饰点位）
+## 只挖与导航带重叠的装饰（树 ±70×90 / 路灯 ±35×55 / 灌木 ±75×50），裁剪进带内防共边
+func _nav_decor_rects() -> Array[Rect2]:
+	var bands: Array[Rect2] = [
+		LayoutManager.NAV_BAND_LEFT.grow(-10.0),
+		LayoutManager.NAV_BAND_SOUTH.grow(-10.0),
+	]
+	var rects: Array[Rect2] = []
+	var decors: Array = []  # [center, half_extents]
+	for t in LayoutManager.TREE_SLOTS:
+		decors.append([t, Vector2(70, 90)])
+	for l in LayoutManager.LAMP_SLOTS:
+		decors.append([l, Vector2(35, 55)])
+	for b in LayoutManager.BUSH_SLOTS:
+		decors.append([b, Vector2(75, 50)])
+	for d in decors:
+		var raw := Rect2(d[0] - d[1], d[1] * 2.0)
+		for band in bands:
+			var clipped := raw.intersection(band)
+			if clipped.has_area() and clipped.get_area() > 900.0:
+				rects.append(clipped)
+				break  # 一个装饰只挖一个洞（两带重叠区防重复挖洞导致轮廓相交）
+	return rects
 
 # ==================== P5 设备升级应用 ====================
 
@@ -600,7 +588,8 @@ func _place_nodes() -> void:
 	if floor_sprite.texture != null:
 		floor_sprite.scale = LayoutManager.SHOP_SIZE / floor_sprite.texture.get_size()
 
-	# 关键点位（注意：SpawnPoint 节点 = 顾客生成入口，玩家出生点是 LayoutManager.SPAWN_POINT）
-	spawn_point.global_position = LayoutManager.ENTRANCE_POINT
-	counter_point.global_position = LayoutManager.COUNTER_POINT
-	player.global_position = LayoutManager.SPAWN_POINT
+	# 关键点位（#103：SpawnPoint 节点 = 顾客刷出点（店外左缘人行道）；CounterPoint 标记 = 点单队列首；
+	# 玩家出生点是 LayoutManager.SPAWN_POINT_PLAYER）
+	spawn_point.global_position = LayoutManager.SPAWN_POINT
+	counter_point.global_position = LayoutManager.ORDER_QUEUE_FRONT
+	player.global_position = LayoutManager.SPAWN_POINT_PLAYER

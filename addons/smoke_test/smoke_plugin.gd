@@ -72,17 +72,18 @@ func _run() -> void:
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 	_check(layout.WORLD_SIZE == Vector2(2688, 1512), "世界尺寸 2688x1512（#90 店堂扩容 + #85 氛围带边距，16:9 保持）")
-	_check(layout.SHOP_SIZE == Vector2(2304, 1296) and layout.WORLD_ORIGIN == Vector2(-192, -108),
-		"店内范围 2304x1296（#90 扩容 +20%）+ 氛围带边距 192/108 不变（#85）")
-	_check(scene.get_node("ZoneStorage") != null and scene.get_node("ZoneFront") != null \
-		and scene.get_node("ZoneKitchen") != null and scene.get_node("ZoneDining") != null,
-		"四区色块由布局配置生成")
-	_check(player.global_position == layout.SPAWN_POINT, "玩家出生点位于布局配置点位")
-	_check(counter.global_position == layout.COUNTER_POINT, "柜台位于布局配置点位")
-	_check(scene.get_node("SpawnPoint").global_position == layout.ENTRANCE_POINT, "顾客入口位于布局配置点位")
+	_check(layout.SHOP_SIZE == Vector2(2304, 1040) and layout.WORLD_ORIGIN == Vector2(-192, -108),
+		"店内范围 2304x1040（#103 窗口店纵向压缩，南带 108→364 人行道）+ 世界/原点不变（#85/#90）")
+	_check(scene.get_node("ZoneStorage") != null and scene.get_node("ZoneKitchen") != null \
+		and scene.get_node("ZoneCounter") != null, "三区色块由布局配置生成（#103 柜台带）")
+	_check(scene.get_node_or_null("ZoneFront") == null and scene.get_node_or_null("ZoneDining") == null,
+		"前区/就餐区色块已移除（#103 窗口店）")
+	_check(player.global_position == layout.SPAWN_POINT_PLAYER, "玩家出生点位于布局配置点位（#103 SPAWN_POINT_PLAYER）")
+	_check(counter.global_position == layout.ORDER_QUEUE_FRONT, "CounterPoint 标记 = 点单队列首（#103）")
+	_check(scene.get_node("SpawnPoint").global_position == layout.SPAWN_POINT, "顾客刷出点位于布局配置点位（#103 店外左缘）")
 	_check(microwave.global_position == layout.get_slot_position(layout.MICROWAVE_SLOTS, 0), "微波炉位于设备槽位 0")
 	_check(freezer.global_position == layout.FREEZER_SLOT, "冰柜位于 FREEZER_SLOT（#54）")
-	_check(scene.get_node("Table1").position == layout.TABLE_SLOTS[0], "餐桌位于就餐区槽位 0")
+	_check(scene.get_node_or_null("Table1") == null, "餐桌椅已移除（#103 顾客不进店，就餐区取消）")
 	_check(layout.QUEUE_SPACING == 200.0 and manager.get("queue_spacing") == 200.0, "队列间距接入布局系统（200）")
 	# #58 吧台碰撞体：StaticBody2D(layer=1) 挡玩家；顾客 mask 去 World 层不受影响
 	var counter_body = scene.get_node_or_null("CounterBody")
@@ -106,10 +107,15 @@ func _run() -> void:
 	_check(grass != null and grass.position == layout.WORLD_ORIGIN + layout.WORLD_SIZE / 2.0, "草地满铺整世界（#85）")
 	var floor_sprite: Sprite2D = scene.get_node("Floor")
 	_check(floor_sprite.position == layout.SHOP_SIZE / 2.0, "地板仍只盖店内 2304x1296（#90）")
-	var stone_path: Sprite2D = scene.get_node_or_null("StonePath")
-	_check(stone_path != null and stone_path.position == layout.STONE_PATH_POS, "石板路位于布局点位（#85）")
-	_check(stone_path != null and absf(stone_path.position.y - layout.ENTRANCE_POINT.y) < 1.0, "石板路与顾客入口动线 y=680 对齐（#90）")
+	var stone_path: Sprite2D = scene.get_node_or_null("StonePath1")
+	_check(stone_path != null and stone_path.position == layout.STONE_PATH_SLOTS[0], "石板路段位于布局点位（#103）")
+	_check(stone_path != null and absf(stone_path.position.y - layout.SPAWN_POINT.y) < 1.0, "石板路与顾客动线 y=1150 对齐（#103）")
 	_check(stone_path != null and stone_path.z_index == -9, "石板路 z=-9 压草地（#85）")
+	var paths_ok := true
+	for i in layout.STONE_PATH_SLOTS.size():
+		if scene.get_node_or_null("StonePath%d" % (i + 1)) == null:
+			paths_ok = false
+	_check(paths_ok, "石板路 ×%d 平铺店前人行道（#103）" % layout.STONE_PATH_SLOTS.size())
 	var outdoor_counts_ok := true
 	for i in 4:
 		if scene.get_node_or_null("FruitTree%d" % (i + 1)) == null:
@@ -130,8 +136,14 @@ func _run() -> void:
 	_check(scene.get_node("Camera2D").position == Vector2(1152, 648), "相机中心 = 新世界中心（#90）")
 	_check(scene.get_node("Camera2D").zoom.is_equal_approx(layout.WINDOW_SIZE / layout.WORLD_SIZE), "相机 zoom 适配世界扩容（#90）")
 	# gameplay 点位数值（#90 扩容重排：拓扑不变、间距拉开）
-	_check(layout.ENTRANCE_POINT == Vector2(80, 680) and layout.COUNTER_POINT == Vector2(1560, 680) \
-		and layout.PICKUP_POINT == Vector2(1850, 680) and layout.SPAWN_POINT == Vector2(1152, 460), "gameplay 点位数值（#90）")
+	_check(layout.SPAWN_POINT == Vector2(-61, 1150) and layout.SPAWN_POINT_PLAYER == Vector2(1152, 700) \
+		and layout.ORDER_POINT == Vector2(700, 960) and layout.PICKUP_POINT == Vector2(1500, 960) \
+		and layout.RIDER_POINT == Vector2(1930, 960), "gameplay 点位数值（#103 窗口店）")
+	_check(layout.ORDER_QUEUE_FRONT == Vector2(700, 1150) and layout.PICKUP_QUEUE_FRONT == Vector2(1500, 1150),
+		"点单/取餐队列首（店外人行道 y=1150，#103）")
+	_check(layout.WALL_BOTTOM_SLOTS.size() == 2, "南墙段 ×2（柜台处留窗口缺口，#103）")
+	_check(scene.get_node_or_null("WallBottom1") != null and scene.get_node_or_null("WallBottom2") != null,
+		"南墙段已上屏（#103）")
 
 	# ===== 0.7 界面系统（issue #26）：订单面板 / Toast / 经营面板 =====
 	var board = scene.get_node("OrderBoard")
@@ -229,34 +241,34 @@ func _run() -> void:
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 
-	# ===== #93 顾客寻路：导航网格（代码生成）+ 绕行展示柜 =====
+	# ===== #103 顾客寻路：店外 L 形导航带（左竖带 ∪ 南横带）=====
 	var nav_region: NavigationRegion2D = scene.get_node_or_null("NavRegion")
 	_check(nav_region != null, "导航区域 NavRegion 存在（#93）")
 	var nav_poly: NavigationPolygon = nav_region.navigation_polygon if nav_region != null else null
-	_check(nav_poly != null and nav_poly.get_outline_count() == 7,
-		"导航多边形 = 店内轮廓 + 6 个家具洞（厨房整带/吧台+展示柜凹形带/餐桌×4，#93）")
+	_check(nav_poly != null and nav_poly.get_outline_count() == 5,
+		"导航多边形 = 店外 L 形轮廓 + 4 个装饰洞（树/路灯×2/灌木，#103）")
 	var probe_nav: CharacterBody2D = customer_scene.instantiate()
 	_check(probe_nav.get_node_or_null("NavigationAgent2D") != null, "顾客携带 NavigationAgent2D（#93）")
 	probe_nav.free()
-	# 入口→柜台路径因展示柜洞绕行（直线 1480px → 绕行 >1500px）
+	# 刷出点→点单队首：人行道直通（761px 直线无绕行）
 	var nav_map: RID = scene.get_world_2d().navigation_map
 	NavigationServer2D.map_force_update(nav_map)
-	var nav_path := NavigationServer2D.map_get_path(nav_map, layout.ENTRANCE_POINT, layout.COUNTER_POINT, true)
+	var nav_path := NavigationServer2D.map_get_path(nav_map, layout.SPAWN_POINT, layout.ORDER_QUEUE_FRONT, true)
 	var nav_len := 0.0
 	for i in range(nav_path.size() - 1):
 		nav_len += nav_path[i].distance_to(nav_path[i + 1])
-	_check(nav_path.size() > 2 and nav_len > 1500.0,
-		"入口→柜台寻路绕行展示柜（路径 %.0fpx > 直线 1480px，#93）" % nav_len)
+	_check(nav_path.size() >= 2 and nav_len > 700.0 and nav_len < 900.0,
+		"刷出点→点单队首店外寻路直通（路径 %.0fpx ≈ 直线 761px，#103）" % nav_len)
 
-	# 顾客生成时序（#93 按寻路路径重算：绕行展示柜，入口→柜台 ≈1650px/160 ≈ 10.3s，断言用「最终到达」）：
-	# 槽位 0 ≈ 1650px = 10.3s；槽位 1 ≈ 1450px = 9.1s；槽位 2 ≈ 1250px = 7.8s
+	# 顾客生成时序（#103 按店外路径重算：刷出点(-61,1150)→点单队首(700,1150) = 761px/160 ≈ 4.8s，
+	# 断言用「最终到达」）：槽位 1 ≈ 561px = 3.5s；槽位 2 ≈ 361px = 2.3s
 	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
 	var c1 = manager.call("spawn_customer")
-	await get_tree().create_timer(12.5).timeout
+	await get_tree().create_timer(6.0).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.5).timeout
+	await get_tree().create_timer(5.0).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(9.0).timeout
+	await get_tree().create_timer(3.5).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
 	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
@@ -374,14 +386,14 @@ func _run() -> void:
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
-	# 等待上一批顾客全部离店（柜台→入口绕行 ≈1650px / 160 ≈ 10.3s，#93 寻路重算）后生成新一批
-	await get_tree().create_timer(12.5).timeout
+	# 等待上一批顾客全部离店（队首→刷出点 ≤761px / 160 ≈ 4.8s，#103 店外动线重算）后生成新一批
+	await get_tree().create_timer(7.0).timeout
 	var c4 = manager.call("spawn_customer")
-	await get_tree().create_timer(12.5).timeout
+	await get_tree().create_timer(6.0).timeout
 	var c5 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.5).timeout
+	await get_tree().create_timer(5.0).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(9.0).timeout
+	await get_tree().create_timer(3.5).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 
@@ -483,7 +495,7 @@ func _run() -> void:
 	_check(manager.call("get_queue_count") == 0, "新一天顾客队列清空")
 	_check(int(freezer.stock["kungpao"]) == stock_before, "冰柜库存跨天保留（#54）")
 	_check(freezer.get_node("Slots/Slot1/CountLabel").text == "×%d" % stock_before, "四格计数随库存刷新（#54）")
-	_check(player.global_position == layout.SPAWN_POINT, "玩家复位出生点")
+	_check(player.global_position == layout.SPAWN_POINT_PLAYER, "玩家复位出生点（#103）")
 
 	# ===== P4 外卖系统（第 2 天营业中） =====
 	_check(gsm.get_dish_price() == 20 and gsm.get_dish_price(true) == 23, "外卖定价 = 基础价+打包费+平台补贴−扣点（堂食 20 vs 外卖 23）")
@@ -518,7 +530,7 @@ func _run() -> void:
 
 	var takeout_counter = scene.get_node_or_null("TakeoutCounter")
 	_check(takeout_counter != null, "外卖口已实例化")
-	_check(takeout_counter.global_position == layout.PICKUP_POINT, "外卖口位于布局点位")
+	_check(takeout_counter.global_position == layout.RIDER_POINT, "外卖窗口位于 RIDER_POINT（#103）")
 
 	# ===== P5 设备升级（内存态，避免污染开发者真实存档） =====
 	UpgradeManager.has_second_microwave = false
@@ -894,8 +906,8 @@ func _run() -> void:
 		stacks.append(stack)
 		_check(stack != null, "货箱堆 %d 已实例化（#50）" % (i + 1))
 		_check(stack != null and stack.global_position == layout.get_slot_position(layout.CRATE_SLOTS, i), "货箱堆 %d 位于 CRATE_SLOTS（#50）" % (i + 1))
-	_check(layout.PICKUP_POINT == Vector2(1850, 680), "外卖口点位（#90：吧台右缘 +20，随柜台右移）")
-	_check(layout.SPAWN_POINT == Vector2(1152, 460), "玩家出生点位（#90）")
+	_check(layout.RIDER_POINT == Vector2(1930, 960), "外卖窗口点位（#103：南墙东端，右缘收在外卖面板左侧）")
+	_check(layout.SPAWN_POINT_PLAYER == Vector2(1152, 700), "玩家出生点位（#103）")
 
 	# 空手从货箱堆拿货箱 → 手持 crate 组物品
 	player.call("discard_held_item")  # 防御：确保空手，避免影响后续断言
@@ -944,12 +956,11 @@ func _run() -> void:
 	var mw_sprite: Sprite2D = microwave.get_node_or_null("Sprite2D")
 	_check(mw_sprite != null and mw_sprite.texture != null \
 		and str(mw_sprite.texture.resource_path).contains("props/microwave.png"), "微波炉 Sprite2D 换用 AI 素材（#51/#63）")
-	var tables_ok := true
+	var tables_gone := true
 	for i in 4:
-		var t: Node = scene.get_node_or_null("Table%d" % (i + 1))
-		if t == null or not (t is Sprite2D):
-			tables_ok = false
-	_check(tables_ok, "餐桌 Table1..Table4 存在且为 Sprite2D（#51）")
+		if scene.get_node_or_null("Table%d" % (i + 1)) != null:
+			tables_gone = false
+	_check(tables_gone, "餐桌 Table1..Table4 已随就餐区移除（#103）")
 	_check(scene.get_node_or_null("CounterBar") != null and scene.get_node_or_null("CounterBar1") == null \
 		and scene.get_node_or_null("Cashier") != null, "整吧台单图单 sprite + 收银机已陈设（#75）")
 	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
@@ -984,9 +995,9 @@ func _run() -> void:
 		if dc == null or not (dc is Sprite2D) or dc.position != layout.DISPLAY_SLOTS[i] or dc.z_index != 0:
 			cases_ok = false
 	_check(cases_ok, "展示柜 ×2 位于 DISPLAY_SLOTS（z=0 参与 y-sort，#93）")
-	# 走道校核：设备排（微波炉底缘 230+121）与柜台碰撞体顶缘（吧台中心 y+64-16=660）之间主走道 ≥ 260px
+	# 走道校核：设备排（微波炉底缘 230+121）与柜台碰撞体顶缘（吧台中心 y+64-16）之间主走道 ≥ 260px
 	var aisle: float = (layout.COUNTER_BAR_POS.y + 64.0 - 16.0) - (layout.DEVICE_SLOTS[0].y + 121.0)
-	_check(aisle >= 260.0, "设备排与柜台间主走道 %.0fpx ≥ 260（玩家直径 234，#93）" % aisle)
+	_check(aisle >= 260.0, "设备排与柜台间主走道 %.0fpx ≥ 260（玩家直径 234，#93/#103 吧台南移后更宽）" % aisle)
 
 	# ===== #67 反馈层（世界飘字 + 金币飞行 + 结算 count-up） =====
 	var feedback: Node = scene.get_node_or_null("FloatingFeedback")

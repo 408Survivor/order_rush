@@ -11,6 +11,9 @@
 ##       设备排/柜台/餐桌区/冷库区之间走道加宽；世界 = 店内 + 氛围带边距 → 2688x1512（仍 16:9）。
 ##       #93 整店重排（对标烘焙糕手）：靠墙置物架 ×3 + 工作台 ×2（设备上桌：DEVICE_SLOTS）+
 ##       前区玻璃展示柜 ×2；微波炉默认摆桌面槽位，冰柜上桌面 2 左槽。
+##       #103 窗口店模式（对标杯杯倒满）：店内纵向压缩 2304×1296 → 2304×1040（南氛围带 108→364 成店前人行道），
+##       柜台南移贴南墙（临街开窗），顾客全程店外；点单/取餐双点（ORDER_POINT/PICKUP_POINT），
+##       外卖口独立 RIDER_POINT；餐桌/地毯移除；顾客导航改店外 L 形。
 
 @tool
 extends Node
@@ -18,8 +21,9 @@ extends Node
 # ==================== 世界 ====================
 ## 窗口尺寸（= project.godot viewport 2560x1440，相机 zoom 换算用；#89 从 1920x1080 提升，店内元素视觉放大）
 const WINDOW_SIZE := Vector2(2560, 1440)
-## 店内范围（#90 扩容 1920x1080 → 2304x1296：地板/墙体/gameplay 全部在此内；+20% 线性，走道整体拉宽）
-const SHOP_SIZE := Vector2(2304, 1296)
+## 店内范围（#90 扩容 1920x1080 → 2304x1296：地板/墙体/gameplay 全部在此内；
+## #103 窗口店：纵向压缩 1296 → 1040，省出的 256px 给南侧氛围带（108→364）作店前人行道承载顾客流）
+const SHOP_SIZE := Vector2(2304, 1040)
 ## 世界左上角（#85 店外氛围带边距：左右 192 = 3 tile、上下 108；世界 = 店内 + 四周氛围带，#90 边距不变）
 const WORLD_ORIGIN := Vector2(-192, -108)
 ## 世界尺寸（#90：2688x1512 = 2304+2×192 / 1296+2×108，仍 16:9；相机 zoom = WINDOW/WORLD ≈ 0.952 整世界可见）
@@ -38,20 +42,31 @@ static func tile(tx: float, ty: float) -> Vector2:
 # ==================== 区域（Rect2，含 20px 边距） ====================
 const ZONE_STORAGE := Rect2(60, 60, 560, 380)       ## 冷库区（左上：货箱堆/批发仓）
 const ZONE_KITCHEN := Rect2(660, 60, 1560, 380)     ## 厨房区（右上：加热设备）
-const ZONE_FRONT := Rect2(60, 560, 2184, 240)       ## 前台（中部横贯：柜台/队伍/外卖口）
-const ZONE_DINING := Rect2(60, 860, 2184, 340)      ## 就餐区（下部：餐桌）
+## #103：前区压缩为柜台带（窗口店：柜台贴南墙，顾客在店外）；就餐区删除（顾客不进店）
+const ZONE_COUNTER := Rect2(60, 860, 2184, 160)     ## 柜台带（南部横贯：吧台/点单台/取餐台/外卖窗口）
 
-# ==================== 关键点位（#90 扩容重排：拓扑不变，间距拉开） ====================
-const SPAWN_POINT := Vector2(1152, 460)      ## 玩家出生点（店内横向中央、设备排与柜台之间走道）｜tile(18, ~7.2)
-const ENTRANCE_POINT := Vector2(80, 680)     ## 顾客入口（前台左端，左墙中部）｜tile(~1.3, ~10.6)
-const COUNTER_POINT := Vector2(1560, 680)    ## 柜台服务点（前台偏右，队伍向左延伸）｜tile(~24.4, ~10.6)
-const PICKUP_POINT := Vector2(1850, 680)     ## 外卖取餐口（柜台右侧，吧台右缘 +20）｜tile(~28.9, ~10.6)
+# ==================== 关键点位（#103 窗口店重排） ====================
+const SPAWN_POINT_PLAYER := Vector2(1152, 700)  ## 玩家出生点（店内中央大走道）｜tile(18, ~10.9)
+const SPAWN_POINT := Vector2(-61, 1150)         ## 顾客刷出/离店点（左缘店外，对齐石板路动线）｜tile(~−1, 18)
+const ORDER_POINT := Vector2(700, 960)          ## 点单台（柜台西段，收银机摆这；顾客到点单槽位自动下单）｜tile(~10.9, 15)
+const PICKUP_POINT := Vector2(1500, 960)        ## 取餐台（柜台东段；#103 复用原外卖口常量名——堂食交付点）｜tile(~23.4, 15)
+const RIDER_POINT := Vector2(1930, 960)         ## 外卖窗口（吧台东端外侧；右缘收在外卖面板屏幕 x≥2204 左侧）｜tile(~30.2, 15)
+## 点单队列首（店外人行道，队伍向左延 QUEUE_SPACING）
+const ORDER_QUEUE_FRONT := Vector2(700, 1150)   ## tile(~10.9, ~18.0)
+## 取餐队列首（店外人行道，队伍向右延 QUEUE_SPACING）
+const PICKUP_QUEUE_FRONT := Vector2(1500, 1150) ## tile(~23.4, ~18.0)
 
 # ==================== 顾客队列 ====================
 ## 队列间距（像素），需大于顾客碰撞直径 130
 const QUEUE_SPACING := 200.0
 ## 队列容量（布局预留 5 人空间；当前玩法 max_queue=3，见 customer_manager.gd）
 const QUEUE_CAPACITY := 5
+
+# ==================== #103 顾客导航带（店外 L 形：左竖带 ∪ 南横带，顾客全程店外） ====================
+## 左竖带（刷出点南接人行道）
+const NAV_BAND_LEFT := Rect2(-160, 600, 170, 700)
+## 南横带（店前人行道：点单/取餐队列、顾客动线全在这条带上；栅栏 y=1350 在带外）
+const NAV_BAND_SOUTH := Rect2(-160, 1040, 2656, 260)
 
 # ==================== 设备/货架/餐桌槽位 ====================
 ## 微波炉位（第 1 位当前使用，第 2 位 P5 设备升级解锁；槽位间距 270 > 矩形碰撞 250，不相邻重叠）
@@ -70,52 +85,51 @@ const DEVICE_TABLE_SLOTS: Array[Vector2] = [Vector2(1185, 245), Vector2(1725, 24
 ## 货箱堆位（#50：冷库区 3 堆，对应 L1_DISHES 3 道菜；批发仓无限库存）
 ## #61：货箱上架立式冷冻柜——竖排 3 层（柜体层中心 136/204/272 与柜图美术层绑定，#90 不动），第 4 层 (300,340) 预留 L2
 const CRATE_SLOTS: Array[Vector2] = [Vector2(300, 136), Vector2(300, 204), Vector2(300, 272)]  ## tile(~4.7, ~2.1/3.2/4.25)
-## 餐桌位（当前使用前 2 位，P4+ 扩展至 4；#90 间距 350 → 480，y 800 → 1020 让出柜台后走道）
-const TABLE_SLOTS: Array[Vector2] = [
-	Vector2(520, 1020), Vector2(1000, 1020), Vector2(1480, 1020), Vector2(1960, 1020),  ## tile(~8.1/15.6/23.1/30.6, ~15.9)
-]
 ## #93 靠墙置物架 ×3（梯子式三层架，顶墙下沿 y=150，冷库区与厨房区之间排布；场景内 scale=0.75，纯视觉 z=-1）
 const SHELF_SLOTS: Array[Vector2] = [Vector2(540, 150), Vector2(720, 150), Vector2(900, 150)]  ## tile(~8.4/11.3/14.1, ~2.3)
-## #93 玻璃展示柜 ×2（前区下沿、收银台左侧，顾客动线上的陈列底座；参与 y-sort 遮挡，阶段 3 进导航洞）
-const DISPLAY_SLOTS: Array[Vector2] = [Vector2(480, 760), Vector2(820, 760)]  ## tile(7.5/12.8, ~11.9)
+## #93 玻璃展示柜 ×2；#103 移到柜台两翼店内侧（隔窗可见；z=0 参与 y-sort 遮挡）
+const DISPLAY_SLOTS: Array[Vector2] = [Vector2(480, 860), Vector2(1830, 860)]  ## tile(7.5/28.6, ~13.4)
 
 # ==================== 纯视觉装饰点位（#75 收编自 main_scene；z 序留在 main_scene 调用处） ====================
 ## 顶墙 5 段平铺（480 宽/段，y=60；#90 店内 2304 宽 → 4 段 → 5 段，末段探出右缘 96px 无碍）
 const WALL_TOP_SLOTS: Array[Vector2] = [Vector2(240, 60), Vector2(720, 60), Vector2(1200, 60), Vector2(1680, 60), Vector2(2160, 60)]
-## 侧墙左右各 3 段（480 高/段；#90 店内 1296 高 → 2 段 → 3 段，末段探入底带 144px 盖草地无碍）
+## 侧墙左右各 3 段（480 高/段；#103 店内高 1296→1040：第 3 段上移收在 y=1000 盖到南缘，探入底带无碍）
 const WALL_SIDE_SLOTS: Array[Vector2] = [
-	Vector2(60, 240), Vector2(60, 720), Vector2(60, 1200),
-	Vector2(2244, 240), Vector2(2244, 720), Vector2(2244, 1200),
+	Vector2(60, 240), Vector2(60, 720), Vector2(60, 1000),
+	Vector2(2244, 240), Vector2(2244, 720), Vector2(2244, 1000),
 ]
-## 入口门脸（盖左墙门洞位，与 ENTRANCE_POINT 对齐）
+## #103 南墙段（临街：y=1040 店界；复用顶墙图，吧台/外卖窗口处留窗口缺口——两侧各一段）
+const WALL_BOTTOM_SLOTS: Array[Vector2] = [Vector2(240, 1040), Vector2(2064, 1040)]
+## 入口门脸（#103 起纯装饰——玩家不出门、顾客不进店；仍盖左墙门洞位）
 const DOOR_POS := Vector2(66, 680)
-## 门内地垫
+## 门内地垫（纯装饰，同上）
 const FLOOR_MAT_POS := Vector2(200, 680)
-## 整吧台单图中心（#75：1440 宽；#90 店内加宽只重摆不重出图——x 390..1830：左让入口通道、右让外卖口）
-const COUNTER_BAR_POS := Vector2(1110, 612)
-## 收银机相对 COUNTER_POINT 的偏移（#75：-150 坐上整吧台后沿台面——木台面没入台沿读作置于台面）
-const CASHIER_OFFSET := Vector2(0, -150)
-## 就餐区地毯（垫中间两桌下）
-const RUG_POS := Vector2(1240, 1020)
-## 绿植 ×2
-const PLANT_SLOTS: Array[Vector2] = [Vector2(170, 1180), Vector2(2140, 820)]
+## 整吧台单图中心（#75：1440 宽；#103 南移贴南墙临街开窗——x 432..1872，店内 y 895..1085 压店界线）
+const COUNTER_BAR_POS := Vector2(1152, 990)
+## 收银机相对 ORDER_POINT 的偏移（#103：从 COUNTER_POINT 改挂点单台；-70 坐上吧台前沿台面）
+const CASHIER_OFFSET := Vector2(0, -70)
+## 绿植 ×2（#103：1 号移出人行道到栅栏边；2 号留店内东侧）
+const PLANT_SLOTS: Array[Vector2] = [Vector2(150, 1295), Vector2(2140, 820)]
 ## 垃圾桶
 const TRASH_BIN_POS := Vector2(2140, 640)
 ## 冷库区立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架；#90 不动——层中心与柜图美术绑定）
 const FRIDGE_CABINET_POS := Vector2(300, 218)
 
 # ==================== 店外氛围带（#85，纯视觉无碰撞；#90 随新世界边界平移；z 序留在 main_scene 调用处） ====================
-## 石板小路中心（左氛围带，y=680 对齐顾客入口动线 ENTRANCE_POINT，东端抵门脸 DOOR_POS）
-const STONE_PATH_POS := Vector2(-61, 680)
-## 果树 ×4（左带上下各一 + 右带上/中各一；190x240，全部收在氛围带内；右带随店右缘 2304 平移）
-const TREE_SLOTS: Array[Vector2] = [Vector2(-90, 220), Vector2(-90, 1060), Vector2(2394, 60), Vector2(2394, 880)]
+## 石板路横向段 ×9（#103：顾客动线改到店前人行道 y=1150，石板路平铺整排；264 宽/段，首段中心 x=-61 对齐刷出点）
+const STONE_PATH_SLOTS: Array[Vector2] = [
+	Vector2(-61, 1150), Vector2(203, 1150), Vector2(467, 1150), Vector2(731, 1150), Vector2(995, 1150),
+	Vector2(1259, 1150), Vector2(1523, 1150), Vector2(1787, 1150), Vector2(2051, 1150),
+]
+## 果树 ×4（左带上/中各一 + 右带上/中各一；190x240；#103 左中树上移出顾客动线带，避让店外 L 形导航）
+const TREE_SLOTS: Array[Vector2] = [Vector2(-90, 220), Vector2(-90, 620), Vector2(2394, 60), Vector2(2394, 880)]
 ## 灌木 ×6（顶带横排 4 + 右带 2；#90 顶带按新世界宽 2688 拉开）
 const BUSH_SLOTS: Array[Vector2] = [
 	Vector2(300, -52), Vector2(1000, -52), Vector2(1700, -52), Vector2(2350, -52),
 	Vector2(2404, 500), Vector2(2414, 1160),
 ]
-## 路灯 ×2（左带石板路两侧交错，对标烘焙糕手路边灯；#90 随石板路 y=680 平移）
-const LAMP_SLOTS: Array[Vector2] = [Vector2(-140, 555), Vector2(-45, 815)]
+## 路灯 ×2（左带石板路两侧交错，对标烘焙糕手路边灯；#103 随人行道 y=1150 平移两翼）
+const LAMP_SLOTS: Array[Vector2] = [Vector2(-140, 1060), Vector2(-45, 1260)]
 ## 栅栏段 ×11（底带横向平铺：256 宽/段 × 11 = 2816 ≥ 世界 2688 满宽，首段中心 x=-64 步进 256，末段探出右缘无碍；
 ## #90 世界底缘 1296+108 → y=1350 底带中央）
 const FENCE_SLOTS: Array[Vector2] = [
