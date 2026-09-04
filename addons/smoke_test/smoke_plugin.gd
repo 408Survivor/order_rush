@@ -771,6 +771,89 @@ func _run() -> void:
 	# 微波炉即时生效：P5 加热加速(2.2s) × 卡牌(无，已重置) × 快手主厨(0.85) = 1.87
 	_check(absf(microwave.heat_time - (2.2 * 0.85)) < 0.01, "微波炉加热角色技能生效（2.2 → 1.87s）")
 
+	# ===== #93 设备搬运：搬起 → 摆上桌槽 → 加热全链路 → Q 放地面 → 存档读回 → 清场保留 =====
+	# 存档通道已在 P5 段替换为 /tmp/test_save_p5.json，设备位置写盘不污染真实存档
+	UpgradeManager.device_positions = {}
+	_check(microwave.is_in_group("device") and bool(microwave.get("is_device")), "微波炉在 device 组（#93）")
+	_check(bool(microwave.call("can_be_picked_up")), "IDLE 空载微波炉可搬起（#93）")
+	var table2: Node2D = scene.get_node("DeviceTable2")
+	var mw2_node: Node2D = scene.get_node("Microwave2")
+
+	# 搬起：空手对空闲微波炉按 E → 设备上手（碰撞清零、挂 HeldItemPivot）
+	player.call("discard_held_item")  # 防御：确保空手
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact"), "空手对空闲微波炉按 E 搬起设备（#93）")
+	_check(player.get("held_item") == microwave, "手持物为微波炉（#93）")
+	_check(microwave.collision_layer == 0 and microwave.get_parent() == player.get_node("HeldItemPivot"),
+		"搬起后碰撞清零并挂手持点（#93）")
+
+	# 不可套娃：手持设备对另一台设备交互 → 拒绝
+	_face_and_ray(player, mw2_node, Vector2.UP)
+	_check(player.call("try_interact") == false and player.get("held_item") == microwave, "设备不能叠放（#93）")
+
+	# 摆上桌槽：面对桌面 2 右槽（DEVICE_SLOTS[3]，此时空槽）按 E → 吸附放置
+	player.global_position = layout.DEVICE_SLOTS[3] + Vector2(0, 250)
+	player.set("facing_direction", Vector2.UP)
+	player.get_node("InteractionRay").target_position = Vector2.UP * 280.0
+	player.set("_interaction_cooldown", 0.0)
+	_check(player.call("_find_free_device_slot") == table2.get_node("SlotR"), "身前扫到桌面 2 右槽空槽位（#93）")
+	_check(player.call("try_interact"), "手持设备对空槽位按 E 放上工作台（#93）")
+	_check(microwave.global_position == layout.DEVICE_SLOTS[3], "微波炉吸附到槽位（#93）")
+	_check(microwave.collision_layer == 5 and microwave.get_parent() == scene, "放上桌后恢复设备碰撞层并挂回场景根（#93）")
+	_check(not bool(table2.call("is_slot_free", table2.get_node("SlotR"))), "槽位被占（派生占用，#93）")
+	_check(UpgradeManager.get_device_position("Microwave") == layout.DEVICE_SLOTS[3], "放置写自定义位置存档（#93）")
+	# 设备重挂场景根后需等一帧注册到物理服务器，射线查询才命中（Session 8/12 经验）
+	await get_tree().process_frame
+
+	# 加热全链路（新位置功能照常）：取包 → 放入 → 加热中不可搬/不可取 → 完成取出
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	_check(player.call("try_take_from_freezer", 1), "桌面槽位上就位后取包（#93）")
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact"), "料理包放入槽位上的微波炉（#93）")
+	_check(microwave.call("is_occupied"), "槽位上的微波炉加热中（#93）")
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") == false and player.get("held_item") == null \
+		and microwave.get_parent() == scene, "加热中不可搬起也不可取出（#93）")
+	await get_tree().create_timer(3.5).timeout
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") and player.get("held_item") != null \
+		and player.get("held_item").is_in_group("dish"), "槽位上加热完成取出成品菜（#93）")
+	player.call("discard_held_item")
+
+	# Q 放地面：恢复 layer=5、挂 Items、位置写存档
+	_face_and_ray(player, microwave, Vector2.UP)
+	_check(player.call("try_interact") and player.get("held_item") == microwave, "从桌槽搬回设备（#93）")
+	player.global_position = Vector2(1152, 460)
+	player.set("facing_direction", Vector2.UP)
+	_check(player.call("drop_held_item"), "Q 放下设备到地面（#93）")
+	_check(microwave.get_parent() == scene.get_node("Items") and microwave.collision_layer == 5,
+		"设备落地面挂 Items 且恢复 layer=5（#93）")
+	_check(microwave.global_position == Vector2(1152, 410), "设备落在身前 50px（#93）")
+	_check(UpgradeManager.get_device_position("Microwave") == Vector2(1152, 410), "落地面位置写存档（#93）")
+
+	# 存档读回：_apply_upgrades 优先用自定义位置；清档后回退默认槽位
+	microwave.global_position = Vector2(500, 900)
+	scene.call("_apply_upgrades")
+	_check(microwave.global_position == Vector2(1152, 410), "重摆时按存档读回自定义位置（#93）")
+	UpgradeManager.device_positions.clear()
+	scene.call("_apply_upgrades")
+	_check(microwave.global_position == layout.MICROWAVE_SLOTS[0], "无存档回退默认桌面槽位（#93）")
+	# 派生占用（device 组实际位置判定）：桌面 1 两槽被两台微波炉占满，桌面 2 左槽被冰柜占、右槽空
+	var table1: Node2D = scene.get_node("DeviceTable")
+	_check(table1.call("get_free_slot") == null, "桌面 1 两槽被微波炉占满（派生占用，#93）")
+	_check(table2.call("get_free_slot") == table2.get_node("SlotR"), "桌面 2 右槽空闲（冰柜占左槽，#93）")
+
+	# 清场保留：设备（device 组）跨天不被 queue_free，普通物品照清
+	player.global_position = freezer.global_position + Vector2(0, 150)
+	player.call("try_take_from_freezer", 1)
+	var pkg_drop: Node2D = player.get("held_item")
+	player.call("drop_held_item")  # 普通物品落入 Items 作对照组
+	gsm.close_shop()
+	gsm.start_next_day()  # 触发 _reset_shop_items（day_started 信号）
+	await get_tree().process_frame
+	_check(is_instance_valid(microwave) and microwave.is_inside_tree(), "清场后设备仍在（#93）")
+	_check(not is_instance_valid(pkg_drop), "普通物品仍被清场（#93）")
+
 	# ===== P9 Polish =====
 	_check(load("res://assets/audio/sfx/deliver.wav") != null, "交付音效文件存在")
 	_check(load("res://assets/audio/sfx/timeout.wav") != null, "超时音效文件存在")

@@ -180,6 +180,17 @@ func try_interact() -> bool:
 	# 交互前强制刷新射线，确保使用最新朝向/位置（不依赖物理帧更新）
 	interaction_ray.force_raycast_update()
 	var interactable := _get_interactable_object()
+
+	# 手持设备（#93）：优先吸附身前的工作台空槽位（槽位是 Marker2D 不进交互检测，单独扫描）；
+	# 面对另一台设备 → 不可套娃；无槽位目标 → 不可放入设备/交付（返回 false，提示由 _update_prompt 承担）
+	if held_item != null and held_item.is_in_group("device"):
+		if interactable != null and interactable.is_in_group("device"):
+			return false  # 设备不能叠放
+		var slot := _find_free_device_slot()
+		if slot != null:
+			return _place_device_on_slot(slot)
+		return false
+
 	if interactable == null:
 		return false
 
@@ -243,7 +254,7 @@ func _is_in_front(target_pos: Vector2) -> bool:
 		return true  # 目标与玩家重合视为可交互
 	return to_target.normalized().dot(facing_direction) >= INTERACT_FOV_DOT
 
-## 与设备交互（微波炉）：手持→放入；空手→取出
+## 与设备交互（微波炉）：手持→放入；空手→设备可取（IDLE 空载）则搬起（#93），否则取出
 func _interact_with_appliance(appliance: Node2D) -> bool:
 	if held_item != null:
 		if appliance.can_accept_item(held_item):
@@ -253,12 +264,55 @@ func _interact_with_appliance(appliance: Node2D) -> bool:
 			item_placed.emit(item)
 			return true
 	else:
+		# #93：空闲空载的设备优先被搬起（拿起/放下与 Crate 同路径）；加热中/有内容走原取出
+		if appliance.is_in_group("device") and appliance.has_method("can_be_picked_up") and appliance.can_be_picked_up():
+			_pick_up_item(appliance)
+			return true
 		var item: Node2D = appliance.give_item()
 		if item != null:
 			_pick_up_item(item)
 			return true
 
 	return false
+
+# ==================== #93 设备搬运（搬起 → 摆上台面槽位 / Q 放地面） ====================
+
+## 找身前最近的工作台空槽位（device_slot 组 Marker2D，限定同场景分支防编辑器页签干扰）
+## 输出: Marker2D（无则 null）；public 供冒烟测试直接调用
+func _find_free_device_slot() -> Marker2D:
+	var home := get_parent()
+	var best: Marker2D = null
+	var best_dist := INF
+	for node in get_tree().get_nodes_in_group("device_slot"):
+		if not (node is Marker2D):
+			continue
+		if home != null and not home.is_ancestor_of(node):
+			continue
+		if not _is_in_front(node.global_position):
+			continue
+		var dist := global_position.distance_to(node.global_position)
+		if dist > INTERACTION_DISTANCE or dist >= best_dist:
+			continue
+		var table := node.get_parent()
+		if table != null and table.has_method("is_slot_free") and not table.call("is_slot_free", node):
+			continue
+		best_dist = dist
+		best = node
+	return best
+
+## 把手持设备吸附摆放到工作台槽位
+func _place_device_on_slot(slot: Marker2D) -> bool:
+	var table := slot.get_parent()
+	if table == null or not table.has_method("place_device"):
+		return false
+	var device := held_item
+	_drop_from_hand()  # 从手上摘下（held_item 置空、恢复 scale）
+	if not table.call("place_device", slot, device):
+		# 摆放失败（槽位被抢占等）→ 回退：重新拿起，不丢设备
+		_pick_up_item(device)
+		return false
+	item_placed.emit(device)
+	return true
 
 ## 与可拾取物品交互（地上的料理包）
 func _interact_with_pickable(pickable: Node2D) -> bool:
@@ -363,10 +417,14 @@ func drop_held_item() -> bool:
 	drop_parent.add_child(item)
 	item.global_position = global_position + facing_direction * DROP_OFFSET
 	item.scale = Vector2.ONE
-	# 恢复可拾取碰撞（拾取时被清零，见 _pick_up_item；与物品场景初始值一致）
+	# 恢复碰撞（拾取时被清零，见 _pick_up_item）：
+	# #93 设备恢复 layer=5（World+Interactables，与设备场景一致），普通物品恢复 layer=8（Items）
 	if item is Area2D:
-		item.collision_layer = ITEM_COLLISION_LAYER
+		item.collision_layer = 5 if item.is_in_group("device") else ITEM_COLLISION_LAYER
 		item.collision_mask = 0
+	# #93：设备落地面也写自定义位置存档（重启后按存档复位）
+	if item.is_in_group("device"):
+		UpgradeManager.set_device_position(item.name, item.global_position)
 	print_rich("[color=cyan]Dropped: %s at %s[/color]" % [item.name, str(item.global_position)])
 	return true
 
@@ -397,15 +455,28 @@ func discard_held_item() -> bool:
 func _update_prompt() -> void:
 	var target := _get_interactable_object()
 	if target == null:
-		# 手持物品面对空处 → 提示放下（Q，issue #22）；空手无提示
-		if held_item != null:
+		# 手持设备面对空处（#93）：身前有空槽位仍可提示上桌；手持物品面对空处 → 提示放下（Q，issue #22）
+		if held_item != null and held_item.is_in_group("device"):
+			if _find_free_device_slot() != null:
+				show_prompt("[E] 放上工作台")
+			else:
+				show_prompt("[Q] 放在地上")
+		elif held_item != null:
 			show_prompt("[Q] 放下")
 		else:
 			hide_prompt()
 		return
 
 	var text := ""
-	if held_item != null:
+	if held_item != null and held_item.is_in_group("device"):
+		# 手持设备（#93）：面对另一台设备 → 不可套娃；身前有空槽位 → 放上工作台；否则 → Q 放地面
+		if target != null and target.is_in_group("device"):
+			text = "设备不能叠放"
+		elif _find_free_device_slot() != null:
+			text = "[E] 放上工作台"
+		else:
+			text = "[Q] 放在地上"
+	elif held_item != null:
 		# 手持物品：设备可接受 → 放入；顾客 → 交付；外卖口 → 打包（区分可收/不可收与物品类型）
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
@@ -428,8 +499,10 @@ func _update_prompt() -> void:
 		if text == "":
 			text = "[Q] 放下"
 	else:
-		# 空手：冰柜 → 四格取货提示（#54）；可拾取 → 提示拾取；设备加热完成 → 提示取出；货箱堆 → 提示拿取
-		if target.is_in_group("freezer"):
+		# 空手：设备可搬起（IDLE 空载）→ 搬起（#93）；冰柜 → 四格取货提示（#54）；可拾取 → 提示拾取；设备加热完成 → 提示取出；货箱堆 → 提示拿取
+		if target.is_in_group("device") and target.has_method("can_be_picked_up") and target.can_be_picked_up():
+			text = "[E] 搬起%s" % _friendly_name(target)
+		elif target.is_in_group("freezer"):
 			text = target.take_hint()
 		elif target.is_in_group("pickable"):
 			text = "[E] 拾取%s" % _friendly_name(target)

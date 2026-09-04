@@ -138,16 +138,23 @@ func _on_day_started(_day: int) -> void:
 	_reset_shop_items()
 
 ## 新一天重置：销毁手持/微波炉内/散落物品（#54：冰柜库存跨天保留，四格展示无需重建）
+## #93：设备（device 组）跨天保留——清场跳过；玩家手持的设备不销毁，改为原地放下
 func _reset_shop_items() -> void:
-	# 玩家手持物品销毁（跨天不保留）
+	# 玩家手持物品销毁（跨天不保留）；#93 手持设备改为放下保留
 	if player.has_method("discard_held_item"):
-		player.discard_held_item()
+		if player.get("held_item") != null and player.get("held_item").is_in_group("device"):
+			player.call("drop_held_item")
+		else:
+			player.discard_held_item()
 	# 微波炉内物品清空（含加热中强制中止）——含 P5 第二台
 	for mw: Node in [microwave, get_node_or_null("Microwave2")]:
 		if mw != null and mw.has_method("clear_contents"):
 			mw.clear_contents()
-	# 清理散落物品（成品菜/货箱/Q 放下的料理包等全部清空；#54 起冰柜不再镜像台面包）
+	# 清理散落物品（成品菜/货箱/Q 放下的料理包等全部清空；#54 起冰柜不再镜像台面包；
+	# #93 跳过 device 组——散落的设备跨天保留，不被 queue_free）
 	for child in items_root.get_children():
+		if child.is_in_group("device"):
+			continue
 		child.queue_free()
 	# 玩家复位出生点
 	player.global_position = LayoutManager.SPAWN_POINT
@@ -417,8 +424,13 @@ func _build_floating_feedback() -> void:
 # ==================== P5 设备升级应用 ====================
 
 ## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容语义 = 每菜库存容量（Freezer.capacity，#50）
+## #93：设备摆位存档优先——有自定义位置（放上桌槽/Q 放地面时写入）用存档，没有回退默认槽位
 func _apply_upgrades() -> void:
-	microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
+	var saved_mw: Variant = UpgradeManager.get_device_position("Microwave")
+	if saved_mw != null:
+		microwave.global_position = saved_mw
+	else:
+		microwave.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 0)
 	if not UpgradeManager.has_second_microwave:
 		if has_node("Microwave2"):
 			$Microwave2.queue_free()
@@ -427,7 +439,11 @@ func _apply_upgrades() -> void:
 		var mw2: Node2D = MICROWAVE_SCENE.instantiate()
 		mw2.name = "Microwave2"
 		add_child(mw2)
-	$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
+	var saved_mw2: Variant = UpgradeManager.get_device_position("Microwave2")
+	if saved_mw2 != null:
+		$Microwave2.global_position = saved_mw2
+	else:
+		$Microwave2.global_position = LayoutManager.get_slot_position(LayoutManager.MICROWAVE_SLOTS, 1)
 
 ## 升级购买后：应用设备效果 + 重置物品（清场；冰柜库存不受升级影响）
 func _on_upgrades_changed() -> void:
