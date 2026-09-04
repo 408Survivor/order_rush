@@ -229,15 +229,34 @@ func _run() -> void:
 	_check(manager != null, "CustomerManager 存在于 MainScene")
 	_check(counter != null, "CounterPoint 存在于 MainScene")
 
-	# 顾客生成时序（#90 按新动线重算，#24 经验：距离变 → 时序按距离/160px/s 重算）：
-	# 入口(80,680)→柜台(1560,680) 距离 1480px / 160 = 9.25s；槽位 1 = 1280px = 8.0s；槽位 2 = 1080px = 6.75s
+	# ===== #93 顾客寻路：导航网格（代码生成）+ 绕行展示柜 =====
+	var nav_region: NavigationRegion2D = scene.get_node_or_null("NavRegion")
+	_check(nav_region != null, "导航区域 NavRegion 存在（#93）")
+	var nav_poly: NavigationPolygon = nav_region.navigation_polygon if nav_region != null else null
+	_check(nav_poly != null and nav_poly.get_outline_count() == 7,
+		"导航多边形 = 店内轮廓 + 6 个家具洞（厨房整带/吧台+展示柜凹形带/餐桌×4，#93）")
+	var probe_nav: CharacterBody2D = customer_scene.instantiate()
+	_check(probe_nav.get_node_or_null("NavigationAgent2D") != null, "顾客携带 NavigationAgent2D（#93）")
+	probe_nav.free()
+	# 入口→柜台路径因展示柜洞绕行（直线 1480px → 绕行 >1500px）
+	var nav_map: RID = scene.get_world_2d().navigation_map
+	NavigationServer2D.map_force_update(nav_map)
+	var nav_path := NavigationServer2D.map_get_path(nav_map, layout.ENTRANCE_POINT, layout.COUNTER_POINT, true)
+	var nav_len := 0.0
+	for i in range(nav_path.size() - 1):
+		nav_len += nav_path[i].distance_to(nav_path[i + 1])
+	_check(nav_path.size() > 2 and nav_len > 1500.0,
+		"入口→柜台寻路绕行展示柜（路径 %.0fpx > 直线 1480px，#93）" % nav_len)
+
+	# 顾客生成时序（#93 按寻路路径重算：绕行展示柜，入口→柜台 ≈1650px/160 ≈ 10.3s，断言用「最终到达」）：
+	# 槽位 0 ≈ 1650px = 10.3s；槽位 1 ≈ 1450px = 9.1s；槽位 2 ≈ 1250px = 7.8s
 	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
 	var c1 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.0).timeout
+	await get_tree().create_timer(12.5).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.7).timeout
+	await get_tree().create_timer(10.5).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.4).timeout
+	await get_tree().create_timer(9.0).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
 	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
@@ -355,14 +374,14 @@ func _run() -> void:
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
 	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
-	# 等待上一批顾客全部离店（柜台→入口 1480px / 160 = 9.25s，#90 重算）后生成新一批
-	await get_tree().create_timer(10.0).timeout
+	# 等待上一批顾客全部离店（柜台→入口绕行 ≈1650px / 160 ≈ 10.3s，#93 寻路重算）后生成新一批
+	await get_tree().create_timer(12.5).timeout
 	var c4 = manager.call("spawn_customer")
-	await get_tree().create_timer(10.0).timeout
+	await get_tree().create_timer(12.5).timeout
 	var c5 = manager.call("spawn_customer")
-	await get_tree().create_timer(8.7).timeout
+	await get_tree().create_timer(10.5).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(7.4).timeout
+	await get_tree().create_timer(9.0).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 

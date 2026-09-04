@@ -1,7 +1,8 @@
 ## 文件: scripts/entities/customer.gd
-## 职责: 顾客实体：从入口走到指定槽位排队等待，收菜后离开（Phase 1 简化版）
+## 职责: 顾客实体：从入口寻路走到指定槽位排队等待，收菜后离开（Phase 1 简化版）
 ## 依赖: 由 CustomerManager 实例化并分配槽位；收菜信号供管理器结算
-## 注意: 寻路保持简单（直线移动），顾客间碰撞由 CollisionShape2D 保证不重叠
+## 注意: #93 寻路改 NavigationAgent2D——MainScene 的 NavRegion 导航网格（家具为洞）绕行不卡不穿模；
+##       顾客间碰撞由 CollisionShape2D 保证不重叠（mask=16 不变，家具靠寻路绕行而非碰撞）
 
 @tool
 extends CharacterBody2D
@@ -32,6 +33,7 @@ const ParticleFX := preload("res://scripts/systems/particle_fx.gd")  ## P9 粒�
 # ==================== 节点引用 ====================
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var order_label: RichTextLabel = $OrderLabel
+@onready var nav_agent: NavigationAgent2D = $NavigationAgent2D  ## #93 寻路（NavRegion 由 MainScene 生成）
 
 # ==================== 状态变量 ====================
 var state := CustomerState.WALKING
@@ -48,26 +50,42 @@ var _last_label_color := Color(-1, -1, -1, -1)
 func _ready() -> void:
 	add_to_group("interactable")
 	add_to_group("customer")
+	_sync_nav_target()
 	print_rich("[color=green]Customer spawned at %s, heading to %s[/color]" % [str(global_position), str(queue_slot)])
+
+## 导航目标跟随 queue_slot（#93；目标只在 _ready/walk_to/leave 变化时重设，不逐帧刷）
+func _sync_nav_target() -> void:
+	if nav_agent != null:
+		nav_agent.target_position = queue_slot
 
 func _physics_process(delta: float) -> void:
 	if state != CustomerState.WALKING:
 		return
 
-	# 直线走向目标（槽位或出口，无需 A*，见 issue #3/#4 上下文）
-	var to_target := queue_slot - global_position
-	if to_target.length() <= ARRIVE_DISTANCE:
+	if global_position.distance_to(queue_slot) <= ARRIVE_DISTANCE:
 		_arrive()
 		return
 
 	if Engine.is_editor_hint():
-		# @tool：编辑器进程 PhysicsServer 不步进，move_and_slide 碰撞状态陈旧会传送；
-		# 冒烟测试环境直接朝目标位移（不重叠由槽位间距 150 > 碰撞直径 130 保证，
-		# 物理碰撞留给运行模式兜底）
-		global_position = global_position.move_toward(queue_slot, move_speed * delta)
+		# @tool：编辑器进程 PhysicsServer 不步进，NavigationAgent2D 路径不刷新；
+		# 冒烟测试环境改用 NavigationServer 同步路径查询 + 直接位移
+		# （不重叠由槽位间距 200 > 碰撞直径 130 保证，物理碰撞留给运行模式兜底）
+		var nav_map := get_world_2d().navigation_map
+		NavigationServer2D.map_force_update(nav_map)
+		var path := NavigationServer2D.map_get_path(nav_map, global_position, queue_slot, true)
+		var next := queue_slot
+		if path.size() > 1:
+			next = path[1]
+		elif path.size() == 1:
+			next = path[0]
+		global_position = global_position.move_toward(next, move_speed * delta)
 		return
 
-	velocity = to_target.normalized() * move_speed
+	# #93：NavigationAgent2D 寻路跟随（目标在 _ready/walk_to/leave 时设置，不逐帧重设）
+	var next_pos := nav_agent.get_next_path_position()
+	if next_pos == global_position:
+		return  # 路径尚未就绪（导航地图未同步），本帧不动
+	velocity = (next_pos - global_position).normalized() * move_speed
 	move_and_slide()
 
 func _process(_delta: float) -> void:
@@ -153,6 +171,7 @@ func leave(exit_pos: Vector2) -> void:
 	state = CustomerState.WALKING
 	collision_layer = 0
 	collision_mask = 0
+	_sync_nav_target()
 	print_rich("[color=orange]Customer leaving towards %s[/color]" % str(exit_pos))
 
 ## 走向新槽位（队列补位时由管理器调用）
@@ -161,3 +180,4 @@ func walk_to(slot: Vector2) -> void:
 		return
 	queue_slot = slot
 	state = CustomerState.WALKING
+	_sync_nav_target()

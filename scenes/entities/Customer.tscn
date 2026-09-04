@@ -19,6 +19,8 @@ texture = ExtResource("1_tex")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("CircleShape2D_customer")
 
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+
 [node name="OrderLabel" type="RichTextLabel" parent="."]
 offset_left = -80.0
 offset_top = -115.0

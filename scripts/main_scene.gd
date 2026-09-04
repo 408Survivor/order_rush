@@ -108,7 +108,10 @@ func _ready() -> void:
 	_build_specialty_panel()
 	_build_character_select()
 	_build_floating_feedback()
+	_build_navigation()
 	_apply_upgrades()
+	if _debug_move_device:
+		microwave.global_position = LayoutManager.get_slot_position(LayoutManager.DEVICE_SLOTS, 3)
 	_place_nodes()
 	# P3 日循环：打烊清场 / 新一天重置（is_connected 防热重载/多实例重复连接）
 	if not GameStateManager.shop_closed.is_connected(_on_shop_closed):
@@ -421,6 +424,60 @@ func _build_floating_feedback() -> void:
 		feedback.name = "FloatingFeedback"
 		add_child(feedback)
 
+# ==================== #93 顾客寻路（NavigationAgent2D） ====================
+
+## 导航网格（代码生成，不走烘焙工具链）：店内矩形为可行走外轮廓，挡路家具 footprint 为洞。
+## 洞数据全部从 LayoutManager 常量推导（不手抄坐标）；店外氛围带/装饰不进导航；
+## 顾客出入口 = ENTRANCE_POINT（左墙内侧），位于外轮廓内无需留口
+func _build_navigation() -> void:
+	if has_node("NavRegion"):
+		return
+	var region := NavigationRegion2D.new()
+	region.name = "NavRegion"
+	var poly := NavigationPolygon.new()
+	# 外轮廓：店内矩形（区域原点即店内原点 (0,0)，店外氛围带不可走）
+	poly.add_outline(PackedVector2Array([
+		Vector2.ZERO, Vector2(LayoutManager.SHOP_SIZE.x, 0),
+		LayoutManager.SHOP_SIZE, Vector2(0, LayoutManager.SHOP_SIZE.y),
+	]))
+	# 洞轮廓互不相交（make_polygons_from_outlines 拒绝相交/共边的轮廓）：
+	# 厨房整带合并为 1 洞；吧台+展示柜合并为 1 个凹形洞（零缝隙封死北侧，逼出南侧绕行）
+	for outline in _nav_obstacle_outlines():
+		poly.add_outline(outline)
+	poly.make_polygons_from_outlines()
+	region.navigation_polygon = poly
+	add_child(region)
+
+## 导航洞轮廓列表（多边形顶点，世界坐标；单一权威 = LayoutManager 常量；轮廓间零相交零共边）
+## 顾客动线：入口(80,680) → 队列(y=680)。北侧厨房整带封锁（顾客不进厨房）；
+## 吧台+展示柜一体凹形洞横在动线上 → 顾客从其南侧通道（860..950）绕行——寻路的实际意义所在
+func _nav_obstacle_outlines() -> Array[PackedVector2Array]:
+	var outlines: Array[PackedVector2Array] = []
+	# ① 厨房整带：冷库柜/货架/工作台/设备排全在内（顾客无业务到吧台以北；上缘留 40px 边距避外轮廓）
+	outlines.append(PackedVector2Array([
+		Vector2(40, 40), Vector2(2264, 40), Vector2(2264, 510), Vector2(40, 510),
+	]))
+	# ② 前区设施带（凹形）：整吧台（y 517..660）+ 展示柜整排垂脚（y 660..860）——
+	# 与吧台零缝隙相接、两柜并为一排（柜间 20px 缝会被零半径寻路穿针），北侧不可穿；
+	# 南侧 y=680 队列动线保持可走
+	var bar := Rect2(LayoutManager.COUNTER_BAR_POS - Vector2(720, 95), Vector2(1440, 143))  # (390,517)-(1830,660)
+	var cases := Rect2(LayoutManager.DISPLAY_SLOTS[0] - Vector2(160, 100), Vector2(0, 200))
+	cases = cases.merge(Rect2(LayoutManager.DISPLAY_SLOTS[1] - Vector2(160, 100), Vector2(320, 200)))  # (320,660)-(980,860)
+	outlines.append(PackedVector2Array([
+		Vector2(bar.position.x, bar.position.y), Vector2(bar.end.x, bar.position.y),
+		Vector2(bar.end.x, bar.end.y), Vector2(cases.end.x, bar.end.y),
+		Vector2(cases.end.x, cases.end.y), Vector2(cases.position.x, cases.end.y),
+		Vector2(cases.position.x, bar.end.y), Vector2(bar.position.x, bar.end.y),
+	]))
+	# ③ 餐桌 ×4（桌图 136 + 左右圆凳 ±110）
+	for slot in LayoutManager.TABLE_SLOTS:
+		var rect := Rect2(slot - Vector2(180, 70), Vector2(360, 140))
+		outlines.append(PackedVector2Array([
+			rect.position, rect.position + Vector2(rect.size.x, 0),
+			rect.position + rect.size, rect.position + Vector2(0, rect.size.y),
+		]))
+	return outlines
+
 # ==================== P5 设备升级应用 ====================
 
 ## 应用升级状态（P5）：微波炉摆位 + 第二台实例化；冰柜扩容语义 = 每菜库存容量（Freezer.capacity，#50）
@@ -460,6 +517,8 @@ const DEBUG_SHOT_AT_FRAME := 1500
 const DEBUG_SHOT_DIR := "res://debug_shots"
 ## 自动截图目标帧（--debug-screenshot=N 指定；#84 修复 N > 1500 时计数从负值起步永不触发的问题）
 var _debug_shot_target := DEBUG_SHOT_AT_FRAME
+## --debug-move-device 标志（#93；_apply_upgrades 摆位后于 _ready 尾部应用）
+var _debug_move_device := false
 
 ## 启动时检测 --debug-screenshot[=帧数] 用户参数：开启自动截图，并跳过角色选择面板（不落存档）
 func _init_debug_screenshot() -> void:
@@ -482,6 +541,10 @@ func _init_debug_screenshot() -> void:
 	# --debug-walk-down：持续按住下移（验证碰撞体阻挡效果，#58）
 	if OS.get_cmdline_user_args().has("--debug-walk-down"):
 		Input.action_press("move_down")
+	# --debug-move-device：把 Microwave 摆到桌面 2 右槽（#93 截图验收：设备自定义摆位效果；
+	# 须等 _apply_upgrades 摆位后再移动，见 _ready）
+	if OS.get_cmdline_user_args().has("--debug-move-device"):
+		_debug_move_device = true
 
 ## F12 手动截图（运行模式）
 func _unhandled_input(event: InputEvent) -> void:
