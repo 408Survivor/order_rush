@@ -302,6 +302,13 @@ func remove_order(order_id: int) -> bool:
 func get_active_order_count() -> int:
 	return active_orders.size()
 
+## #103：找第一份菜品匹配的在队订单 id（取餐台交付匹配用；无匹配返回 -1）
+func find_order_by_dish(dish_type: String) -> int:
+	for order in active_orders:
+		if str(order["dish_type"]) == dish_type:
+			return order["id"]
+	return -1
+
 ## 菜品类型 → 显示名（未知类型回退为类型 id，防御）
 func get_dish_display_name(dish_type: String) -> String:
 	return DISH_NAMES.get(dish_type, dish_type)

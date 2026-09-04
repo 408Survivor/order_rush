@@ -1,23 +1,23 @@
 ## 文件: scripts/entities/customer.gd
-## 职责: 顾客实体：从入口寻路走到指定槽位排队等待，收菜后离开（Phase 1 简化版）
-## 依赖: 由 CustomerManager 实例化并分配槽位；收菜信号供管理器结算
-## 注意: #93 寻路改 NavigationAgent2D——MainScene 的 NavRegion 导航网格（家具为洞）绕行不卡不穿模；
-##       顾客间碰撞由 CollisionShape2D 保证不重叠（mask=16 不变，家具靠寻路绕行而非碰撞）
+## 职责: 顾客实体（#103 窗口店）：店外刷出 → 点单槽位下单（ORDERING）→ 取餐槽位等餐（WAITING）→ 离店
+## 依赖: 由 CustomerManager 实例化并分配槽位；交付在取餐台（PickupCounter）完成，不经顾客本体
+## 注意: #93 寻路改 NavigationAgent2D——MainScene 的 NavRegion 导航网格（#103 店外 L 形）绕行不卡不穿模；
+##       顾客间碰撞由 CollisionShape2D 保证不重叠（mask=16 不变，家具靠寻路绕行而非碰撞）；
+##       #103 起顾客不在 interactable 组——窗口店顾客与玩家无直接交互
 
 @tool
 extends CharacterBody2D
 
 # ==================== 信号 ====================
-## 到达自己的排队槽位时发出（供 CustomerManager 登记队列）
+## 到达当前阶段槽位时发出（phase 0=点单槽位 / 1=取餐槽位，供 CustomerManager 登记双队列）
 signal arrived
-## 收到成品菜时发出（供 CustomerManager 结算订单）
-signal served(dish: Node2D)
 
 # ==================== 枚举 ====================
 enum CustomerState {
-	WALKING,  ## 走向槽位
-	WAITING,  ## 已在槽位排队等待
-	SERVED,   ## 已收菜，准备离开
+	WALKING,   ## 走向槽位（点单或取餐）
+	ORDERING,  ## 已到点单槽位（下单即刻转取餐走位，此态为到达瞬间语义）
+	WAITING,   ## 已在取餐槽位等餐
+	SERVED,    ## 已收菜，准备离开
 }
 
 # ==================== 常量 ====================
@@ -39,6 +39,8 @@ const ParticleFX := preload("res://scripts/systems/particle_fx.gd")  ## P9 粒�
 var state := CustomerState.WALKING
 ## 关联的订单 id（管理器下单时设置）
 var order_id := -1
+## 走位阶段（#103：0=走向点单槽位，1=走向取餐槽位）
+var phase := 0
 
 var _leaving := false
 
@@ -48,7 +50,6 @@ var _last_label_color := Color(-1, -1, -1, -1)
 # ==================== 生命周期 ====================
 
 func _ready() -> void:
-	add_to_group("interactable")
 	add_to_group("customer")
 	_sync_nav_target()
 	print_rich("[color=green]Customer spawned at %s, heading to %s[/color]" % [str(global_position), str(queue_slot)])
@@ -94,22 +95,26 @@ func _process(_delta: float) -> void:
 
 # ==================== 状态管理 ====================
 
-## 到达目标：入队或离店
+## 到达目标：按阶段入队（点单→ORDERING / 取餐→WAITING）或离店
 func _arrive() -> void:
 	velocity = Vector2.ZERO
 	if _leaving:
 		print_rich("[color=gray]Customer left the store[/color]")
 		queue_free()
 		return
-	state = CustomerState.WAITING
-	print_rich("[color=cyan]Customer arrived at slot %s[/color]" % str(global_position))
+	if phase == 0:
+		state = CustomerState.ORDERING
+	else:
+		state = CustomerState.WAITING
+	print_rich("[color=cyan]Customer arrived at slot %s (phase %d)[/color]" % [str(global_position), phase])
 	arrived.emit()
 
-## 是否已就位排队
+## 是否已在取餐槽位等餐
 func is_waiting() -> bool:
 	return state == CustomerState.WAITING
 
-## 是否可接收成品菜（有订单、菜品匹配且手持为成品菜；P2 校验菜品类型）
+## 是否可接收成品菜（有订单、菜品匹配且已在取餐槽位等餐；P2 校验菜品类型）
+## #103：不再被玩家直接调用（交付在取餐台），保留供管理器/测试校验
 func can_accept_dish(item: Node2D) -> bool:
 	if state != CustomerState.WAITING:
 		return false
@@ -122,17 +127,14 @@ func can_accept_dish(item: Node2D) -> bool:
 		return false  # 订单已移除（超时等），不可交付
 	return str(item.get("dish_type")) == str(order["dish_type"])
 
-## 接收成品菜：物品销毁，状态置 SERVED，发出 served 信号（管理器结算）
-func receive_dish(dish: Node2D) -> void:
+## 订单在取餐台被交付（#103：交付动作发生在取餐台，不经顾客本体）：
+## 清订单标记 + 金币粒子 + 状态置 SERVED（离店由管理器 leave 驱动）
+func mark_served() -> void:
 	state = CustomerState.SERVED
 	clear_order_label()
-	if dish.get_parent() != null:
-		dish.get_parent().remove_child(dish)
-	dish.queue_free()
 	# P9：交付成功金币粒子反馈
 	ParticleFX.burst(self, Vector2(0, -60), Color(1.0, 0.78, 0.3), 14, Vector2(0, -350), 200.0, 0.7)
-	print_rich("[color=green]Customer received dish (order #%d)[/color]" % order_id)
-	served.emit(dish)
+	print_rich("[color=green]Customer served via pickup counter (order #%d)[/color]" % order_id)
 
 ## 显示订单标记（头顶，供玩家识别服务对象；文本与耐心倒计时由 _process 每帧刷新）
 func set_order_label(text: String) -> void:
@@ -181,3 +183,10 @@ func walk_to(slot: Vector2) -> void:
 	queue_slot = slot
 	state = CustomerState.WALKING
 	_sync_nav_target()
+
+## 走向取餐槽位（#103：点单完成 → 转取餐队列走位，phase 0→1）
+func walk_to_pickup(slot: Vector2) -> void:
+	if _leaving:
+		return
+	phase = 1
+	walk_to(slot)

@@ -260,35 +260,45 @@ func _run() -> void:
 	_check(nav_path.size() >= 2 and nav_len > 700.0 and nav_len < 900.0,
 		"刷出点→点单队首店外寻路直通（路径 %.0fpx ≈ 直线 761px，#103）" % nav_len)
 
-	# 顾客生成时序（#103 按店外路径重算：刷出点(-61,1150)→点单队首(700,1150) = 761px/160 ≈ 4.8s，
-	# 断言用「最终到达」）：槽位 1 ≈ 561px = 3.5s；槽位 2 ≈ 361px = 2.3s
-	# 槽位按在场数分配（c2 不与行走中的 c1 撞槽）
+	# 顾客生成时序（#103 店外动线：刷出(-61,1150)→点单槽位 761px/160 ≈ 4.8s；点单→取餐槽位 800/1000/1200px
+	# （按取餐槽位序号递增）≈ 5.0/6.3/7.5s，断言用「最终到达」）
 	var c1 = manager.call("spawn_customer")
 	await get_tree().create_timer(6.0).timeout
 	var c2 = manager.call("spawn_customer")
-	await get_tree().create_timer(5.0).timeout
+	await get_tree().create_timer(5.5).timeout
 	var c3 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.5).timeout
+	await get_tree().create_timer(6.0).timeout
 
 	_check(c1 != null and c2 != null and c3 != null, "顾客按间隔连续生成成功")
-	_check(c2.get("queue_slot") == counter.global_position - Vector2(200.0, 0.0), "c2 分配槽位 1（不与行走中的 c1 撞槽）")
-	_check(c3.get("queue_slot") == counter.global_position - Vector2(400.0, 0.0), "c3 分配槽位 2")
-	_check(manager.call("get_queue_count") == 3, "3 名顾客应全部入队")
-	_check(manager.call("get_front_customer") == c1, "队首应为第一名顾客（c1）")
-	_check(c1.call("is_waiting") and c2.call("is_waiting") and c3.call("is_waiting"), "顾客到达槽位后处于 WAITING")
+	# #103 双队列分配：点单槽位左延 → 下单后转取餐槽位右延（1500/1700/1900, 1150）
+	_check(c1.get("queue_slot") == layout.PICKUP_QUEUE_FRONT, "c1 下单后转取餐槽位 0（#103）")
+	_check(c2.get("queue_slot") == layout.PICKUP_QUEUE_FRONT + Vector2(200.0, 0.0), "c2 取餐槽位 1（右延，#103）")
+	_check(c3.get("queue_slot") == layout.PICKUP_QUEUE_FRONT + Vector2(400.0, 0.0), "c3 取餐槽位 2（#103）")
+	_check(manager.call("get_order_queue_count") == 0, "点单队列已腾空（全部转取餐，#103）")
+	_check(manager.call("get_pickup_queue_count") == 3, "取餐队列 3 人（#103）")
+	_check(manager.call("get_queue_count") == 3, "总在队 3 人（#103）")
+	_check(c1.call("is_waiting") and c2.call("is_waiting"), "c1/c2 已在取餐槽位等餐（WAITING，#103）")
+	_check(c3.get("phase") == 1, "c3 已下单、走向取餐槽位（phase=1，#103）")
+	_check(c1.global_position.distance_to(layout.PICKUP_QUEUE_FRONT) < 100.0, "c1 位于取餐队首槽位（#103）")
 
 	# 槽位不重叠（间距 200 > 碰撞直径 130，留容差按 >120 断言）
-	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 120.0 \
-		and c2.global_position.distance_to(c3.global_position) > 120.0
-	_check(gap_ok, "相邻顾客间距充足（不重叠）")
+	var gap_ok: bool = c1.global_position.distance_to(c2.global_position) > 120.0
+	_check(gap_ok, "取餐队列相邻间距充足（不重叠）")
 
-	# 队首位于柜台服务点（供订单系统索引）
-	_check(c1.global_position.distance_to(counter.global_position) < 100.0, "队首位于柜台服务点")
+	# 点单队列满员拒生成（#103：生成闸门 = 点单队列上限 3）：连刷 3 名占满，第 4 名被拒；收尾释放
+	var d1 = manager.call("spawn_customer")
+	var d2 = manager.call("spawn_customer")
+	var d3 = manager.call("spawn_customer")
+	_check(d1 != null and d2 != null and d3 != null and manager.call("get_order_queue_count") == 3,
+		"连刷 3 名占满点单队列（#103）")
+	_check(manager.call("spawn_customer") == null, "点单队列满（3/3）时生成被拒绝（#103）")
+	d1.queue_free()
+	d2.queue_free()
+	d3.queue_free()
+	await get_tree().process_frame
+	_check(manager.call("get_order_queue_count") == 0, "释放后点单队列清空（#103）")
 
-	# 队列满时不再生成（max_queue=3，布局空间预留 5 人）
-	_check(manager.call("spawn_customer") == null, "队伍满（3/3）时生成被拒绝")
-
-	# ===== 5. P2 订单队列：多单并发 + 交付/好评 =====
+	# ===== 5. P2 订单队列 + #103 取餐台交付：多单并发 + 交付/好评 =====
 	# 注意：编辑器进程物理不步进，RayCast2D 查询结果不稳定，
 	# 本段直接调用内部交互方法（_interact_with_*）验证逻辑，射线路径由游戏运行模式保证
 	# 玩家此时已手持第 3 段产出的成品菜（dish）
@@ -297,8 +307,15 @@ func _run() -> void:
 	# #83：存档路径注入 /tmp，避免后续打烊/升星落档污染真实存档（user://save_p5.json）
 	gsm.set("save_path", "/tmp/test_save_p5.json")
 
-	# P2：每位顾客到达即下单 → 3 名顾客 = 3 个并发订单
-	_check(gsm.get_active_order_count() == 3, "3 名顾客就位后订单队列应有 3 单（P2 多单并发）")
+	# #103 取餐台就位（堂食交付点）
+	var pickup_counter = scene.get_node_or_null("PickupCounter")
+	_check(pickup_counter != null, "取餐台已实例化（#103）")
+	_check(pickup_counter != null and pickup_counter.is_in_group("pickup_counter") \
+		and pickup_counter.is_in_group("interactable"), "取餐台在 pickup_counter/interactable 组（#103）")
+	_check(pickup_counter != null and pickup_counter.global_position == layout.PICKUP_POINT, "取餐台位于 PICKUP_POINT（#103）")
+
+	# P2：每位顾客到点单槽位即下单 → 3 名顾客 = 3 个并发订单
+	_check(gsm.get_active_order_count() == 3, "3 名顾客下单后订单队列应有 3 单（P2 多单并发）")
 	board.call("refresh")
 	_check(board.get("_cards").size() == 3, "订单面板显示 3 张卡片")
 	# #48：订单卡片图标——菜品贴纸 + 满耐心笑脸（第一张卡 = c1，dish_override=kungpao）
@@ -337,12 +354,21 @@ func _run() -> void:
 	var low_card: Dictionary = board.get("_cards").values()[0]
 	_check(str(low_card["mood_icon"].texture.resource_path).contains("mood_angry.svg"), "低耐心表情切换为怒脸（#48）")
 
-	# 第一轮交付：手持成品菜交付 c1 → 好评 +1
-	_check(player.call("_interact_with_customer", c1), "手持成品菜交付 c1 成功")
+	# 错菜拒收（#103）：麻婆成品菜 vs 全宫保订单 → 取餐台交付失败不结算
+	var wrong_dish: Node2D = (load("res://scenes/items/FinishedDish.tscn") as PackedScene).instantiate()
+	wrong_dish.set("dish_type", "mapo")
+	scene.get_node("Items").add_child(wrong_dish)
+	_check(not bool(pickup_counter.call("serve_with", wrong_dish)), "无匹配订单的菜品被取餐台拒收（#103）")
+	wrong_dish.queue_free()
+	_check(gsm.get_active_order_count() == 3, "拒收后订单不变（#103）")
+
+	# 第一轮交付：手持成品菜交取餐台 → 好评 +1，c1（取餐队首）离店
+	_check(player.call("_interact_with_pickup_counter", pickup_counter), "手持成品菜交付取餐台成功（#103）")
 	_check(gsm.revenue == 20, "交付后营业额 +20")
 	_check(gsm.good_reviews == 1 and gsm.bad_reviews == 0, "交付成功 → 好评 +1（差评 0）")
 	_check(gsm.get_active_order_count() == 2, "c1 订单结算，队列剩 2 单（c2/c3）")
-	_check(manager.call("get_queue_count") == 2, "c1 离店，队列剩 2 人")
+	_check(manager.call("get_pickup_queue_count") == 2, "c1 离店，取餐队列剩 2 人（#103）")
+	_check(c1.get("order_id") == -1, "c1 订单已解绑离店（#103）")
 
 	# 界面联动：订单面板移除已结算卡片、Toast 交付反馈、经营面板营业额更新
 	board.call("refresh")
@@ -353,12 +379,13 @@ func _run() -> void:
 	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text.contains("营业额 20"), "经营面板营业额更新（图标化）")
 	_check(scene.get_node("RevenueHUD/Panel/Margin/VBox/RevenueLabel").text.contains("coin.svg"), "经营面板用 SVG 图标内联（#32 图标集）")
 
-	# 补位：c2 前移到柜台（已有订单，无需重建）
+	# 补位：c2 前移到取餐队首（已有订单，无需重建）
 	await get_tree().create_timer(2.0).timeout
-	_check(manager.call("get_front_customer") == c2, "补位后队首为 c2")
+	_check(manager.get("_pickup_queue")[0] == c2, "补位后取餐队首为 c2（#103）")
+	_check(c2.global_position.distance_to(layout.PICKUP_QUEUE_FRONT) < 100.0, "c2 就位取餐队首槽位（#103）")
 	_check(gsm.get_active_order_count() == 2, "补位顾客已有订单，不重复下单（count=2）")
 
-	# 第二轮：冰柜取包 → 加热 → 交付 c2 → 好评 +2（#54：格 1 取宫保包，库存 4 → 3）
+	# 第二轮：冰柜取包 → 加热 → 交付取餐台 → 好评 +2（#54：格 1 取宫保包，库存 4 → 3）
 	player.global_position = freezer.global_position + Vector2(0, 150)
 	_check(player.call("try_take_from_freezer", 1), "第二轮取包成功（#54）")
 	player.call("_interact_with_appliance", microwave)
@@ -366,26 +393,26 @@ func _run() -> void:
 	player.call("_interact_with_appliance", microwave)
 	_check(player.get("held_item") != null and player.get("held_item").is_in_group("dish"), "第二轮取出成品菜")
 	_check(str(player.get("held_item").get_node("Sprite2D").texture.resource_path).contains("dish_kungpao_plated.png"), "成品菜纹理按 dish_type 区分（#54/#63）")
-	_check(player.call("_interact_with_customer", c2), "第二轮交付 c2 成功")
+	_check(player.call("_interact_with_pickup_counter", pickup_counter), "第二轮交付取餐台成功（#103）")
 	_check(gsm.revenue == 40, "营业额累加至 40")
 	_check(gsm.good_reviews == 2, "好评累加至 2")
 	await get_tree().create_timer(2.0).timeout
-	_check(manager.call("get_front_customer") == c3, "补位后队首为 c3")
+	_check(manager.get("_pickup_queue")[0] == c3, "补位后取餐队首为 c3（#103）")
 
-	# 第三轮：冰柜取包 → 加热 → 交付 c3 → 队列清空 → 无状态残留（#54：库存 3 → 2）
+	# 第三轮：冰柜取包 → 加热 → 交付 → 队列清空 → 无状态残留（#54：库存 3 → 2）
 	player.global_position = freezer.global_position + Vector2(0, 150)
 	_check(player.call("try_take_from_freezer", 1), "第三轮取包成功（#54）")
 	player.call("_interact_with_appliance", microwave)
 	await get_tree().create_timer(3.5).timeout
 	player.call("_interact_with_appliance", microwave)
-	_check(player.call("_interact_with_customer", c3), "第三轮交付 c3 成功")
+	_check(player.call("_interact_with_pickup_counter", pickup_counter), "第三轮交付取餐台成功（#103）")
 	_check(gsm.revenue == 60, "营业额累加至 60")
 	_check(gsm.good_reviews == 3, "好评累加至 3")
 	_check(gsm.get_active_order_count() == 0, "无残留订单")
-	_check(manager.call("get_queue_count") == 0, "队列已清空")
+	_check(manager.call("get_queue_count") == 0, "双队列已清空（#103）")
 	_check(player.get("held_item") == null, "玩家空手（无残留物品）")
 
-	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店 =====
+	# ===== 6. P2 超时/差评：耐心耗尽 → 订单失败 → 顾客离店（#103：覆盖走位中/等餐中两种状态） =====
 	# 等待上一批顾客全部离店（队首→刷出点 ≤761px / 160 ≈ 4.8s，#103 店外动线重算）后生成新一批
 	await get_tree().create_timer(7.0).timeout
 	var c4 = manager.call("spawn_customer")
@@ -393,7 +420,7 @@ func _run() -> void:
 	var c5 = manager.call("spawn_customer")
 	await get_tree().create_timer(5.0).timeout
 	var c6 = manager.call("spawn_customer")
-	await get_tree().create_timer(3.5).timeout
+	await get_tree().create_timer(5.5).timeout
 	_check(c4 != null and c5 != null and c6 != null, "超时测试顾客生成成功")
 	_check(gsm.get_active_order_count() == 3, "新一批 3 单就位")
 
@@ -404,7 +431,7 @@ func _run() -> void:
 	_check(gsm.get_active_order_count() == 0, "超时订单已全部移除")
 	board.call("refresh")
 	_check(board.get("_cards").size() == 0, "超时后订单面板清空")
-	_check(manager.call("get_queue_count") == 0, "超时顾客离店，队列清空")
+	_check(manager.call("get_queue_count") == 0, "超时顾客离店，双队列清空（#103）")
 	_check(c4.get("order_id") == -1 and c5.get("order_id") == -1 and c6.get("order_id") == -1, "超时顾客订单已解绑")
 
 	# ===== 7. P3 经济系统：收入/成本/日结算/日循环（issue #28） =====

@@ -27,6 +27,8 @@ const FREEZER_SCENE := preload("res://scenes/props/Freezer.tscn")
 const CRATE_STACK_SCENE := preload("res://scenes/props/CrateStack.tscn")
 ## 外卖口场景（P4，动态实例化）
 const TAKEOUT_COUNTER_SCENE := preload("res://scenes/props/TakeoutCounter.tscn")
+## 取餐台场景（#103 点单/取餐分离：堂食交付点，动态实例化）
+const PICKUP_COUNTER_SCENE := preload("res://scenes/props/PickupCounter.tscn")
 ## 外卖订单面板场景（P4，动态实例化 CanvasLayer；#48 起为 tscn）
 const TAKEAWAY_BOARD_SCENE := preload("res://scenes/ui/TakeawayBoard.tscn")
 ## 骑手视觉管理器脚本（P4）
@@ -97,6 +99,7 @@ func _ready() -> void:
 	_build_crate_stacks()
 	_build_cabinet_key_hints()
 	_build_takeout_counter()
+	_build_pickup_counter()
 	_build_takeaway_ui()
 	_build_upgrade_shop()
 	_build_card_draw()
@@ -363,6 +366,16 @@ func _build_takeout_counter() -> void:
 	add_child(counter)
 	counter.global_position = LayoutManager.RIDER_POINT
 
+## 实例化堂食取餐台（#103：PICKUP_POINT 柜台东段；玩家持成品菜 E 交付，顾客在店外等餐）
+func _build_pickup_counter() -> void:
+	if has_node("PickupCounter"):
+		$PickupCounter.global_position = LayoutManager.PICKUP_POINT
+		return
+	var counter: Node2D = PICKUP_COUNTER_SCENE.instantiate()
+	counter.name = "PickupCounter"
+	add_child(counter)
+	counter.global_position = LayoutManager.PICKUP_POINT
+
 ## 实例化外卖 UI：订单面板 + 骑手视觉（动态生成幂等）
 func _build_takeaway_ui() -> void:
 	if not has_node("TakeawayBoard"):
@@ -507,6 +520,8 @@ const DEBUG_SHOT_DIR := "res://debug_shots"
 var _debug_shot_target := DEBUG_SHOT_AT_FRAME
 ## --debug-move-device 标志（#93；_apply_upgrades 摆位后于 _ready 尾部应用）
 var _debug_move_device := false
+## --debug-auto-serve 标志（#103；截图前 20 帧经取餐台真实交付首单）
+var _debug_auto_serve := false
 
 ## 启动时检测 --debug-screenshot[=帧数] 用户参数：开启自动截图，并跳过角色选择面板（不落存档）
 func _init_debug_screenshot() -> void:
@@ -533,6 +548,9 @@ func _init_debug_screenshot() -> void:
 	# 须等 _apply_upgrades 摆位后再移动，见 _ready）
 	if OS.get_cmdline_user_args().has("--debug-move-device"):
 		_debug_move_device = true
+	# --debug-auto-serve：截图前 20 帧经取餐台真实交付首单（#103 截图验收：交付瞬间/顾客离店）
+	if OS.get_cmdline_user_args().has("--debug-auto-serve"):
+		_debug_auto_serve = true
 
 ## F12 手动截图（运行模式）
 func _unhandled_input(event: InputEvent) -> void:
@@ -545,10 +563,28 @@ func _process(_delta: float) -> void:
 	if _debug_shot_frame < 0:
 		return
 	_debug_shot_frame += 1
+	if _debug_auto_serve and _debug_shot_frame == _debug_shot_target - 20:
+		_debug_serve_once()
 	if _debug_shot_frame == _debug_shot_target:
 		print("DEBUG_SHOT_SAVED %s" % save_debug_screenshot())
 		_dump_ui_tree()
 		get_tree().quit()
+
+## --debug-auto-serve：造一份匹配首单的成品菜，经取餐台真实交付链路 serve_with 送出（#103 截图验收用）
+func _debug_serve_once() -> void:
+	var counter: Node2D = get_node_or_null("PickupCounter")
+	if counter == null:
+		return
+	var orders: Array = GameStateManager.get("active_orders")
+	if orders.is_empty():
+		return
+	var dish: Node2D = (load("res://scenes/items/FinishedDish.tscn") as PackedScene).instantiate()
+	dish.set("dish_type", str(orders[0]["dish_type"]))
+	add_child(dish)
+	if counter.call("serve_with", dish):
+		dish.queue_free()
+	else:
+		dish.queue_free()
 
 ## 保存当前视口为 PNG，返回绝对路径（macOS 下绕过 TCC 屏幕录制权限——Godot 已有完全磁盘访问）
 func save_debug_screenshot() -> String:
