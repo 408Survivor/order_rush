@@ -1,6 +1,7 @@
 ## 文件: scripts/ui/revenue_hud.gd
-## 职责: 经营面板 HUD——右上角饼图时钟（营业倒计时）+ 天数/当日营业额/好评/差评
-##       （issue #26；#30 图标化/数字滚动/倒计时脉冲；#48 tscn 化 + 营业额弹跳；#84 饼图时钟替换线性 TimeBar）
+## 职责: 经营面板 HUD——右上角饼图时钟（营业倒计时）+ 天数/当日营业额/店铺星级/好评/差评
+##       （issue #26；#30 图标化/数字滚动/倒计时脉冲；#48 tscn 化 + 营业额弹跳；#84 饼图时钟替换线性 TimeBar；
+##        #83 StarLabel 店铺星级常显行，升星弹跳）
 ## 依赖: GameStateManager/UITheme (autoload)；静态节点树在 scenes/ui/RevenueHUD.tscn
 ## 注意: 场景结构 RevenueHUD > Panel > Margin > VBox > TopRow{BusinessClock,TopLabels{DayTimeLabel,TimeLabel}}
 ##       + RevenueLabel/GoodLabel/BadLabel（节点路径保持兼容，冒烟测试硬依赖）
@@ -17,6 +18,7 @@ extends CanvasLayer
 @onready var day_time_label: RichTextLabel = $Panel/Margin/VBox/TopRow/TopLabels/DayTimeLabel
 @onready var time_label: RichTextLabel = $Panel/Margin/VBox/TopRow/TopLabels/TimeLabel
 @onready var revenue_label: RichTextLabel = $Panel/Margin/VBox/RevenueLabel
+@onready var star_label: RichTextLabel = $Panel/Margin/VBox/StarLabel
 @onready var good_label: RichTextLabel = $Panel/Margin/VBox/GoodLabel
 @onready var bad_label: RichTextLabel = $Panel/Margin/VBox/BadLabel
 
@@ -39,6 +41,11 @@ func _ready() -> void:
 		GameStateManager.time_changed.connect(_on_time_changed)
 	if not GameStateManager.day_started.is_connected(_on_day_started):
 		GameStateManager.day_started.connect(_on_day_started)
+	# #83：繁荣度变化刷新星级行；升星时星级行弹跳
+	if not GameStateManager.prosperity_changed.is_connected(_on_prosperity_changed):
+		GameStateManager.prosperity_changed.connect(_on_prosperity_changed)
+	if not GameStateManager.shop_star_upgraded.is_connected(_on_shop_star_upgraded):
+		GameStateManager.shop_star_upgraded.connect(_on_shop_star_upgraded)
 	_update_all()
 
 ## 当日统计变化 → 营业额数字滚动 + 评分刷新
@@ -70,6 +77,28 @@ func _update_all() -> void:
 	_displayed_revenue = -1
 	_on_day_stats_changed()
 	_on_time_changed(GameStateManager.business_time_left)
+	_update_stars()
+
+## #83：店铺星级常显行（已达成星图标 ×N + 文字；升星走 _on_shop_star_upgraded 弹跳）
+func _update_stars() -> void:
+	var star := GameStateManager.shop_stars
+	var icons := ""
+	for i in GameStateManager.STAR_MAX:
+		icons += UITheme.icon(UITheme.ICON_STAR if i < star else UITheme.ICON_STAR_EMPTY, 20)
+	star_label.text = "%s 店铺 %d 星" % [icons, star]
+
+func _on_prosperity_changed(_value: int) -> void:
+	_update_stars()
+
+## #83：升星反馈——星级行 1.0→1.2→1.0 弹跳（仅运行模式；编辑器进程跳过保证断言确定性）
+func _on_shop_star_upgraded(_new_star: int) -> void:
+	_update_stars()
+	if Engine.is_editor_hint():
+		return
+	star_label.pivot_offset = star_label.size / 2.0
+	var bounce := create_tween()
+	bounce.tween_property(star_label, "scale", Vector2(1.2, 1.2), 0.15)
+	bounce.tween_property(star_label, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## 营业额数字滚动（运行模式 tween 0.4s；编辑器进程/首刷直接设置，保证冒烟断言确定性）
 ## #48：目标值增大时对数字做一次 1.0→1.15→1.0 弹跳（仅运行模式）

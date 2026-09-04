@@ -1,7 +1,7 @@
 ## 文件: scripts/ui/day_result_panel.gd
-## 职责: 日结算面板——打烊后居中显示当日收入/成本明细/利润/评分/累计金币，按钮进入下一天（P3）
+## 职责: 日结算面板——打烊后居中显示当日收入/成本明细/利润/评分/店铺星级与进度/累计金币，按钮进入下一天（P3）
 ##       （#30 弹出动画/按钮三态/统一调色板；#48 tscn 化：静态结构移入 scenes/ui/DayResultPanel.tscn，
-##        标题 44 号、主按钮立体纹理三态、次按钮描边样式写入 tscn）
+##        标题 44 号、主按钮立体纹理三态、次按钮描边样式写入 tscn；#83 StarLabel/StarProgressBar 星级与进度）
 ## 依赖: GameStateManager/UITheme (autoload)；运行模式监听 shop_closed 自动弹出并暂停游戏
 ## 注意: 场景结构 DayResultPanel(CanvasLayer) > Overlay(ColorRect) > CenterContainer > Panel > Margin > VBox
 ##       （成本 5 行 Label 命名 cost_ingredients/cost_consumables/cost_utilities/cost_penalty/cost_rent，
@@ -21,6 +21,9 @@ var _cost_labels: Dictionary = {}   # key -> Label（食材/耗材/水电/罚款
 @onready var _cost_total_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/CostPanel/Margin/VBox/CostTotalLabel
 @onready var _profit_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/ProfitLabel
 @onready var _review_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/ReviewLabel
+@onready var _star_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/StarLabel
+@onready var _star_progress_bar: ProgressBar = $Overlay/CenterContainer/Panel/Margin/VBox/StarProgressBar
+@onready var _star_progress_label: Label = $Overlay/CenterContainer/Panel/Margin/VBox/StarProgressLabel
 @onready var _money_label: RichTextLabel = $Overlay/CenterContainer/Panel/Margin/VBox/MoneyLabel
 @onready var _next_day_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/NextDayButton
 @onready var _shop_button: Button = $Overlay/CenterContainer/Panel/Margin/VBox/ShopButton
@@ -38,6 +41,9 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# 纹理面板样式（奶黄金边；@tool 下同样生效，纯视觉无副作用）
 	_panel.add_theme_stylebox_override("panel", UITheme.make_panel_texture_style(true))
+	# #83：星级进度条样式（轨道 + 奶黄填充，与心率条同族纹理）
+	_star_progress_bar.add_theme_stylebox_override("background", UITheme.make_bar_bg_style())
+	_star_progress_bar.add_theme_stylebox_override("fill", UITheme.make_bar_fill_style("yellow"))
 	# 成本明细标签按名收集（tscn 静态节点）
 	var cost_box: VBoxContainer = $Overlay/CenterContainer/Panel/Margin/VBox/CostPanel/Margin/VBox
 	for key in ["cost_ingredients", "cost_consumables", "cost_utilities", "cost_penalty", "cost_rent"]:
@@ -88,6 +94,7 @@ func show_result(result: Dictionary) -> void:
 	_profit_label.add_theme_color_override("font_color", UITheme.COLOR_GREEN if profit >= 0 else UITheme.COLOR_RED)
 
 	_review_label.text = "好评 %d ｜ 差评 %d" % [result.get("good_reviews", 0), result.get("bad_reviews", 0)]
+	_update_star_row(result)
 	_money_label.text = "%s 现有资金：%d" % [UITheme.icon(UITheme.ICON_COIN), result.get("money", 0)]
 	_overlay.visible = true
 
@@ -111,6 +118,25 @@ func show_result(result: Dictionary) -> void:
 	_count_up(_cost_total_label, "成本合计：", result.get("cost_total", 0), 0.3)
 	_count_up(_profit_label, "今日利润：", profit, 0.45)
 	_count_up(_money_label, "%s 现有资金：" % UITheme.icon(UITheme.ICON_COIN), result.get("money", 0), 0.6)
+
+## #83：店铺星级行（星级图标 ×N + 距下一星进度条/文本；满星时进度条隐藏显示满星文案）
+func _update_star_row(result: Dictionary) -> void:
+	var star: int = result.get("shop_stars", GameStateManager.shop_stars)
+	var prosperity: int = result.get("prosperity", GameStateManager.prosperity)
+	var icons := ""
+	for i in GameStateManager.STAR_MAX:
+		icons += UITheme.icon(UITheme.ICON_STAR if i < star else UITheme.ICON_STAR_EMPTY, 24)
+	_star_label.text = "%s 店铺星级：%d 星" % [icons, star]
+	var maxed := star >= GameStateManager.STAR_MAX
+	_star_progress_bar.visible = not maxed
+	if maxed:
+		_star_progress_label.text = "已达最高星级（繁荣度 %d）" % prosperity
+	else:
+		var floor_value: int = GameStateManager.STAR_THRESHOLDS[star - 1]
+		var next_value: int = GameStateManager.STAR_THRESHOLDS[star]
+		_star_progress_bar.max_value = next_value - floor_value
+		_star_progress_bar.value = maxi(prosperity - floor_value, 0)  # 星级只升不降：繁荣度可能低于本档起点，钳 0
+		_star_progress_label.text = "距 %d 星：繁荣度 %d/%d" % [star + 1, prosperity, next_value]
 
 ## #67：数字从 0 滚动到终值（0.55s + 延迟依次出现；终值为 0 时保持静态文本）
 func _count_up(label: Control, prefix: String, final: int, delay: float) -> void:

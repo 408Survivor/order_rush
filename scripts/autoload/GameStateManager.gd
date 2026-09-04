@@ -38,6 +38,10 @@ signal event_started(event_type: int)
 signal event_ended(event_type: int)
 ## #82 心率值（全局营业压力）变化时发出（供心率 HUD 更新）
 signal heart_rate_changed(value: float)
+## #83 繁荣度变化时发出（供 HUD 星级行刷新）
+signal prosperity_changed(value: int)
+## #83 店铺升星时发出（Toast 反馈 / HUD 弹跳）
+signal shop_star_upgraded(new_star: int)
 
 # ==================== 常量 ====================
 const MAX_CONCURRENT_ORDERS := 3  # P2: 最多同时 3 单（与 max_queue=3 对齐）
@@ -102,6 +106,21 @@ const STRESS_IDLE_RATE := 2.0           ## 空闲（堂食/外卖均无在队）
 const STRESS_SAFE_AFTER_CRISIS := 40.0  ## 爆表危机后回落到的安全值
 const STRESS_CRISIS_HEAT_MULTIPLIER := 1.5  ## 主厨慌乱：加热耗时倍率
 
+# ===== #83 繁荣度/店铺星级常量（可调） =====
+## 取值理由见 PR #83：7 天难度曲线下普通玩家单日约 10-14 单（日繁荣增量 ≈ 300-400），
+## 好评权重 15 让口碑与营业额同量级（单日好评 ≈10 条 ≈ +150），差评 −20 有明显痛感但不致一天白干；
+## 阈值 320/800/1600/2800：首日正常经营收 2 星，第 2-3 天 3 星，4-5 天 4 星，
+## 满星需接近全程满经营约第 6-7 天达成（七天累计繁荣 ≈ 2500-3500），不遥不可及也不首日 3 星
+const PROSPERITY_REVENUE_WEIGHT := 1    ## 繁荣度 = 累计营业额 × 本权重
+const PROSPERITY_GOOD_WEIGHT := 15      ## 每条好评 +N（含会员日双倍好评的增益）
+const PROSPERITY_BAD_WEIGHT := 20       ## 每条差评 −N
+## 五档星级阈值（繁荣度达档升星；STAR_THRESHOLDS[0]=0 即初始 1 星）
+const STAR_THRESHOLDS: Array[int] = [0, 320, 800, 1600, 2800]
+const STAR_MAX := 5                     ## 星级上限
+## P7 二期衔接钩子（本 issue 不实现）：L2 炒锅菜解锁需 2 星、L3 现做需 3 星
+const STAR_UNLOCK_L2 := 2
+const STAR_UNLOCK_L3 := 3
+
 ## 菜品类型 → 显示名映射（头顶订单标记/HUD 用；P7 由 DISHES 驱动）
 const DISH_NAMES := {
 	"kungpao": "宫保鸡丁",
@@ -157,6 +176,16 @@ var _dish_override := ""            ## 随机菜测试钩子（空 = 真随机�
 ## #82 心率值（全局营业压力，0..STRESS_MAX；每日开工重置，随压力事件增减）
 var heart_rate := STRESS_INITIAL
 
+# ===== #83 繁荣度/店铺星级状态 =====
+## 繁荣度（跨天累计，只随订单结算增减：交付 +菜价×权重+好评×权重，超时 −差评权重；钳制 ≥0）
+## 增量式累计而非按 good_reviews 推导——P6 抽卡消耗口碑（good_reviews）不影响繁荣度
+var prosperity := 0
+## 当前店铺星级（1..STAR_MAX；只升不降，跨天保留并进存档）
+var shop_stars := 1
+## 存档路径（#36 既有 JSON 通道 user://save_p5.json，与 UpgradeManager 同文件合并读写；
+## 冒烟测试可注入替换，避免污染真实存档）
+var save_path := "user://save_p5.json"
+
 ## 累计营业额（跨天累加，交付成功累加；P3 保留作历史统计/兼容）
 var revenue := 0
 
@@ -192,6 +221,10 @@ var patience_time := 30.0
 var _next_order_id := 1
 
 # ==================== 订单管理 ====================
+
+func _ready() -> void:
+	# #83：启动读档恢复繁荣度/星级（与 UpgradeManager 同 JSON 文件，按键合并不互相覆盖）
+	load_prosperity()
 
 ## 生成一个新订单（P2: 自动附带耐心倒计时）
 ## 输入: customer_id (int), dish_type (String)
@@ -313,6 +346,8 @@ func complete_order(order_id: int) -> bool:
 			record_dish_served(served_dish)
 			# #82：成功交付缓解心率
 			add_stress(-STRESS_ON_DELIVERY)
+			# #83：繁荣度 += 菜价 + 好评权重
+			_add_prosperity(price * PROSPERITY_REVENUE_WEIGHT + gain * PROSPERITY_GOOD_WEIGHT)
 			order_completed.emit(order_id, price)
 			revenue_changed.emit(revenue)
 			reviews_changed.emit(good_reviews, bad_reviews)
@@ -333,6 +368,7 @@ func fail_order(order_id: int) -> bool:
 			bad_reviews += 1
 			day_bad_reviews += 1
 			add_stress(STRESS_ON_TIMEOUT)  # #82：订单超时增压
+			_add_prosperity(-PROSPERITY_BAD_WEIGHT)  # #83：差评扣减繁荣度
 			order_failed.emit(order_id)
 			reviews_changed.emit(good_reviews, bad_reviews)
 			day_stats_changed.emit()
@@ -448,6 +484,8 @@ func complete_takeaway(order_id: int) -> bool:
 	record_dish_served(order["dish_type"])
 	# #82：外卖交付成功缓解心率
 	add_stress(-STRESS_ON_DELIVERY)
+	# #83：繁荣度 += 外卖价 + 好评权重
+	_add_prosperity(price * PROSPERITY_REVENUE_WEIGHT + gain * PROSPERITY_GOOD_WEIGHT)
 	remove_takeaway(order_id)
 	takeaway_completed.emit(order_id, price)
 	revenue_changed.emit(revenue)
@@ -467,6 +505,7 @@ func fail_takeaway(order_id: int) -> bool:
 	var penalty := get_fail_penalty()
 	day_cost_penalty += penalty
 	add_stress(STRESS_ON_BAD_REVIEW)  # #82：外卖超时差评增压
+	_add_prosperity(-PROSPERITY_BAD_WEIGHT)  # #83：差评扣减繁荣度
 	remove_takeaway(order_id)
 	takeaway_failed.emit(order_id)
 	reviews_changed.emit(good_reviews, bad_reviews)
@@ -540,6 +579,77 @@ func _trigger_crisis() -> void:
 	heart_rate_changed.emit(heart_rate)
 	print_rich("[color=red]心率爆表！危机事件：主厨慌乱（加热 ×%.1f，%.0fs），心率回落 %d[/color]" % [
 		STRESS_CRISIS_HEAT_MULTIPLIER, EVENT_DURATION[SpecialEvent.CHEF_PANIC], int(STRESS_SAFE_AFTER_CRISIS)])
+
+# ==================== #83 繁荣度/店铺星级 ====================
+
+## 增减繁荣度（正 = 交付营收/好评，负 = 差评扣减），钳制 ≥0；变化时发 prosperity_changed，
+## 达下一档阈值升星（只升不降），发 shop_star_upgraded 并落档
+## 输入: amount (int)
+func _add_prosperity(amount: int) -> void:
+	var new_value := maxi(prosperity + amount, 0)
+	if new_value == prosperity:
+		return  # 触底无变化不发信号（与 add_stress 同约定，避免刷屏）
+	prosperity = new_value
+	prosperity_changed.emit(prosperity)
+	var star := _compute_star()
+	if star > shop_stars:
+		shop_stars = star
+		shop_star_upgraded.emit(shop_stars)
+		save_prosperity()
+		print_rich("[color=gold]店铺升星！当前 %d 星（繁荣度 %d）[/color]" % [shop_stars, prosperity])
+
+## 按阈值表计算繁荣度对应星级（1..STAR_MAX）
+func _compute_star() -> int:
+	var star := 1
+	for i in range(STAR_THRESHOLDS.size()):
+		if prosperity >= STAR_THRESHOLDS[i]:
+			star = mini(i + 1, STAR_MAX)
+	return star
+
+## 星级进度快照（结算面板/HUD 用）：当前星/繁荣度/本档起点/下一档阈值/是否满星
+func get_star_progress() -> Dictionary:
+	var maxed := shop_stars >= STAR_MAX
+	return {
+		"star": shop_stars,
+		"prosperity": prosperity,
+		"floor": STAR_THRESHOLDS[shop_stars - 1],
+		"next_threshold": -1 if maxed else STAR_THRESHOLDS[shop_stars],
+		"maxed": maxed,
+	}
+
+## 保存繁荣度/星级（#36 既有通道 save_p5.json，读-改-写合并键，不覆盖 UpgradeManager 的升级键；
+## 写失败仅告警——编辑器进程 TCC 限制下不阻塞逻辑）
+func save_prosperity() -> void:
+	var data := _read_save_dict()
+	data["prosperity"] = prosperity
+	data["shop_stars"] = shop_stars
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
+	if file == null:
+		push_warning("GameStateManager: 存档写入失败（%s, err=%d）" % [save_path, FileAccess.get_open_error()])
+		return
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+
+## 加载繁荣度/星级（无存档/损坏时保持默认；星级取存档与阈值计算较大值，防御手改存档）
+func load_prosperity() -> void:
+	var data := _read_save_dict()
+	if data.is_empty():
+		return
+	prosperity = maxi(int(data.get("prosperity", 0)), 0)
+	shop_stars = clampi(maxi(int(data.get("shop_stars", 1)), _compute_star()), 1, STAR_MAX)
+
+## 读取存档 JSON（不存在/损坏返回空字典；save_prosperity 与 UpgradeManager 共用的合并读）
+func _read_save_dict() -> Dictionary:
+	if not FileAccess.file_exists(save_path):
+		return {}
+	var file := FileAccess.open(save_path, FileAccess.READ)
+	if file == null:
+		return {}
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return {}
+	return parsed
 
 # ==================== 耐心值（P2） ====================
 
@@ -684,8 +794,12 @@ func close_shop() -> Dictionary:
 		"good_reviews": day_good_reviews,
 		"bad_reviews": day_bad_reviews,
 		"money": money,
+		"prosperity": prosperity,      # #83：结算面板星级/进度展示
+		"shop_stars": shop_stars,
 	}
 	last_settlement = result
+	# #83：打烊落档（日边界持久化繁荣度/星级；升星时已即时落档，此处兜底）
+	save_prosperity()
 	# P6：结算数据定格后再清空卡牌构筑（每日重新抽卡；不影响本日结算数值）
 	CardManager.reset_cards()
 	shop_closed.emit(result)
