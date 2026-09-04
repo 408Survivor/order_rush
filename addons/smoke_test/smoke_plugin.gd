@@ -33,6 +33,8 @@ func _run() -> void:
 	var character_manager = get_tree().root.get_node_or_null("CharacterManager")
 	if character_manager != null:
 		character_manager.set("current_character", "chef")
+	# #93 测试钩子：清空设备自定义位置（真实存档若含 device_positions 会让微波炉不落默认槽位）
+	UpgradeManager.device_positions = {}
 	get_tree().root.add_child(scene)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -849,6 +851,40 @@ func _run() -> void:
 	_check(scene.get_node_or_null("CounterBar") != null and scene.get_node_or_null("CounterBar1") == null \
 		and scene.get_node_or_null("Cashier") != null, "整吧台单图单 sprite + 收银机已陈设（#75）")
 	_check(scene.get_node_or_null("Door") != null and scene.get_node_or_null("FloorMat") != null, "店门与门内地垫已陈设（#51）")
+
+	# ===== #93 布局重排：靠墙置物架 + 工作台（设备上桌）+ 展示柜 =====
+	_check(load("res://assets/art/props/shelf_wall.svg") != null, "置物架素材存在（#93）")
+	_check(load("res://assets/art/props/display_case.svg") != null, "展示柜素材存在（#93）")
+	var shelves_ok := true
+	for i in 3:
+		var s: Node = scene.get_node_or_null("ShelfWall%d" % (i + 1))
+		if s == null or not (s is Sprite2D) or s.position != layout.SHELF_SLOTS[i] or s.z_index != -1:
+			shelves_ok = false
+	_check(shelves_ok, "靠墙置物架 ×3 位于 SHELF_SLOTS（z=-1 贴墙，#93）")
+	_check(scene.get_node_or_null("WorkTable") == null, "旧 WORK_TABLE 单图已撤除（#93）")
+	var dt1: Node2D = scene.get_node_or_null("DeviceTable")
+	var dt2: Node2D = scene.get_node_or_null("DeviceTable2")
+	_check(dt1 != null and dt2 != null, "工作台 ×2 已实例化（#93）")
+	_check(dt1 != null and dt1.global_position == layout.DEVICE_TABLE_SLOTS[0] \
+		and dt2 != null and dt2.global_position == layout.DEVICE_TABLE_SLOTS[1], "工作台位于 DEVICE_TABLE_SLOTS（#93）")
+	if dt1 != null and dt2 != null:
+		_check(dt1.get_node("SlotL").global_position == layout.DEVICE_SLOTS[0] \
+			and dt1.get_node("SlotR").global_position == layout.DEVICE_SLOTS[1] \
+			and dt2.get_node("SlotL").global_position == layout.DEVICE_SLOTS[2] \
+			and dt2.get_node("SlotR").global_position == layout.DEVICE_SLOTS[3], "桌面槽位 = DEVICE_SLOTS（单一权威，#93）")
+		_check(dt1.get_node("SlotL").is_in_group("device_slot"), "桌面槽位在 device_slot 组（#93）")
+	_check(layout.MICROWAVE_SLOTS[0] == layout.DEVICE_SLOTS[0] and layout.MICROWAVE_SLOTS[1] == layout.DEVICE_SLOTS[1],
+		"微波炉默认槽位 = 桌面 1 两槽（设备上桌，#93）")
+	_check(microwave.global_position == layout.DEVICE_SLOTS[0], "微波炉摆上桌面槽位（#93）")
+	var cases_ok := true
+	for i in 2:
+		var dc: Node = scene.get_node_or_null("DisplayCase%d" % (i + 1))
+		if dc == null or not (dc is Sprite2D) or dc.position != layout.DISPLAY_SLOTS[i] or dc.z_index != 0:
+			cases_ok = false
+	_check(cases_ok, "展示柜 ×2 位于 DISPLAY_SLOTS（z=0 参与 y-sort，#93）")
+	# 走道校核：设备排（微波炉底缘 230+121）与柜台碰撞体顶缘（吧台中心 y+64-16=660）之间主走道 ≥ 260px
+	var aisle: float = (layout.COUNTER_BAR_POS.y + 64.0 - 16.0) - (layout.DEVICE_SLOTS[0].y + 121.0)
+	_check(aisle >= 260.0, "设备排与柜台间主走道 %.0fpx ≥ 260（玩家直径 234，#93）" % aisle)
 
 	# ===== #67 反馈层（世界飘字 + 金币飞行 + 结算 count-up） =====
 	var feedback: Node = scene.get_node_or_null("FloatingFeedback")

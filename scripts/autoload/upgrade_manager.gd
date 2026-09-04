@@ -13,6 +13,8 @@ var save_path := "user://save_p5.json"
 var has_second_microwave := false
 var heat_level := 0    ## 0=基础 3.0s，1=加速 2.2s
 var freezer_level := 0 ## 0=每菜库存容量 4，1=8（#50 库存语义；料理包台面按库存镜像）
+## #93 设备自定义摆放位置（key=设备名 "Microwave"/"Microwave2"，value=[x,y]；缺省空字典，旧存档兼容）
+var device_positions: Dictionary = {}
 
 ## 升级项定义（id → 名称/描述/价格；可购项扩展在此追加）
 const UPGRADES := {
@@ -63,6 +65,20 @@ func _apply_upgrade(upgrade_id: String) -> void:
 		"freezer":
 			freezer_level = 1
 
+# ==================== #93 设备自定义摆放位置 ====================
+
+## 记录设备摆放位置并写盘（放上工作台槽位 / Q 放地面时调用）
+func set_device_position(device_name: String, pos: Vector2) -> void:
+	device_positions[device_name] = [pos.x, pos.y]
+	save_upgrades()
+
+## 读取设备自定义位置（无记录返回 null → 调用方回退默认槽位）
+func get_device_position(device_name: String) -> Variant:
+	var raw: Variant = device_positions.get(device_name, null)
+	if typeof(raw) == TYPE_ARRAY and raw.size() == 2:
+		return Vector2(float(raw[0]), float(raw[1]))
+	return null
+
 # ==================== JSON 存档 ====================
 
 ## 保存升级状态（读-改-写合并：保留 #83 繁荣度/店铺星级等同文件外键；写失败仅告警——编辑器进程 TCC 限制下不阻塞逻辑）
@@ -78,6 +94,8 @@ func save_upgrades() -> void:
 	data["has_second_microwave"] = has_second_microwave
 	data["heat_level"] = heat_level
 	data["freezer_level"] = freezer_level
+	# #93：设备自定义摆放位置并入同一存档通道
+	data["device_positions"] = device_positions
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
 		push_warning("UpgradeManager: 存档写入失败（%s, err=%d）" % [save_path, FileAccess.get_open_error()])
@@ -100,3 +118,7 @@ func load_upgrades() -> void:
 	has_second_microwave = bool(data.get("has_second_microwave", false))
 	heat_level = int(data.get("heat_level", 0))
 	freezer_level = int(data.get("freezer_level", 0))
+	# #93：设备自定义位置（缺省空字典，旧存档兼容）
+	var positions: Variant = data.get("device_positions", {})
+	if typeof(positions) == TYPE_DICTIONARY:
+		device_positions = positions

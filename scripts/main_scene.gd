@@ -55,7 +55,11 @@ const PLANT_TEX := preload("res://assets/art/props/plant.png")
 const TRASH_BIN_TEX := preload("res://assets/art/props/trash_bin.png")
 const RUG_TEX := preload("res://assets/art/props/rug.png")
 const FRIDGE_CABINET_TEX := preload("res://assets/art/props/fridge_cabinet.png")  ## #61 立式四层冷冻柜（#63 AI 素材）
-const WORK_TABLE_TEX := preload("res://assets/art/props/work_table.png")          ## #61 厨房操作长桌（#63 AI 素材）
+const SHELF_WALL_TEX := preload("res://assets/art/props/shelf_wall.svg")          ## #93 靠墙置物架（手绘 SVG）
+const DISPLAY_CASE_TEX := preload("res://assets/art/props/display_case.svg")      ## #93 玻璃展示柜（手绘 SVG）
+const DEVICE_TABLE_SCENE := preload("res://scenes/props/DeviceTable.tscn")        ## #93 工作台（设备上桌底座）
+## #93 靠墙置物架缩放（SVG 200x320 → 场景 150x240）
+const SHELF_SCALE := Vector2(0.75, 0.75)
 const CABINET_KEY_HINTS_SCRIPT := preload("res://scripts/props/cabinet_key_hints.gd")  ## #77 冷库柜四层键标
 # ==================== #85 店外氛围带素材（手绘 SVG，纯视觉） ====================
 const GRASS_TEX := preload("res://assets/art/props/grass.svg")
@@ -90,6 +94,10 @@ func _ready() -> void:
 	_build_counter()
 	_build_decorations()
 	_build_tables()
+	# #93：置物架 / 工作台（设备上桌底座）/ 展示柜
+	_build_shelves()
+	_build_device_tables()
+	_build_display_cases()
 	_build_freezer()
 	_build_crate_stacks()
 	_build_cabinet_key_hints()
@@ -228,16 +236,42 @@ func _build_counter() -> void:
 	# 位置每帧就绪都跟随布局（@tool 编辑器内热重载也要复位，不能只写在 has_node 分支里）
 	$CounterBody.position = LayoutManager.COUNTER_BAR_POS + Vector2(60, 64)
 
-## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜/厨房操作桌（z=-1 作功能道具背景，不遮交互视觉）
-## #75：点位收编 LayoutManager；地毯/操作桌 PNG 已按世界尺寸重出，scale 恒为 1
+## 装饰陈设：就餐区地毯（z=-9 垫桌下）+ 绿植 + 垃圾桶 + #61 立式冷冻柜（z=-1 作功能道具背景，不遮交互视觉）
+## #75：点位收编 LayoutManager；地毯 PNG 已按世界尺寸重出，scale 恒为 1
 func _build_decorations() -> void:
 	_add_prop_sprite("Rug", RUG_TEX, LayoutManager.RUG_POS, Vector2.ONE, -9)
 	_add_prop_sprite("Plant1", PLANT_TEX, LayoutManager.PLANT_SLOTS[0], Vector2.ONE)
 	_add_prop_sprite("Plant2", PLANT_TEX, LayoutManager.PLANT_SLOTS[1], Vector2.ONE)
 	_add_prop_sprite("TrashBin", TRASH_BIN_TEX, LayoutManager.TRASH_BIN_POS, Vector2.ONE)
-	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）+ 操作长桌（垫冰柜/微波炉一排之下，右缘收在经营面板左侧）
+	# #61：立式四层冷冻柜（货箱堆按 CRATE_SLOTS 上架）
 	_add_prop_sprite("FridgeCabinet", FRIDGE_CABINET_TEX, LayoutManager.FRIDGE_CABINET_POS, Vector2.ONE, -1)
-	_add_prop_sprite("WorkTable", WORK_TABLE_TEX, LayoutManager.WORK_TABLE_POS, Vector2.ONE, -1)
+
+# ==================== #93 置物架 / 工作台 / 展示柜 ====================
+
+## 靠墙置物架 ×3（z=-1 贴墙背景；顶墙下沿，冷库区与厨房区之间）
+func _build_shelves() -> void:
+	for i in LayoutManager.SHELF_SLOTS.size():
+		_add_prop_sprite("ShelfWall%d" % (i + 1), SHELF_WALL_TEX,
+			LayoutManager.get_slot_position(LayoutManager.SHELF_SLOTS, i), SHELF_SCALE, -1)
+
+## 工作台 ×2（设备上桌底座；替换 #61 WORK_TABLE 单图。桌面 z=-1 由 device_table.gd 自设）
+func _build_device_tables() -> void:
+	for i in LayoutManager.DEVICE_TABLE_SLOTS.size():
+		var table_name := "DeviceTable" if i == 0 else "DeviceTable%d" % (i + 1)
+		if not has_node(table_name):
+			var table: Node2D = DEVICE_TABLE_SCENE.instantiate()
+			table.name = table_name
+			table.set("table_index", i)  # 须在 add_child 前注入：_ready 即按序号摆槽位
+			add_child(table)
+		var table_node: Node2D = get_node(table_name)
+		table_node.global_position = LayoutManager.get_slot_position(LayoutManager.DEVICE_TABLE_SLOTS, i)
+		table_node.call("_sync_slots")  # 槽位按新全局位置重摆（编辑器热重载/布局调整时跟随）
+
+## 玻璃展示柜 ×2（z=0 参与 y-sort 遮挡；前区下沿、收银台左侧）
+func _build_display_cases() -> void:
+	for i in LayoutManager.DISPLAY_SLOTS.size():
+		_add_prop_sprite("DisplayCase%d" % (i + 1), DISPLAY_CASE_TEX,
+			LayoutManager.get_slot_position(LayoutManager.DISPLAY_SLOTS, i), Vector2.ONE, 0)
 
 # ==================== #85 店外氛围带（草地/石板路/果树/灌木/路灯/栅栏，全部纯视觉无碰撞） ====================
 

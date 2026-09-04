@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 320" width="200" height="320">
+<!-- 靠墙置物架（#93）：梯子式三层架 200x320，暖木色 + 深棕描边 + 奶油白细节（风格对齐 #51/#85 手绘路线） -->
+<ellipse cx="100" cy="308" rx="88" ry="10" fill="#4A3728" fill-opacity="0.15"/>
+<!-- 立柱（微梯形，上窄下宽，梯子感） -->
+<path d="M40 24 L34 300 L56 300 L60 24 Z" fill="#A06B3D" stroke="#4A3728" stroke-width="6" stroke-linejoin="round"/>
+<path d="M160 24 L166 300 L144 300 L140 24 Z" fill="#A06B3D" stroke="#4A3728" stroke-width="6" stroke-linejoin="round"/>
+<!-- 三层搁板（下宽上窄） -->
+<rect x="24" y="230" width="152" height="16" rx="6" fill="#C68B59" stroke="#4A3728" stroke-width="6"/>
+<rect x="32" y="142" width="136" height="15" rx="6" fill="#C68B59" stroke="#4A3728" stroke-width="6"/>
+<rect x="40" y="56" width="120" height="14" rx="6" fill="#C68B59" stroke="#4A3728" stroke-width="6"/>
+<!-- 搁板高光 -->
+<rect x="30" y="233" width="140" height="5" rx="2" fill="#E2AC7A"/>
+<rect x="38" y="145" width="124" height="4" rx="2" fill="#E2AC7A"/>
+<rect x="46" y="59" width="108" height="4" rx="2" fill="#E2AC7A"/>
+<!-- 顶层：两只奶油罐 -->
+<rect x="58" y="20" width="26" height="34" rx="7" fill="#FFF6E5" stroke="#4A3728" stroke-width="5"/>
+<rect x="94" y="24" width="26" height="30" rx="7" fill="#FFF6E5" stroke="#4A3728" stroke-width="5"/>
+<rect x="62" y="26" width="18" height="7" rx="3" fill="#FFD98A"/>
+<rect x="98" y="30" width="18" height="7" rx="3" fill="#A8D8F0"/>
+<!-- 中层：三个收纳盒（糖果色） -->
+<rect x="42" y="106" width="34" height="34" rx="6" fill="#FF8A80" stroke="#4A3728" stroke-width="5"/>
+<rect x="84" y="106" width="34" height="34" rx="6" fill="#FFE9A8" stroke="#4A3728" stroke-width="5"/>
+<rect x="126" y="106" width="30" height="34" rx="6" fill="#8FD6A8" stroke="#4A3728" stroke-width="5"/>
+<circle cx="59" cy="123" r="6" fill="#FFF6E5"/>
+<circle cx="101" cy="123" r="6" fill="#4A3728" fill-opacity="0.25"/>
+<circle cx="141" cy="123" r="6" fill="#FFF6E5"/>
+<!-- 底层：两根擀面杖 + 布巾 -->
+<rect x="40" y="196" width="66" height="14" rx="7" fill="#E2AC7A" stroke="#4A3728" stroke-width="5" transform="rotate(-6 73 203)"/>
+<rect x="96" y="200" width="62" height="14" rx="7" fill="#E2AC7A" stroke="#4A3728" stroke-width="5" transform="rotate(5 127 207)"/>
+<path d="M54 230 L54 268 Q73 278 92 268 L92 230 Z" fill="#FFF6E5" stroke="#4A3728" stroke-width="5" stroke-linejoin="round"/>
+<path d="M62 244 Q73 250 84 244" fill="none" stroke="#A8D8F0" stroke-width="4" stroke-linecap="round"/>
+<path d="M62 256 Q73 262 84 256" fill="none" stroke="#A8D8F0" stroke-width="4" stroke-linecap="round"/>
+</svg>
