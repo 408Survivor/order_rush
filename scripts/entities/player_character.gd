@@ -198,8 +198,8 @@ func try_interact() -> bool:
 	if held_item != null:
 		if interactable.is_in_group("appliance"):
 			return _interact_with_appliance(interactable)
-		elif interactable.is_in_group("customer"):
-			return _interact_with_customer(interactable)
+		elif interactable.is_in_group("pickup_counter"):
+			return _interact_with_pickup_counter(interactable)
 		elif interactable.is_in_group("takeout"):
 			return _interact_with_takeout(interactable)
 		return false
@@ -331,18 +331,18 @@ func _interact_with_crate_stack(stack: Node2D) -> bool:
 	_pick_up_item(crate)
 	return true
 
-## 与顾客交互（交付成品菜，issue #4）
-func _interact_with_customer(customer: Node2D) -> bool:
-	if held_item == null:
-		return false
-	if not held_item.is_in_group("dish"):
-		return false
-	if not customer.can_accept_dish(held_item):
+## 与取餐台交互（#103 点单/取餐分离）：持成品菜 → 按菜品匹配在队订单交付 → 成品菜消耗
+## #103 起替代「E 直接交付顾客」（窗口店顾客在店外，不再可交互）
+func _interact_with_pickup_counter(counter: Node2D) -> bool:
+	if held_item == null or not held_item.is_in_group("dish"):
 		return false
 	var dish := held_item
-	_drop_from_hand()
-	customer.receive_dish(dish)
-	return true
+	if counter.call("serve_with", dish):
+		_drop_from_hand()
+		dish.queue_free()
+		print_rich("[color=cyan]Dish served at pickup counter[/color]")
+		return true
+	return false
 
 ## 与外卖口交互（打包外卖订单，P4）：持成品菜 → 打包 → 成品菜消耗（进餐盒）
 func _interact_with_takeout(counter: Node2D) -> bool:
@@ -477,24 +477,22 @@ func _update_prompt() -> void:
 		else:
 			text = "[Q] 放在地上"
 	elif held_item != null:
-		# 手持物品：设备可接受 → 放入；顾客 → 交付；外卖口 → 打包（区分可收/不可收与物品类型）
+		# 手持物品：设备可接受 → 放入；取餐台 → 交付（#103）；外卖口 → 打包（区分可收/不可收与物品类型）
 		if target.is_in_group("appliance") and target.can_accept_item(held_item):
 			text = "[E] 放入%s" % _friendly_name(target)
 		elif target.is_in_group("appliance") and target.has_method("is_broken") and target.is_broken():
 			text = "设备故障中"
+		elif target.is_in_group("pickup_counter"):
+			if held_item.is_in_group("dish"):
+				if target.call("can_serve", held_item):
+					text = "[E] 交付%s" % _friendly_name(target)
+				else:
+					text = "[E] 交付（无匹配订单）"
+			else:
+				text = "取餐台只收成品菜"
 		elif target.is_in_group("takeout"):
 			if held_item.is_in_group("dish") and not GameStateManager.get_pending_takeaway().is_empty():
 				text = "[E] 打包外卖"
-		elif target.is_in_group("customer"):
-			if held_item.is_in_group("dish"):
-				if target.can_accept_dish(held_item):
-					text = "[E] 交付%s" % _friendly_name(target)
-				elif target.get("state") == 2:
-					text = ""  # 已服务完的顾客（离店中），无操作提示
-				else:
-					text = "[E] 交付（订单不符/无单）"
-			else:
-				text = "料理包需先加热"
 		# 手持但无目标操作（无可交互目标 / 目标不接受）→ 提示中途放下（Q，issue #22）
 		if text == "":
 			text = "[Q] 放下"

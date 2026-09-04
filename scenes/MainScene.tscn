@@ -13,7 +13,7 @@
 
 ; ===== 布局说明（issue #24） =====
 ; 节点位置由 scripts/main_scene.gd 按 LayoutManager 配置统一摆放（此处坐标仅编辑器占位）。
-; 区域色块/标签/餐桌由脚本按 LayoutManager.ZONE_*/TABLE_SLOTS 动态生成，见 main_scene.gd。
+; 区域色块/陈设由脚本按 LayoutManager.ZONE_* 动态生成，见 main_scene.gd（#103 餐桌已移除）。
 ; #48：UI 面板全部 tscn 化（scenes/ui/），RevenueHUD/OrderBoard/ToastManager/DayResultPanel 为场景实例。
 
 [node name="MainScene" type="Node2D" unique_id=432433148]

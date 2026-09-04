@@ -1,0 +1,35 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/pickup_counter.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/art/props/pickup_counter.svg" id="2_tex"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_pickup"]
+size = Vector2(140, 80)
+
+[node name="PickupCounter" type="Area2D"]
+collision_layer = 5
+; collision_layer=5 = World(1)+Interactables(4)：既阻挡玩家移动，又被 InteractionRay(层3) 检测到
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+position = Vector2(0, 60)
+z_index = 1
+; z=1：画在吧台（z=0）之上——取餐台节点 y=960 在吧台 y=990 北侧，y-sort 会把整棵子树压在吧台后
+texture = ExtResource("2_tex")
+
+[node name="Label" type="Label" parent="."]
+offset_left = -60.0
+offset_top = 128.0
+offset_right = 60.0
+offset_bottom = 158.0
+theme_override_colors/font_color = Color(0.29, 0.22, 0.16, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.8)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+text = "取餐台"
+horizontal_alignment = 1
+vertical_alignment = 1
+z_index = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_pickup")

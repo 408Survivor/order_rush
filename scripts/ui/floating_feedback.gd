@@ -55,14 +55,14 @@ func _resolve_customer_pos(order_id: int) -> Vector2:
 				return customer.global_position
 	if scene != null and scene.has_node("CounterPoint"):
 		return scene.get_node("CounterPoint").global_position
-	return LayoutManager.COUNTER_POINT
+	return LayoutManager.ORDER_QUEUE_FRONT
 
-## 外卖口位置（回退 LayoutManager.PICKUP_POINT）
+## 外卖口位置（回退 LayoutManager.RIDER_POINT）
 func _resolve_takeout_pos() -> Vector2:
 	var scene := get_tree().current_scene
 	if scene != null and scene.has_node("TakeoutCounter"):
 		return scene.get_node("TakeoutCounter").global_position
-	return LayoutManager.PICKUP_POINT
+	return LayoutManager.RIDER_POINT
 
 # ==================== 飘字 / 金币 API（测试可直接调用） ====================
 
